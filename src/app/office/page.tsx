@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { rtdb } from "@/lib/firebase";
 import { ref, set, onValue, off, onDisconnect } from "firebase/database";
 
-/* âââââââââââââââââââââââââââââââââââââââââââ
-   Ð¢ÐÐÐ«
-   âââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════
+   ТИПЫ
+   ═══════════════════════════════════════════ */
 type Gender = "male" | "female";
 type Mood = "happy" | "cool" | "excited" | "sleepy" | "angry";
 type Status = "working" | "break" | "away";
@@ -33,16 +33,16 @@ interface OnlineUser {
   lastSeen: number;
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââ
-   ÐÐÐÐÐ¢Ð Ð«
-   âââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════
+   ПАЛИТРЫ
+   ═══════════════════════════════════════════ */
 const SKIN_COLORS = ["#FDDCB5", "#F5C193", "#D4956B", "#A56B43", "#6B3E26"];
 const CLOTHING_COLORS = ["#8B5E3C", "#D4573B", "#3B82D4", "#3BD49A", "#D4A33B"];
 
 const STATUS_LABELS: Record<Status, string> = {
-  working: "ÐÐ° ÑÐ°Ð±Ð¾ÑÐµ",
-  break: "ÐÐµÑÐµÑÑÐ²",
-  away: "Ð£ÑÑÐ»",
+  working: "На работе",
+  break: "Перерыв",
+  away: "Ушёл",
 };
 const STATUS_COLORS: Record<Status, string> = {
   working: "#22c55e",
@@ -52,9 +52,9 @@ const STATUS_COLORS: Record<Status, string> = {
 
 const ACTIONS: AvatarAction[] = ["coffee", "monitor", "phone", "yawn"];
 
-/* âââââââââââââââââââââââââââââââââââââââââââ
-   ÐÐÐÐ-Ð ÐÐ¡ÐÐÐÐÐÐ ÐÐÐÐ¢ÐÐ Ð (ÐÐ Ð£ÐÐÐÐ¯)
-   âââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════
+   МИНИ-РИСОВАЛКА АВАТАРА (КРУПНАЯ)
+   ═══════════════════════════════════════════ */
 function drawMiniAvatar(
   ctx: CanvasRenderingContext2D,
   cfg: AvatarConfig,
@@ -73,22 +73,22 @@ function drawMiniAvatar(
   const hairColor =
     cfg.skinColor <= 1 ? "#3B2410" : cfg.skinColor <= 3 ? "#1A0E06" : "#0A0503";
 
-  /* Ð½Ð¾Ð³Ð¸ */
+  /* ноги */
   ctx.fillStyle = "#3A3A5C";
   ctx.fillRect(-8 * s, 36 * s, 7 * s, 16 * s);
   ctx.fillRect(2 * s, 36 * s, 7 * s, 16 * s);
 
-  /* Ð±Ð¾ÑÐ¸Ð½ÐºÐ¸ */
+  /* ботинки */
   ctx.fillStyle = "#2A2A2A";
   ctx.fillRect(-9 * s, 50 * s, 9 * s, 5 * s);
   ctx.fillRect(1 * s, 50 * s, 9 * s, 5 * s);
 
-  /* ÑÐµÐ»Ð¾ */
+  /* тело */
   ctx.fillStyle = cloth;
   ctx.beginPath();
   ctx.ellipse(0, 28 * s, 20 * s, 16 * s, 0, Math.PI, 0, true);
   ctx.fill();
-  /* Ð²Ð¾ÑÐ¾ÑÐ½Ð¸Ðº */
+  /* воротник */
   ctx.fillStyle = "#FFF";
   ctx.beginPath();
   ctx.moveTo(-6 * s, 14 * s);
@@ -97,19 +97,19 @@ function drawMiniAvatar(
   ctx.closePath();
   ctx.fill();
 
-  /* ÑÑÐºÐ¸ */
+  /* руки */
   ctx.fillStyle = cloth;
   if (action === "coffee") {
-    /* Ð¿ÑÐ°Ð²Ð°Ñ ÑÑÐºÐ° Ð´ÐµÑÐ¶Ð¸Ñ ÐºÑÑÐ¶ÐºÑ */
+    /* правая рука держит кружку */
     ctx.save();
     ctx.translate(20 * s, 18 * s);
     ctx.rotate(0.3);
     ctx.fillRect(-4 * s, -2 * s, 8 * s, 18 * s);
     ctx.restore();
-    /* Ð»ÐµÐ²Ð°Ñ ÑÑÐºÐ° Ð¾Ð¿ÑÑÐµÐ½Ð° */
+    /* левая рука опущена */
     ctx.fillRect(-24 * s, 16 * s, 8 * s, 18 * s);
   } else if (action === "phone") {
-    /* Ð»ÐµÐ²Ð°Ñ ÑÑÐºÐ° Ðº ÑÑÑ */
+    /* левая рука к уху */
     ctx.save();
     ctx.translate(-20 * s, 8 * s);
     ctx.rotate(-0.4);
@@ -117,7 +117,7 @@ function drawMiniAvatar(
     ctx.restore();
     ctx.fillRect(16 * s, 16 * s, 8 * s, 18 * s);
   } else if (action === "monitor") {
-    /* Ð¾Ð±Ðµ ÑÑÐºÐ¸ Ð²Ð¿ÐµÑÑÐ´ */
+    /* обе руки вперёд */
     ctx.fillRect(-24 * s, 14 * s, 8 * s, 16 * s);
     ctx.fillRect(16 * s, 14 * s, 8 * s, 16 * s);
   } else {
@@ -125,7 +125,7 @@ function drawMiniAvatar(
     ctx.fillRect(-24 * s, 16 * s, 8 * s, 18 * s);
     ctx.fillRect(16 * s, 16 * s, 8 * s, 18 * s);
   }
-  /* ÐºÐ¸ÑÑÐ¸ ÑÑÐº */
+  /* кисти рук */
   ctx.fillStyle = skin;
   if (action === "coffee") {
     ctx.beginPath();
@@ -150,17 +150,17 @@ function drawMiniAvatar(
     ctx.fill();
   }
 
-  /* ÑÐµÑ */
+  /* шея */
   ctx.fillStyle = skin;
   ctx.fillRect(-5 * s, 10 * s, 10 * s, 8 * s);
 
-  /* Ð³Ð¾Ð»Ð¾Ð²Ð° */
+  /* голова */
   ctx.fillStyle = skin;
   ctx.beginPath();
   ctx.ellipse(0, 0, 22 * s, 23 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  /* ÑÑÐ¸ */
+  /* уши */
   ctx.beginPath();
   ctx.ellipse(-20 * s, 2 * s, 5 * s, 6 * s, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -168,7 +168,7 @@ function drawMiniAvatar(
   ctx.ellipse(20 * s, 2 * s, 5 * s, 6 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  /* Ð¿ÑÐ¸ÑÑÑÐºÐ° */
+  /* причёска */
   ctx.fillStyle = hairColor;
   const headTop = -23 * s;
   ctx.beginPath();
@@ -180,7 +180,7 @@ function drawMiniAvatar(
     ctx.fillRect(15 * s, -5 * s, 6 * s, 22 * s);
   }
 
-  /* Ð³Ð»Ð°Ð·Ð° */
+  /* глаза */
   const eyeY = -3 * s;
   for (const side of [-1, 1]) {
     const ex = side * 9 * s;
@@ -203,7 +203,7 @@ function drawMiniAvatar(
       ctx.beginPath();
       ctx.arc(ex + 1 * s, eyeY, 2.5 * s, 0, Math.PI * 2);
       ctx.fill();
-      /* Ð±Ð»Ð¸Ðº */
+      /* блик */
       ctx.fillStyle = "#FFF";
       ctx.beginPath();
       ctx.arc(ex + 2.5 * s, eyeY - 1.5 * s, 1 * s, 0, Math.PI * 2);
@@ -211,7 +211,7 @@ function drawMiniAvatar(
     }
   }
 
-  /* ÑÑÐºÐ¸ */
+  /* щёки */
   ctx.fillStyle = "rgba(255,150,150,0.25)";
   ctx.beginPath();
   ctx.ellipse(-12 * s, 6 * s, 5 * s, 3 * s, 0, 0, Math.PI * 2);
@@ -220,7 +220,7 @@ function drawMiniAvatar(
   ctx.ellipse(12 * s, 6 * s, 5 * s, 3 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  /* ÑÐ¾Ñ */
+  /* рот */
   const my = 9 * s;
   ctx.strokeStyle = "#2A1810";
   ctx.lineWidth = 1.8 * s;
@@ -243,9 +243,9 @@ function drawMiniAvatar(
     ctx.stroke();
   }
 
-  /* Ð¿ÑÐµÐ´Ð¼ÐµÑ Ð² ÑÑÐºÐµ */
+  /* предмет в руке */
   if (action === "coffee") {
-    /* ÐºÑÐ°ÑÐ½ÑÐ¹ ÑÑÐ°ÐºÐ°Ð½ÑÐ¸Ðº ÐºÐ¾ÑÐµ */
+    /* красный стаканчик кофе */
     ctx.fillStyle = "#C0392B";
     ctx.beginPath();
     ctx.moveTo(24 * s, 12 * s);
@@ -254,10 +254,10 @@ function drawMiniAvatar(
     ctx.lineTo(36 * s, 12 * s);
     ctx.closePath();
     ctx.fill();
-    /* ÐºÑÑÑÐºÐ° */
+    /* крышка */
     ctx.fillStyle = "#FFF";
     ctx.fillRect(27 * s, -4 * s, 14 * s, 3 * s);
-    /* Ð¿Ð°Ñ */
+    /* пар */
     ctx.strokeStyle = "rgba(255,255,255,0.5)";
     ctx.lineWidth = 1.5;
     for (let pi = 0; pi < 3; pi++) {
@@ -268,7 +268,7 @@ function drawMiniAvatar(
       ctx.stroke();
     }
   } else if (action === "phone") {
-    /* ÑÐµÐ»ÐµÑÐ¾Ð½ Ñ ÑÑÐ° */
+    /* телефон у уха */
     ctx.fillStyle = "#333";
     ctx.strokeStyle = "#555";
     ctx.lineWidth = 1;
@@ -278,11 +278,11 @@ function drawMiniAvatar(
     ctx.roundRect(px, py, 8 * s, 16 * s, 2 * s);
     ctx.fill();
     ctx.stroke();
-    /* ÑÐºÑÐ°Ð½ ÑÐµÐ»ÐµÑÐ¾Ð½Ð° */
+    /* экран телефона */
     ctx.fillStyle = "#4488CC";
     ctx.fillRect(px + 1 * s, py + 2 * s, 6 * s, 10 * s);
   } else if (action === "monitor") {
-    /* ÑÑÐºÐ° Ð²Ð¿ÐµÑÑÐ´ Ðº Ð¼Ð¾Ð½Ð¸ÑÐ¾ÑÑ */
+    /* рука вперёд к монитору */
     ctx.fillStyle = skin;
     ctx.beginPath();
     ctx.arc(22 * s, 20 * s, 5 * s, 0, Math.PI * 2);
@@ -292,25 +292,25 @@ function drawMiniAvatar(
   ctx.restore();
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââ
-   Ð ÐÐ¡ÐÐÐÐÐÐ ÐÐ¤ÐÐ¡Ð (Ð²ÐµÑÑÐ½Ð¸Ð¹ ÑÑÐ°Ð¶) â Ð´ÐµÑÐ°Ð»Ð¸Ð·Ð¸ÑÐ¾Ð²Ð°Ð½Ð½Ð°Ñ
-   âââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════
+   РИСОВАЛКА ОФИСА (верхний этаж) — детализированная
+   ═══════════════════════════════════════════ */
 function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  /* ÑÑÐµÐ½Ð° */
+  /* стена */
   const grad = ctx.createLinearGradient(0, 0, 0, h - 70);
   grad.addColorStop(0, "#F5F0E8");
   grad.addColorStop(1, "#EDE5D8");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h - 70);
 
-  /* Ð¿Ð»Ð¸Ð½ÑÑÑ */
+  /* плинтус */
   ctx.fillStyle = "#8B7355";
   ctx.fillRect(0, h - 78, w, 8);
 
-  /* Ð¿Ð¾Ð» Ð¿Ð°ÑÐºÐµÑ */
+  /* пол паркет */
   ctx.fillStyle = "#D4B896";
   ctx.fillRect(0, h - 70, w, 70);
-  /* Ð»Ð¸Ð½Ð¸Ð¸ Ð¿Ð°ÑÐºÐµÑÐ° */
+  /* линии паркета */
   ctx.strokeStyle = "#C4A882";
   ctx.lineWidth = 0.5;
   for (let i = 0; i < w; i += 60) {
@@ -326,17 +326,17 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke();
   }
 
-  /* Ð¿Ð¾ÑÐ¾Ð»Ð¾ÑÐ½ÑÐµ Ð»Ð°Ð¼Ð¿Ñ */
+  /* потолочные лампы */
   for (let i = 0; i < 4; i++) {
     const lx = 120 + i * 200;
-    /* Ð¿ÑÐ¾Ð²Ð¾Ð´ */
+    /* провод */
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(lx, 0);
     ctx.lineTo(lx, 18);
     ctx.stroke();
-    /* Ð¿Ð»Ð°ÑÐ¾Ð½ */
+    /* плафон */
     ctx.fillStyle = "#F5E6C8";
     ctx.beginPath();
     ctx.moveTo(lx - 20, 18);
@@ -348,7 +348,7 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.strokeStyle = "#D4A33B";
     ctx.lineWidth = 1;
     ctx.stroke();
-    /* ÑÐ²ÐµÑ */
+    /* свет */
     ctx.fillStyle = "rgba(255,240,200,0.15)";
     ctx.beginPath();
     ctx.moveTo(lx - 14, 34);
@@ -359,26 +359,26 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill();
   }
 
-  /* Ð¾ÐºÐ½Ð° */
+  /* окна */
   for (let i = 0; i < 3; i++) {
     const wx = 100 + i * 280;
-    /* ÑÐ°Ð¼Ð° */
+    /* рама */
     ctx.fillStyle = "#C8E0F0";
     ctx.fillRect(wx, 30, 90, 110);
-    /* Ð½ÐµÐ±Ð¾ Ð² Ð¾ÐºÐ½Ðµ */
+    /* небо в окне */
     const skyGrad = ctx.createLinearGradient(wx, 30, wx, 140);
     skyGrad.addColorStop(0, "#87CEEB");
     skyGrad.addColorStop(1, "#B8E0F8");
     ctx.fillStyle = skyGrad;
     ctx.fillRect(wx + 3, 33, 84, 104);
-    /* Ð¾Ð±Ð»Ð°ÑÐºÐ¾ */
+    /* облачко */
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.beginPath();
     ctx.arc(wx + 30, 60, 12, 0, Math.PI * 2);
     ctx.arc(wx + 45, 55, 16, 0, Math.PI * 2);
     ctx.arc(wx + 60, 60, 12, 0, Math.PI * 2);
     ctx.fill();
-    /* ÑÐ°Ð¼Ð° */
+    /* рама */
     ctx.strokeStyle = "#8B7355";
     ctx.lineWidth = 3;
     ctx.strokeRect(wx, 30, 90, 110);
@@ -388,24 +388,24 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.moveTo(wx, 85);
     ctx.lineTo(wx + 90, 85);
     ctx.stroke();
-    /* Ð¿Ð¾Ð´Ð¾ÐºÐ¾Ð½Ð½Ð¸Ðº */
+    /* подоконник */
     ctx.fillStyle = "#8B7355";
     ctx.fillRect(wx - 5, 138, 100, 6);
   }
 
-  /* ÐºÐ°ÑÑÐ¸Ð½Ñ Ð½Ð° ÑÑÐµÐ½Ð°Ñ */
+  /* картины на стенах */
   const paintings = [
     { x: 48, y: 55, color: "#E74C3C" },
     { x: 740, y: 55, color: "#2ECC71" },
   ];
   for (const p of paintings) {
-    /* ÑÐ°Ð¼Ð° */
+    /* рама */
     ctx.fillStyle = "#8B5E3C";
     ctx.fillRect(p.x - 2, p.y - 2, 44, 54);
-    /* ÑÐ¾Ð»ÑÑ */
+    /* холст */
     ctx.fillStyle = "#FFF8E8";
     ctx.fillRect(p.x, p.y, 40, 50);
-    /* Ð°Ð±ÑÑÑÐ°ÐºÑÐ½Ð¾Ðµ Ð¸ÑÐºÑÑÑÑÐ²Ð¾ */
+    /* абстрактное искусство */
     ctx.fillStyle = p.color;
     ctx.beginPath();
     ctx.arc(p.x + 20, p.y + 25, 14, 0, Math.PI * 2);
@@ -416,18 +416,18 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill();
   }
 
-  /* ÐºÐ¾ÑÐµÐ¼Ð°ÑÐ¸Ð½Ð° Ð² ÑÐ³Ð»Ñ */
+  /* кофемашина в углу */
   const cmx = w - 60;
   const cmy = h - 78;
-  /* ÐºÐ¾ÑÐ¿ÑÑ */
+  /* корпус */
   ctx.fillStyle = "#444";
   ctx.fillRect(cmx, cmy - 60, 45, 60);
   ctx.fillStyle = "#333";
   ctx.fillRect(cmx + 2, cmy - 55, 41, 30);
-  /* ÑÐºÑÐ°Ð½ */
+  /* экран */
   ctx.fillStyle = "#4488CC";
   ctx.fillRect(cmx + 8, cmy - 50, 20, 14);
-  /* ÐºÐ½Ð¾Ð¿ÐºÐ¸ */
+  /* кнопки */
   ctx.fillStyle = "#e74c3c";
   ctx.beginPath();
   ctx.arc(cmx + 35, cmy - 42, 3, 0, Math.PI * 2);
@@ -436,59 +436,59 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.beginPath();
   ctx.arc(cmx + 35, cmy - 34, 3, 0, Math.PI * 2);
   ctx.fill();
-  /* Ð½Ð¾ÑÐ¸Ðº */
+  /* носик */
   ctx.fillStyle = "#555";
   ctx.fillRect(cmx + 15, cmy - 24, 12, 8);
-  /* Ð¿Ð¾Ð´Ð´Ð¾Ð½ */
+  /* поддон */
   ctx.fillStyle = "#666";
   ctx.fillRect(cmx + 5, cmy - 16, 35, 4);
-  /* ÑÑÐ°ÐºÐ°Ð½ÑÐ¸Ðº */
+  /* стаканчик */
   ctx.fillStyle = "#C0392B";
   ctx.fillRect(cmx + 17, cmy - 16, 12, 14);
   ctx.fillStyle = "#FFF";
   ctx.fillRect(cmx + 17, cmy - 16, 12, 2);
-  /* Ð½Ð°Ð´Ð¿Ð¸ÑÑ */
+  /* надпись */
   ctx.fillStyle = "#999";
   ctx.font = "8px sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("COFFEE", cmx + 22, cmy - 2);
   ctx.textAlign = "start";
 
-  /* ÑÑÐ¾Ð»Ñ */
+  /* столы */
   for (let i = 0; i < 4; i++) {
     const dx = 60 + i * 190;
     const dy = h - 70;
 
-    /* ÑÑÐ¾Ð» */
+    /* стол */
     ctx.fillStyle = "#C4A882";
     ctx.fillRect(dx, dy - 48, 130, 10);
-    /* Ð½Ð¾Ð¶ÐºÐ¸ */
+    /* ножки */
     ctx.fillStyle = "#8B7355";
     ctx.fillRect(dx + 5, dy - 38, 6, 38);
     ctx.fillRect(dx + 119, dy - 38, 6, 38);
 
-    /* Ð¼Ð¾Ð½Ð¸ÑÐ¾Ñ */
+    /* монитор */
     ctx.fillStyle = "#2A2A2A";
     ctx.fillRect(dx + 38, dy - 85, 54, 35);
     ctx.fillStyle = "#4488CC";
     ctx.fillRect(dx + 40, dy - 83, 50, 31);
-    /* Ð¿Ð¾Ð´ÑÑÐ°Ð²ÐºÐ° */
+    /* подставка */
     ctx.fillStyle = "#2A2A2A";
     ctx.fillRect(dx + 60, dy - 50, 10, 5);
     ctx.fillRect(dx + 52, dy - 46, 26, 3);
 
-    /* ÐºÐ»Ð°Ð²Ð¸Ð°ÑÑÑÐ° */
+    /* клавиатура */
     ctx.fillStyle = "#555";
     ctx.beginPath();
     ctx.roundRect(dx + 32, dy - 44, 46, 8, 2);
     ctx.fill();
-    /* Ð¼ÑÑÐºÐ° */
+    /* мышка */
     ctx.fillStyle = "#666";
     ctx.beginPath();
     ctx.ellipse(dx + 95, dy - 42, 6, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    /* ÑÑÑÐ» */
+    /* стул */
     ctx.fillStyle = "#5B3A1E";
     ctx.fillRect(dx + 52, dy - 20, 26, 6);
     ctx.fillRect(dx + 56, dy - 14, 4, 14);
@@ -497,7 +497,7 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fillRect(dx + 50, dy - 40, 30, 20);
   }
 
-  /* ÑÐ°ÑÑÐµÐ½Ð¸Ñ */
+  /* растения */
   for (const px of [25, w - 90]) {
     const py = h - 70;
     ctx.fillStyle = "#B8755D";
@@ -524,7 +524,7 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill();
   }
 
-  /* Ð²ÑÐ²ÐµÑÐºÐ° */
+  /* вывеска */
   ctx.fillStyle = "rgba(139,115,85,0.2)";
   ctx.beginPath();
   ctx.roundRect(w / 2 - 70, 4, 140, 24, 4);
@@ -532,22 +532,22 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = "#8B7355";
   ctx.font = "bold 15px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("ÐÐ¤ÐÐ¡ ÐÐÐÐÐ", w / 2, 22);
+  ctx.fillText("ОФИС БАНКА", w / 2, 22);
   ctx.textAlign = "start";
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââ
-   Ð ÐÐ¡ÐÐÐÐÐÐ ÐÐÐ¤ÐÐÐÐ (Ð½Ð¸Ð¶Ð½Ð¸Ð¹ ÑÑÐ°Ð¶) â Ð´ÐµÑÐ°Ð»Ð¸Ð·Ð¸ÑÐ¾Ð²Ð°Ð½Ð½Ð°Ñ
-   âââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════
+   РИСОВАЛКА КОФЕЙНИ (нижний этаж) — детализированная
+   ═══════════════════════════════════════════ */
 function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  /* ÐºÑÐ°ÑÐ½Ð°Ñ ÐºÐ¸ÑÐ¿Ð¸ÑÐ½Ð°Ñ ÑÑÐµÐ½Ð° */
+  /* красная кирпичная стена */
   const grad = ctx.createLinearGradient(0, 0, 0, h - 70);
   grad.addColorStop(0, "#B83224");
   grad.addColorStop(1, "#9C2B1F");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h - 70);
 
-  /* ÐºÐ¸ÑÐ¿Ð¸ÑÐ½Ð°Ñ ÑÐµÐºÑÑÑÑÐ° */
+  /* кирпичная текстура */
   ctx.strokeStyle = "rgba(0,0,0,0.08)";
   ctx.lineWidth = 0.5;
   for (let row = 0; row < Math.ceil((h - 70) / 16); row++) {
@@ -558,10 +558,10 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
     }
   }
 
-  /* Ð¿Ð¾Ð» */
+  /* пол */
   ctx.fillStyle = "#3D2B1A";
   ctx.fillRect(0, h - 70, w, 70);
-  /* Ð¿Ð»Ð¸ÑÐºÐ° ÑÐ°ÑÐ¼Ð°ÑÐ½Ð°Ñ */
+  /* плитка шахматная */
   for (let i = 0; i < Math.ceil(w / 35); i++) {
     for (let j = 0; j < 2; j++) {
       if ((i + j) % 2 === 0) {
@@ -571,7 +571,7 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
     }
   }
 
-  /* Ð±Ð¾Ð»ÑÑÐ¾Ð¹ Ð»Ð¾Ð³Ð¾ÑÐ¸Ð¿ Love is Coffee */
+  /* большой логотип Love is Coffee */
   ctx.fillStyle = "rgba(0,0,0,0.2)";
   ctx.beginPath();
   ctx.arc(w / 2, 70, 58, 0, Math.PI * 2);
@@ -580,12 +580,12 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.beginPath();
   ctx.arc(w / 2, 70, 55, 0, Math.PI * 2);
   ctx.fill();
-  /* ÑÐµÑÐ´ÑÐµ */
+  /* сердце */
   ctx.fillStyle = "#FFF";
   ctx.font = "28px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("â¤", w / 2, 58);
-  /* ÑÐµÐºÑÑ */
+  ctx.fillText("➔", w / 2, 58);
+  /* текст */
   ctx.fillStyle = "#FFD700";
   ctx.font = "bold 13px sans-serif";
   ctx.fillText("LOVE IS", w / 2, 80);
@@ -593,71 +593,71 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillText("COFFEE", w / 2, 98);
   ctx.textAlign = "start";
 
-  /* Ð¼ÐµÐ½Ñ-Ð±Ð¾ÑÐ´Ñ Ð½Ð° ÑÑÐµÐ½Ðµ */
+  /* меню-борды на стене */
   for (const mbx of [40, w - 170]) {
-    /* Ð´Ð¾ÑÐºÐ° */
+    /* доска */
     ctx.fillStyle = "#2C2C2C";
     ctx.fillRect(mbx, 20, 130, 90);
-    /* ÑÐ°Ð¼ÐºÐ° */
+    /* рамка */
     ctx.strokeStyle = "#8B5E3C";
     ctx.lineWidth = 3;
     ctx.strokeRect(mbx, 20, 130, 90);
-    /* Ð·Ð°Ð³Ð¾Ð»Ð¾Ð²Ð¾Ðº */
+    /* заголовок */
     ctx.fillStyle = "#FFD700";
     ctx.font = "bold 11px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("ÐÐÐÐ®", mbx + 65, 40);
-    /* Ð¿Ð¾Ð·Ð¸ÑÐ¸Ð¸ */
+    ctx.fillText("МЕНЮ", mbx + 65, 40);
+    /* позиции */
     ctx.fillStyle = "#FFF";
     ctx.font = "9px sans-serif";
     const items =
       mbx < 100
-        ? ["Ð­ÑÐ¿ÑÐµÑÑÐ¾ ........ 150â½", "ÐÐ°Ð¿ÑÑÐ¸Ð½Ð¾ ........ 220â½", "ÐÐ°ÑÑÐµ ............. 250â½", "Ð Ð°Ñ ................ 280â½"]
-        : ["ÐÑÑÐ°ÑÑÐ°Ð½ ........ 180â½", "Ð§Ð¸Ð·ÐºÐµÐ¹Ðº ......... 320â½", "ÐÐ°ÑÑÐ¸Ð½ ......... 160â½", "Ð¢Ð¸ÑÐ°Ð¼Ð¸ÑÑ ....... 350â½"];
+        ? ["Эспрессо ........ 150₽", "Капучино ........ 220₽", "Латте ............. 250₽", "Раф ................ 280₽"]
+        : ["Круассан ........ 180₽", "Чизкейк ......... 320₽", "Маффин ......... 160₽", "Тирамису ....... 350₽"];
     items.forEach((item, idx) => {
       ctx.fillText(item, mbx + 65, 56 + idx * 14);
     });
     ctx.textAlign = "start";
   }
 
-  /* Ð¿Ð¾Ð»ÐºÐ¸ Ð½Ð° ÑÑÐµÐ½Ðµ */
+  /* полки на стене */
   for (const sy of [30, 65]) {
     const shelfX = 200;
     ctx.fillStyle = "#6B4226";
     ctx.fillRect(shelfX, sy, 160, 6);
-    /* ÐºÑÐ¾Ð½ÑÑÐµÐ¹Ð½Ñ */
+    /* кронштейны */
     ctx.fillRect(shelfX + 10, sy, 4, 12);
     ctx.fillRect(shelfX + 146, sy, 4, 12);
     for (let i = 0; i < 5; i++) {
       ctx.fillStyle = ["#E8D5B7", "#C4956B", "#A67B5B", "#DDD", "#B8755D"][i];
       ctx.fillRect(shelfX + 5 + i * 30, sy - 22, 18, 22);
-      /* ÑÑÐ¸ÐºÐµÑÐºÐ° */
+      /* этикетка */
       ctx.fillStyle = "rgba(255,255,255,0.3)";
       ctx.fillRect(shelfX + 8 + i * 30, sy - 16, 12, 8);
     }
   }
 
-  /* Ð·ÐµÐ»ÑÐ½Ð°Ñ ÑÑÐ¾Ð¹ÐºÐ° Ñ Ð½Ð°Ð´Ð¿Ð¸ÑÑÑ Center Coffee */
+  /* зелёная стойка с надписью Center Coffee */
   const barY = h - 120;
   const barW = 340;
   const barX = w / 2 - barW / 2;
-  /* Ð¾ÑÐ½Ð¾Ð²Ð°Ð½Ð¸Ðµ */
+  /* основание */
   ctx.fillStyle = "#1B5E20";
   ctx.fillRect(barX, barY, barW, 50);
-  /* ÑÑÐ¾Ð»ÐµÑÐ½Ð¸ÑÐ° */
+  /* столешница */
   ctx.fillStyle = "#2E7D32";
   ctx.fillRect(barX - 5, barY - 6, barW + 10, 10);
-  /* Ð¾ÑÐ±Ð»ÐµÑÐº */
+  /* отблеск */
   ctx.fillStyle = "rgba(255,255,255,0.1)";
   ctx.fillRect(barX - 5, barY - 6, barW + 10, 4);
-  /* Ð½Ð°Ð´Ð¿Ð¸ÑÑ Center Coffee */
+  /* надпись Center Coffee */
   ctx.fillStyle = "#FFD700";
   ctx.font = "bold 14px sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("CENTER COFFEE", w / 2, barY + 30);
   ctx.textAlign = "start";
 
-  /* ÐºÐ¾ÑÐµÐ¼Ð°ÑÐ¸Ð½Ð° Ð½Ð° ÑÑÐ¾Ð¹ÐºÐµ */
+  /* кофемашина на стойке */
   const cmx = barX + barW - 60;
   ctx.fillStyle = "#555";
   ctx.fillRect(cmx, barY - 50, 50, 45);
@@ -675,11 +675,11 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.beginPath();
   ctx.arc(cmx + 38, barY - 18, 4, 0, Math.PI * 2);
   ctx.fill();
-  /* Ð½Ð¾ÑÐ¸Ðº */
+  /* носик */
   ctx.fillStyle = "#666";
   ctx.fillRect(cmx + 18, barY - 10, 14, 6);
 
-  /* ÑÑÐ¾Ð¿ÐºÐ¸ ÐºÑÐ°ÑÐ½ÑÑ ÑÑÐ°ÐºÐ°Ð½ÑÐ¸ÐºÐ¾Ð² (3 ÑÑÐ¾Ð¿ÐºÐ¸) */
+  /* стопки красных стаканчиков (3 стопки) */
   for (let si = 0; si < 3; si++) {
     const sx = barX + 25 + si * 55;
     for (let sj = 0; sj < 4; sj++) {
@@ -692,20 +692,20 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
       ctx.lineTo(sx + 10, sy2);
       ctx.closePath();
       ctx.fill();
-      /* ÐºÑÑÑÐºÐ° */
+      /* крышка */
       ctx.fillStyle = "#E8E8E8";
       ctx.fillRect(sx - 6, sy2 - 12, 16, 2);
     }
   }
 
-  /* Ð±ÐµÐ»ÑÐµ ÑÑÐ°ÐºÐ°Ð½Ñ Ð½Ð° ÑÑÐ¾Ð¹ÐºÐµ */
+  /* белые стаканы на стойке */
   for (let i = 0; i < 2; i++) {
     const cx2 = barX + 200 + i * 40;
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(cx2, barY - 22, 16, 20);
     ctx.fillStyle = "#8B5E3C";
     ctx.fillRect(cx2 + 1, barY - 21, 14, 8);
-    /* Ð¿Ð°Ñ */
+    /* пар */
     ctx.strokeStyle = "rgba(255,255,255,0.3)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -714,7 +714,7 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke();
   }
 
-  /* ÑÑÐ¾Ð»Ð¸ÐºÐ¸ Ð´Ð»Ñ Ð³Ð¾ÑÑÐµÐ¹ */
+  /* столики для гостей */
   for (const tx of [w - 190, w - 80]) {
     ctx.fillStyle = "#6B4226";
     ctx.beginPath();
@@ -724,14 +724,14 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.beginPath();
     ctx.arc(tx, h - 90, 26, 0, Math.PI * 2);
     ctx.fill();
-    /* Ð½Ð¾Ð¶ÐºÐ° */
+    /* ножка */
     ctx.fillStyle = "#5B3A1E";
     ctx.fillRect(tx - 4, h - 62, 8, 62);
-    /* Ð¾ÑÐ½Ð¾Ð²Ð°Ð½Ð¸Ðµ */
+    /* основание */
     ctx.fillRect(tx - 14, h - 4, 28, 4);
   }
 
-  /* Ð¿Ð¾ÑÐ¾Ð»Ð¾ÑÐ½ÑÐµ Ð»Ð°Ð¼Ð¿Ñ */
+  /* потолочные лампы */
   for (let i = 0; i < 3; i++) {
     const lx = 150 + i * 260;
     ctx.strokeStyle = "#333";
@@ -740,7 +740,7 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.moveTo(lx, 0);
     ctx.lineTo(lx, 12);
     ctx.stroke();
-    /* Ð»Ð°Ð¼Ð¿Ð¾ÑÐºÐ° */
+    /* лампочка */
     ctx.fillStyle = "#FFD700";
     ctx.beginPath();
     ctx.arc(lx, 18, 6, 0, Math.PI * 2);
@@ -751,7 +751,7 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill();
   }
 
-  /* Ð²ÑÐ²ÐµÑÐºÐ° ÑÐ²ÐµÑÑÑ */
+  /* вывеска сверху */
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath();
   ctx.roundRect(w / 2 - 85, 2, 170, 22, 4);
@@ -759,13 +759,13 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = "#FFD700";
   ctx.font = "bold 14px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("â  LOVE IS COFFEE  â", w / 2, 18);
+  ctx.fillText("☕  LOVE IS COFFEE  ☕", w / 2, 18);
   ctx.textAlign = "start";
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââ
-   Ð ÐÐ¡ÐÐÐÐ NPC (ÐÐ¸ÑÐ°Ð»Ð¸Ð¹ Ð¸ ÐÑÐ»Ð°Ð½)
-   âââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════
+   РИСОВКА NPC (Виталий и Аслан)
+   ═══════════════════════════════════════════ */
 function drawNPC(
   ctx: CanvasRenderingContext2D,
   name: string,
@@ -784,14 +784,14 @@ function drawNPC(
     name,
   };
 
-  /* ÑÐ°ÑÑÑÐº Ð·ÐµÐ»ÑÐ½ÑÐ¹ */
+  /* фартук зелёный */
   drawMiniAvatar(ctx, cfg, x, y + bobOff, 0.9, "idle", 0);
 
-  /* Ð±ÐµÐ¹Ð´Ð¶ */
+  /* бейдж */
   ctx.fillStyle = "#FFD700";
   ctx.font = "bold 9px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("ÐÐÐ ÐÐ¡Ð¢Ð", x, y + 46);
+  ctx.fillText("БАРИСТА", x, y + 46);
 
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "bold 11px sans-serif";
@@ -799,9 +799,9 @@ function drawNPC(
   ctx.textAlign = "start";
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââ
-   ÐÐÐÐÐÐ«Ð ÐÐÐÐÐÐÐÐÐ¢
-   âââââââââââââââââââââââââââââââââââââââââââ */
+/* ═══════════════════════════════════════════
+   ГЛАВНЫЙ КОМПОНЕНТ
+   ═══════════════════════════════════════════ */
 export default function OfficePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [floor, setFloor] = useState<Floor>(0);
@@ -845,7 +845,7 @@ export default function OfficePage() {
         hairstyle: 0,
         clothingColor: 2,
         mood: "happy",
-        name: "ÐÐ¾ÑÑÑ",
+        name: "Гость",
       });
     }
   }, []);
@@ -899,7 +899,7 @@ export default function OfficePage() {
     return () => off(presenceRef, "value", unsub as never);
   }, [userId]);
 
-  /* Ð Ð°Ð½Ð´Ð¾Ð¼Ð½ÑÐµ Ð°Ð½Ð¸Ð¼Ð°ÑÐ¸Ð¸ ÐºÐ°Ð¶Ð´ÑÐµ 5-10 ÑÐµÐº */
+  /* Рандомные анимации каждые 5-10 сек */
   useEffect(() => {
     const scheduleAction = () => {
       const delay = 5000 + Math.random() * 5000;
@@ -916,7 +916,7 @@ export default function OfficePage() {
     };
   }, []);
 
-  /* ÐÑÐ½Ð¾Ð²Ð½Ð¾Ð¹ ÑÐ¸ÐºÐ» ÑÐ¸ÑÐ¾Ð²Ð°Ð½Ð¸Ñ */
+  /* Основной цикл рисования */
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -932,11 +932,11 @@ export default function OfficePage() {
       drawBankOffice(ctx, canvasW, canvasH);
     } else {
       drawCoffeeShop(ctx, canvasW, canvasH);
-      drawNPC(ctx, "ÐÐ¸ÑÐ°Ð»Ð¸Ð¹", canvasW / 2 - 60, canvasH - 170, 0, 3, bob * 0.5);
-      drawNPC(ctx, "ÐÑÐ»Ð°Ð½", canvasW / 2 + 60, canvasH - 170, 2, 3, bob * 0.7);
+      drawNPC(ctx, "Виталий", canvasW / 2 - 60, canvasH - 170, 0, 3, bob * 0.5);
+      drawNPC(ctx, "Аслан", canvasW / 2 + 60, canvasH - 170, 2, 3, bob * 0.7);
     }
 
-    /* Ð¾Ð½Ð»Ð°Ð¹Ð½-Ð¿Ð¾Ð»ÑÐ·Ð¾Ð²Ð°ÑÐµÐ»Ð¸ */
+    /* онлайн-пользователи */
     onlineUsers
       .filter((u) => u.floor === floor)
       .forEach((u, i) => {
@@ -956,18 +956,18 @@ export default function OfficePage() {
         ctx.textAlign = "start";
       });
 
-    /* ÐÐÐ ÐÐÐÐ¢ÐÐ  â ÐÐ Ð£ÐÐÐ«Ð */
+    /* МОЙ АВАТАР — КРУПНЫЙ */
     if (myAvatar) {
       const myY = canvasH - 120;
       drawMiniAvatar(ctx, myAvatar, myXRef.current, myY, 1.15, myAction, bob);
 
-      /* ÑÐµÐ½Ñ */
+      /* тень */
       ctx.fillStyle = "rgba(0,0,0,0.1)";
       ctx.beginPath();
       ctx.ellipse(myXRef.current, myY + 58, 22, 5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      /* Ð¸Ð¼Ñ */
+      /* имя */
       ctx.fillStyle = "#FFF";
       ctx.strokeStyle = "rgba(0,0,0,0.5)";
       ctx.lineWidth = 3;
@@ -977,7 +977,7 @@ export default function OfficePage() {
       ctx.fillText(myAvatar.name, myXRef.current, myY + 72);
       ctx.textAlign = "start";
 
-      /* Ð¸Ð½Ð´Ð¸ÐºÐ°ÑÐ¾Ñ ÑÑÐ°ÑÑÑÐ° */
+      /* индикатор статуса */
       ctx.fillStyle = STATUS_COLORS[status];
       ctx.beginPath();
       ctx.arc(myXRef.current + 28, myY - 38, 6, 0, Math.PI * 2);
@@ -986,16 +986,16 @@ export default function OfficePage() {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      /* Ð¿Ð¾Ð´Ð¿Ð¸ÑÑ Ð´ÐµÐ¹ÑÑÐ²Ð¸Ñ */
+      /* подпись действия */
       if (myAction !== "idle") {
         const actionLabels: Record<AvatarAction, string> = {
           idle: "",
-          coffee: "ÐÑÑÑ ÐºÐ¾ÑÐµ â",
-          monitor: "Ð Ð°Ð±Ð¾ÑÐ°ÐµÑ ð»",
-          phone: "ÐÐ¾ ÑÐµÐ»ÐµÑÐ¾Ð½Ñ ð",
-          yawn: "ÐÐµÐ²Ð°ÐµÑ ð¥±",
+          coffee: "Пьёт кофе ☕",
+          monitor: "Работает 💻",
+          phone: "По телефону 📞",
+          yawn: "Зевает 🥱",
         };
-        /* Ð¾Ð±Ð»Ð°ÑÐºÐ¾ */
+        /* облачко */
         const label = actionLabels[myAction];
         const tw = ctx.measureText(label).width;
         ctx.fillStyle = "rgba(0,0,0,0.65)";
@@ -1039,14 +1039,14 @@ export default function OfficePage() {
   if (!myAvatar) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-cream-50">
-        <p className="text-coffee-600">ÐÐ°Ð³ÑÑÐ·ÐºÐ°...</p>
+        <p className="text-coffee-600">Загрузка...</p>
       </div>
     );
   }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100">
-      {/* Ð½Ð°Ð²Ð±Ð°Ñ */}
+      {/* навбар */}
       <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-cream-50/80 border-b border-coffee-100">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <motion.a
@@ -1055,7 +1055,7 @@ export default function OfficePage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-2"
           >
-            <span className="text-2xl">â</span>
+            <span className="text-2xl">☕</span>
             <span className="font-display text-xl font-bold text-coffee-900">OiC</span>
           </motion.a>
           <div className="flex items-center gap-3">
@@ -1074,7 +1074,7 @@ export default function OfficePage() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-[920px] mx-auto"
         >
-          {/* ÐÐµÑÐµÐºÐ»ÑÑÐ°ÑÐµÐ»Ñ ÑÑÐ°Ð¶ÐµÐ¹ */}
+          {/* Переключатель этажей */}
           <div className="flex items-center justify-center gap-3 mb-4">
             <button
               onClick={() => setFloor(0)}
@@ -1084,7 +1084,7 @@ export default function OfficePage() {
                   : "bg-white text-coffee-600 border border-coffee-200"
               }`}
             >
-              ð¦ ÐÑÐ¸Ñ Ð±Ð°Ð½ÐºÐ°
+              🏦 Офис банка
             </button>
             <button
               onClick={() => setFloor(1)}
@@ -1094,7 +1094,7 @@ export default function OfficePage() {
                   : "bg-white text-red-600 border border-red-200"
               }`}
             >
-              â ÐÐ¾ÑÐµÐ¹Ð½Ñ
+              ☕ Кофейня
             </button>
           </div>
 
@@ -1121,7 +1121,7 @@ export default function OfficePage() {
             </motion.div>
           </AnimatePresence>
 
-          {/* ÐÐ½Ð¾Ð¿ÐºÐ° "ÐÐ°ÐºÐ°Ð·Ð°ÑÑ ÐºÐ¾ÑÐµ" â ÑÐ¾Ð»ÑÐºÐ¾ Ð½Ð° ÑÑÐ°Ð¶Ðµ ÐºÐ¾ÑÐµÐ¹Ð½Ð¸ */}
+          {/* Кнопка "Заказать кофе" — только на этаже кофейни */}
           <AnimatePresence>
             {floor === 1 && (
               <motion.div
@@ -1137,29 +1137,29 @@ export default function OfficePage() {
                   whileTap={{ scale: 0.95 }}
                   className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold rounded-2xl shadow-lg flex items-center gap-2 text-base"
                 >
-                  <span className="text-xl">â</span>
-                  ÐÐ°ÐºÐ°Ð·Ð°ÑÑ ÐºÐ¾ÑÐµ
+                  <span className="text-xl">☕</span>
+                  Заказать кофе
                 </motion.a>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* ÐÐ¾Ð´ÑÐºÐ°Ð·ÐºÐ° */}
+          {/* Подсказка */}
           <p className="text-coffee-400 text-xs text-center mt-2">
-            ÐÐ°Ð¶Ð¼Ð¸ Ð½Ð° Ð¾ÑÐ¸Ñ ÑÑÐ¾Ð±Ñ Ð¿ÐµÑÐµÐ¼ÐµÑÑÐ¸ÑÑ Ð°Ð²Ð°ÑÐ°ÑÐ° â¢ Ð¡Ð²Ð°Ð¹Ð¿Ð½Ð¸ Ð´Ð»Ñ ÑÐ¼ÐµÐ½Ñ ÑÑÐ°Ð¶Ð°
+            Нажми на офис чтобы переместить аватара • Свайпни для смены этажа
           </p>
 
-          {/* ÐÐ°Ð½ÐµÐ»Ñ ÑÐ¿ÑÐ°Ð²Ð»ÐµÐ½Ð¸Ñ */}
+          {/* Панель управления */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4"
           >
-            {/* Ð¡ÑÐ°ÑÑÑ */}
+            {/* Статус */}
             <div className="bg-white rounded-2xl p-5 border border-coffee-100 shadow-sm">
               <h3 className="text-sm font-semibold text-coffee-800 mb-3">
-                Ð¡ÑÐ°ÑÑÑ Ð¿ÑÐ¸ÑÑÑÑÑÐ²Ð¸Ñ
+                Статус присутствия
               </h3>
               <div className="flex gap-2">
                 {(["working", "break", "away"] as Status[]).map((s) => (
@@ -1185,10 +1185,10 @@ export default function OfficePage() {
               </div>
             </div>
 
-            {/* ÐÐ½Ð»Ð°Ð¹Ð½ */}
+            {/* Онлайн */}
             <div className="bg-white rounded-2xl p-5 border border-coffee-100 shadow-sm">
               <h3 className="text-sm font-semibold text-coffee-800 mb-3">
-                Ð Ð¾ÑÐ¸ÑÐµ ÑÐµÐ¹ÑÐ°Ñ ({onlineUsers.length + 1})
+                В офисе сейчас ({onlineUsers.length + 1})
               </h3>
               <div className="flex flex-wrap gap-2">
                 <div className="flex items-center gap-2 bg-coffee-50 rounded-lg px-3 py-1.5">
@@ -1197,7 +1197,7 @@ export default function OfficePage() {
                     style={{ backgroundColor: STATUS_COLORS[status] }}
                   />
                   <span className="text-sm text-coffee-800 font-medium">
-                    {myAvatar.name} (ÑÑ)
+                    {myAvatar.name} (ты)
                   </span>
                 </div>
                 {onlineUsers.map((u) => (
@@ -1214,7 +1214,7 @@ export default function OfficePage() {
                 ))}
                 {onlineUsers.length === 0 && (
                   <p className="text-xs text-coffee-400">
-                    ÐÐ¾ÐºÐ° ÑÐ¾Ð»ÑÐºÐ¾ ÑÑ. ÐÐ¾Ð´ÐµÐ»Ð¸ÑÑ ÑÑÑÐ»ÐºÐ¾Ð¹!
+                    Пока только ты. Поделись ссылкой!
                   </p>
                 )}
               </div>
