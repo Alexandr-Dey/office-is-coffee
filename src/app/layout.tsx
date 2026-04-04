@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Office is Coffee — Social Coffee Platform for Teams",
+  title: "Office is Coffee — Социальная кофе-платформа для команд",
   description:
-    "OiC connects office workers through the love of coffee. Order together, discover new blends, and build your team's coffee culture.",
-  keywords: ["coffee", "office", "social", "team", "ordering"],
+    "OiC объединяет офисных сотрудников через любовь к кофе. Заказывайте вместе, открывайте новые бленды и стройте кофе-культуру команды.",
+  keywords: ["кофе", "офис", "социальная", "команда", "заказ", "coffee", "office"],
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <body className="font-sans antialiased">{children}</body>
     </html>
   );
