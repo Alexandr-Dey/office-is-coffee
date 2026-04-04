@@ -132,100 +132,103 @@ function drawHairstyle(
   skinIdx: number
 ) {
   const hairColor = skinIdx <= 1 ? "#3B2410" : skinIdx <= 3 ? "#1A0E06" : "#0A0503";
-
   ctx.fillStyle = hairColor;
+
+  /* Верхняя точка головы: cy - r * 1.05 (вертикальный радиус эллипса головы) */
+  const headTop = cy - r * 1.05;
 
   if (gender === "male") {
     switch (idx) {
-      case 0: /* ёжик */
+      case 0: /* ёжик — плоская шапка + шипы сверху */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.5, r * 0.85, r * 0.55, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.35, r * 0.88, r * 0.42, 0, Math.PI, 0, true);
         ctx.fill();
-        /* шипы */
         for (let i = -3; i <= 3; i++) {
           ctx.beginPath();
-          ctx.moveTo(cx + i * 15 - 7, cy - r * 0.85);
-          ctx.lineTo(cx + i * 15, cy - r * 1.15);
-          ctx.lineTo(cx + i * 15 + 7, cy - r * 0.85);
+          ctx.moveTo(cx + i * 14 - 6, headTop + 2);
+          ctx.lineTo(cx + i * 14, headTop - 18);
+          ctx.lineTo(cx + i * 14 + 6, headTop + 2);
           ctx.fill();
         }
         break;
-      case 1: /* зачёс */
+      case 1: /* зачёс — объёмный набок */
         ctx.beginPath();
-        ctx.ellipse(cx + 10, cy - r * 0.5, r * 0.9, r * 0.6, 0.15, Math.PI, 0, true);
+        ctx.ellipse(cx + 5, headTop + r * 0.32, r * 0.92, r * 0.48, 0.12, Math.PI, 0, true);
         ctx.fill();
         ctx.beginPath();
-        ctx.ellipse(cx + 35, cy - r * 0.3, 25, 30, 0.4, 0, Math.PI * 2);
+        ctx.ellipse(cx + r * 0.55, headTop + r * 0.45, 22, 28, 0.3, 0, Math.PI * 2);
         ctx.fill();
         break;
-      case 2: /* кудри */
-        for (let a = -2.5; a <= 0.5; a += 0.4) {
-          const x2 = cx + Math.cos(a) * r * 0.85;
-          const y2 = cy + Math.sin(a) * r * 0.85;
+      case 2: /* кудри — кружки вдоль верхнего контура головы */
+        for (let a = -2.8; a <= 0.2; a += 0.35) {
+          const x2 = cx + Math.cos(a) * r * 0.78;
+          const y2 = cy + Math.sin(a) * r * 0.95;
           ctx.beginPath();
-          ctx.arc(x2, y2, 18, 0, Math.PI * 2);
+          ctx.arc(x2, y2, 16, 0, Math.PI * 2);
           ctx.fill();
         }
         break;
-      case 3: /* бокс */
+      case 3: /* бокс — короткая плоская */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.45, r * 0.82, r * 0.5, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.38, r * 0.84, r * 0.42, 0, Math.PI, 0, true);
         ctx.fill();
         break;
-      case 4: /* длинные */
+      case 4: /* длинные — покрывает верх + пряди по бокам */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.35, r * 0.95, r * 0.7, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.48, r * 0.96, r * 0.58, 0, Math.PI, 0, true);
         ctx.fill();
-        ctx.fillRect(cx - r * 0.9, cy - 10, 18, 55);
-        ctx.fillRect(cx + r * 0.9 - 18, cy - 10, 18, 55);
+        ctx.fillRect(cx - r * 0.88, cy - 5, 16, 50);
+        ctx.fillRect(cx + r * 0.88 - 16, cy - 5, 16, 50);
         break;
     }
   } else {
     switch (idx) {
-      case 0: /* каре */
+      case 0: /* каре — объёмная шапка + боковые пряди */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.3, r * 0.95, r * 0.75, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.52, r * 0.98, r * 0.62, 0, Math.PI, 0, true);
         ctx.fill();
-        roundRect(ctx, cx - r * 0.92, cy - 15, r * 1.84, 50, 10);
+        roundRect(ctx, cx - r * 0.92, cy - 18, r * 1.84, 55, 10);
         ctx.fill();
         break;
-      case 1: /* хвостик */
+      case 1: /* хвостик — шапка + хвостик сверху */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.45, r * 0.88, r * 0.6, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.38, r * 0.9, r * 0.5, 0, Math.PI, 0, true);
+        ctx.fill();
+        /* резинка и хвост */
+        ctx.beginPath();
+        ctx.arc(cx, headTop - 6, 10, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 1.05, 14, 25, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, headTop - 28, 12, 22, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillRect(cx - 4, cy - r * 1.3, 8, 20);
         break;
-      case 2: /* локоны */
+      case 2: /* локоны — волнистая шапка + длинные пряди */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.35, r, r * 0.75, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.5, r * 1.02, r * 0.62, 0, Math.PI, 0, true);
         ctx.fill();
         for (let i = -3; i <= 3; i++) {
           ctx.beginPath();
-          ctx.ellipse(cx + i * 20, cy + 35, 14, 22, 0, 0, Math.PI * 2);
+          ctx.ellipse(cx + i * 18, cy + 30, 13, 20, 0, 0, Math.PI * 2);
           ctx.fill();
         }
         break;
-      case 3: /* пучок */
+      case 3: /* пучок — шапка + шар сверху */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.45, r * 0.85, r * 0.58, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.38, r * 0.88, r * 0.48, 0, Math.PI, 0, true);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(cx, cy - r - 20, 25, 0, Math.PI * 2);
+        ctx.arc(cx, headTop - 16, 22, 0, Math.PI * 2);
         ctx.fill();
         break;
-      case 4: /* косы */
+      case 4: /* косы — шапка + две косы по бокам */
         ctx.beginPath();
-        ctx.ellipse(cx, cy - r * 0.4, r * 0.9, r * 0.65, 0, Math.PI, 0, true);
+        ctx.ellipse(cx, headTop + r * 0.45, r * 0.92, r * 0.55, 0, Math.PI, 0, true);
         ctx.fill();
-        /* two braids */
         for (const side of [-1, 1]) {
-          const bx = cx + side * (r * 0.7);
+          const bx = cx + side * (r * 0.65);
           for (let j = 0; j < 5; j++) {
             ctx.beginPath();
-            ctx.ellipse(bx + side * (j % 2 === 0 ? 5 : -5), cy + j * 16, 10, 10, 0, 0, Math.PI * 2);
+            ctx.ellipse(bx + side * (j % 2 === 0 ? 4 : -4), cy + 5 + j * 14, 9, 9, 0, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -530,6 +533,11 @@ export default function AvatarPage() {
         createdAt: new Date().toISOString(),
         userId,
       });
+      /* Сохраняем в localStorage для экрана офиса */
+      if (typeof window !== "undefined") {
+        localStorage.setItem("oic_avatar", JSON.stringify(config));
+        localStorage.setItem("oic_userId", userId);
+      }
       setSaved(true);
     } catch (err) {
       console.error("Ошибка сохранения:", err);
@@ -736,7 +744,7 @@ export default function AvatarPage() {
                     <motion.button
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => (window.location.href = "/")}
+                      onClick={() => (window.location.href = "/office")}
                       className="w-full py-4 rounded-2xl font-bold text-lg bg-coffee-800 text-white hover:bg-coffee-900 transition-colors"
                     >
                       Перейти в офис →
