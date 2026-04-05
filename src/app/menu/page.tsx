@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ═══════════════════════════════════════════
@@ -19,6 +19,13 @@ interface MenuCategory {
   title: string;
   icon: string;
   items: MenuItem[];
+}
+
+interface CartItem {
+  name: string;
+  size: string;
+  price: number;
+  qty: number;
 }
 
 const MENU_DATA: MenuCategory[] = [
@@ -112,34 +119,45 @@ const MENU_DATA: MenuCategory[] = [
   },
 ];
 
-/* helper: есть ли выбор размера */
+/* helpers */
 function getSizes(item: MenuItem): Size[] | null {
   const keys = Object.keys(item.prices);
   if (keys.length === 1 && keys[0] === "one") return null;
   return keys as Size[];
 }
-
 function getDefaultSize(item: MenuItem): Size | null {
   const sizes = getSizes(item);
   if (!sizes) return null;
   if (sizes.includes("M")) return "M";
   return sizes[0];
 }
-
 function getPrice(item: MenuItem, size: Size | null): number {
   if (size === null) return item.prices["one"];
   return item.prices[size];
 }
 
 /* ═══════════════════════════════════════════
-   КОМПОНЕНТ ПОЗИЦИИ МЕНЮ
+   КОМПОНЕНТ ПОЗИЦИИ МЕНЮ (с кнопкой "Добавить")
    ═══════════════════════════════════════════ */
-function MenuItemRow({ item, idx }: { item: MenuItem; idx: number }) {
+function MenuItemRow({
+  item,
+  idx,
+  onAdd,
+}: {
+  item: MenuItem;
+  idx: number;
+  onAdd: (name: string, size: string, price: number) => void;
+}) {
   const sizes = getSizes(item);
-  const [selectedSize, setSelectedSize] = useState<Size | null>(
-    getDefaultSize(item)
-  );
+  const [selectedSize, setSelectedSize] = useState<Size | null>(getDefaultSize(item));
+  const [added, setAdded] = useState(false);
   const price = getPrice(item, selectedSize);
+
+  const handleAdd = () => {
+    onAdd(item.name, selectedSize ?? "\u2014", price);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 800);
+  };
 
   return (
     <motion.div
@@ -181,9 +199,22 @@ function MenuItemRow({ item, idx }: { item: MenuItem; idx: number }) {
           </div>
         )}
       </div>
-      <span className="text-base font-bold text-red-600 whitespace-nowrap">
-        {price} {"\u20B8"}
-      </span>
+      <div className="flex items-center gap-3">
+        <span className="text-base font-bold text-red-600 whitespace-nowrap">
+          {price} {"\u20B8"}
+        </span>
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={handleAdd}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            added
+              ? "bg-green-500 text-white"
+              : "bg-red-600 text-white hover:bg-red-700"
+          }`}
+        >
+          {added ? "\u2713" : "+"}
+        </motion.button>
+      </div>
     </motion.div>
   );
 }
@@ -193,9 +224,42 @@ function MenuItemRow({ item, idx }: { item: MenuItem; idx: number }) {
    ═══════════════════════════════════════════ */
 export default function MenuPage() {
   const [activeCategory, setActiveCategory] = useState("classic");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
 
-  const currentCategory =
-    MENU_DATA.find((c) => c.id === activeCategory) ?? MENU_DATA[0];
+  const currentCategory = MENU_DATA.find((c) => c.id === activeCategory) ?? MENU_DATA[0];
+
+  const addToCart = (name: string, size: string, price: number) => {
+    setCart((prev) => {
+      const key = `${name}_${size}`;
+      const existing = prev.find((i) => `${i.name}_${i.size}` === key);
+      if (existing) {
+        return prev.map((i) =>
+          `${i.name}_${i.size}` === key ? { ...i, qty: i.qty + 1 } : i
+        );
+      }
+      return [...prev, { name, size, price, qty: 1 }];
+    });
+  };
+
+  const removeFromCart = (name: string, size: string) => {
+    setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size)));
+  };
+
+  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
+  const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  /* сохраняем корзину в sessionStorage для /order */
+  useEffect(() => {
+    if (cart.length > 0) {
+      sessionStorage.setItem("oic_cart", JSON.stringify(cart));
+    }
+  }, [cart]);
+
+  const goToOrder = () => {
+    sessionStorage.setItem("oic_cart", JSON.stringify(cart));
+    window.location.href = "/order";
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100">
@@ -209,9 +273,7 @@ export default function MenuPage() {
             className="flex items-center gap-2"
           >
             <span className="text-2xl">{"\u2615"}</span>
-            <span className="font-display text-xl font-bold text-coffee-900">
-              OiC
-            </span>
+            <span className="font-display text-xl font-bold text-coffee-900">OiC</span>
           </motion.a>
           <motion.a
             href="/office"
@@ -224,7 +286,7 @@ export default function MenuPage() {
         </div>
       </nav>
 
-      <div className="pt-20 pb-12 px-4">
+      <div className="pt-20 pb-32 px-4">
         <div className="max-w-3xl mx-auto">
           {/* Заголовок */}
           <motion.div
@@ -240,7 +302,7 @@ export default function MenuPage() {
               {"\u041C\u0435\u043D\u044E"}
             </h1>
             <p className="text-coffee-500 text-sm">
-              {"\u0421\u0432\u0435\u0436\u0435\u0441\u0432\u0430\u0440\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0444\u0435, \u0430\u0432\u0442\u043E\u0440\u0441\u043A\u0438\u0435 \u043D\u0430\u043F\u0438\u0442\u043A\u0438 \u0438 \u0434\u043E\u043C\u0430\u0448\u043D\u0438\u0439 \u0447\u0430\u0439"}
+              {"\u0412\u044B\u0431\u0435\u0440\u0438 \u043D\u0430\u043F\u0438\u0442\u043E\u043A, \u0440\u0430\u0437\u043C\u0435\u0440 \u0438 \u0434\u043E\u0431\u0430\u0432\u044C \u0432 \u0437\u0430\u043A\u0430\u0437"}
             </p>
           </motion.div>
 
@@ -279,30 +341,88 @@ export default function MenuPage() {
             >
               <div className="bg-white rounded-2xl border border-coffee-100 shadow-sm overflow-hidden divide-y divide-coffee-50">
                 {currentCategory.items.map((item, idx) => (
-                  <MenuItemRow key={item.name} item={item} idx={idx} />
+                  <MenuItemRow key={item.name} item={item} idx={idx} onAdd={addToCart} />
                 ))}
               </div>
             </motion.div>
           </AnimatePresence>
-
-          {/* Подсказка внизу */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-center mt-8"
-          >
-            <motion.a
-              href="/office"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold rounded-2xl shadow-lg text-sm"
-            >
-              {"\u2190 \u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0432 \u043E\u0444\u0438\u0441"}
-            </motion.a>
-          </motion.div>
         </div>
       </div>
+
+      {/* Корзина (раскрывающаяся панель) */}
+      <AnimatePresence>
+        {showCart && cart.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-coffee-100 p-5 z-50"
+          >
+            <h3 className="font-display text-lg font-bold text-coffee-900 mb-3">
+              {"\u0422\u0432\u043E\u0439 \u0437\u0430\u043A\u0430\u0437"}
+            </h3>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {cart.map((item) => (
+                <div key={`${item.name}_${item.size}`} className="flex items-center justify-between text-sm">
+                  <div className="flex-1">
+                    <span className="font-medium text-coffee-900">{item.name}</span>
+                    {item.size !== "\u2014" && (
+                      <span className="ml-1 text-coffee-400 text-xs">({item.size})</span>
+                    )}
+                    {item.qty > 1 && (
+                      <span className="ml-1 text-red-500 font-bold text-xs">{"\u00D7"}{item.qty}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-coffee-800">{item.price * item.qty} {"\u20B8"}</span>
+                    <button
+                      onClick={() => removeFromCart(item.name, item.size)}
+                      className="text-red-400 hover:text-red-600 text-xs font-bold"
+                    >
+                      {"\u2715"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Нижняя панель с суммой */}
+      <AnimatePresence>
+        {totalItems > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-coffee-100 shadow-lg z-40"
+          >
+            <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+              <button
+                onClick={() => setShowCart(!showCart)}
+                className="flex items-center gap-2 text-coffee-700"
+              >
+                <span className="bg-red-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">
+                  {totalItems}
+                </span>
+                <span className="text-sm font-medium">
+                  {showCart ? "\u0421\u043A\u0440\u044B\u0442\u044C" : "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0437\u0430\u043A\u0430\u0437"}
+                </span>
+              </button>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={goToOrder}
+                className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-600 to-red-500 text-white font-bold rounded-2xl shadow-lg text-sm"
+              >
+                <span>{"\u041E\u0444\u043E\u0440\u043C\u0438\u0442\u044C \u0437\u0430\u043A\u0430\u0437"}</span>
+                <span className="bg-white/20 px-3 py-1 rounded-lg">{totalPrice} {"\u20B8"}</span>
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
