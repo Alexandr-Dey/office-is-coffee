@@ -7,36 +7,34 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut as firebaseSignOut,
-  GoogleAuthProvider,
-  type User,
-  type Unsubscribe,
-} from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
+/**
+ * Временная авторизация по имени (localStorage).
+ * TODO: вернуть Firebase Auth + Google Sign-In когда разберёмся с ключами.
+ */
+
+interface SimpleUser {
+  uid: string;
+  displayName: string;
+}
+
 interface AuthContextValue {
-  user: User | null;
+  user: SimpleUser | null;
   loading: boolean;
-  hasAvatar: boolean | null;
+  hasAvatar: boolean;
   authError: string | null;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signInWithName: (name: string) => void;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
-  hasAvatar: null,
+  hasAvatar: false,
   authError: null,
-  signInWithGoogle: async () => {},
-  signOut: async () => {},
+  signInWithName: () => {},
+  signOut: () => {},
 });
 
 export function useAuth() {
@@ -44,74 +42,41 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SimpleUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [hasAvatar, setHasAvatar] = useState(false);
 
   useEffect(() => {
-    let unsub: Unsubscribe | undefined;
-
-    try {
-      const auth = getFirebaseAuth();
-
-      getRedirectResult(auth).catch(() => {});
-
-      unsub = onAuthStateChanged(auth, async (u) => {
-        setUser(u);
-        if (u) {
-          try {
-            const db = getFirebaseDb();
-            const snap = await getDoc(doc(db, "avatars", u.uid));
-            setHasAvatar(snap.exists());
-          } catch (err) {
-            console.error("Avatar check error:", err);
-            setHasAvatar(false);
-          }
-        } else {
-          setHasAvatar(null);
-        }
-        setLoading(false);
-      });
-    } catch (err) {
-      console.error("Firebase auth init error:", err);
-      setAuthError(
-        err instanceof Error ? err.message : "Firebase init failed"
-      );
-      setLoading(false);
+    const saved = localStorage.getItem("oic_user");
+    if (saved) {
+      try {
+        setUser(JSON.parse(saved));
+      } catch { /* ignore */ }
     }
-
-    return () => unsub?.();
+    setHasAvatar(!!localStorage.getItem("oic_avatar"));
+    setLoading(false);
   }, []);
 
-  const signInWithGoogle = async () => {
-    const auth = getFirebaseAuth();
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      if (
-        code === "auth/popup-blocked" ||
-        code === "auth/popup-closed-by-user" ||
-        code === "auth/cancelled-popup-request"
-      ) {
-        await signInWithRedirect(auth, provider);
-      } else {
-        throw err;
-      }
-    }
+  const signInWithName = (name: string) => {
+    const u: SimpleUser = {
+      uid: `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      displayName: name,
+    };
+    localStorage.setItem("oic_user", JSON.stringify(u));
+    setUser(u);
   };
 
-  const signOut = async () => {
-    const auth = getFirebaseAuth();
-    await firebaseSignOut(auth);
-    setHasAvatar(null);
+  const signOut = () => {
+    localStorage.removeItem("oic_user");
+    localStorage.removeItem("oic_avatar");
+    localStorage.removeItem("oic_userId");
+    setUser(null);
+    setHasAvatar(false);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, hasAvatar, authError, signInWithGoogle, signOut }}
+      value={{ user, loading, hasAvatar, authError: null, signInWithName, signOut }}
     >
       {children}
     </AuthContext.Provider>

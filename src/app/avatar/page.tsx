@@ -2,8 +2,6 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { getFirebaseDb } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
 import { useRequireAuth, useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
@@ -579,7 +577,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 /* ====== PAGE ====== */
 export default function AvatarPage() {
   const { user, loading } = useRequireAuth();
-  const { authError } = useAuth();
   const router = useRouter();
   const [error, setError] = useState("");
 
@@ -595,10 +592,10 @@ export default function AvatarPage() {
   const [saving, setSaving] = useState(false);
   const nameSet = useRef(false);
 
-  /* autofill name from Google */
+  /* autofill name from user */
   useEffect(() => {
     if (user && !nameSet.current) {
-      const gname = user.displayName?.split(" ")[0] || "";
+      const gname = user.displayName || "";
       if (gname) {
         setConfig((p) => ({ ...p, name: gname }));
         nameSet.current = true;
@@ -608,22 +605,13 @@ export default function AvatarPage() {
 
   const up = (p: Partial<AvatarConfig>) => setConfig((prev) => ({ ...prev, ...p }));
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!config.name.trim() || !user) return;
     setSaving(true);
     setError("");
     try {
-      const db = getFirebaseDb();
-      await setDoc(doc(db, "avatars", user.uid), {
-        ...config,
-        createdAt: new Date().toISOString(),
-        userId: user.uid,
-        email: user.email,
-      });
-      if (typeof window !== "undefined") {
-        localStorage.setItem("oic_avatar", JSON.stringify(config));
-        localStorage.setItem("oic_userId", user.uid);
-      }
+      localStorage.setItem("oic_avatar", JSON.stringify(config));
+      localStorage.setItem("oic_userId", user.uid);
       router.push("/office");
     } catch (err) {
       console.error("Save error:", err);
@@ -631,25 +619,6 @@ export default function AvatarPage() {
       setSaving(false);
     }
   };
-
-  if (authError) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-cream-50 to-cream-100">
-        <div className="text-center p-8 max-w-md">
-          <p className="text-red-600 font-bold text-lg mb-2">
-            {"\u041E\u0448\u0438\u0431\u043A\u0430 Firebase"}
-          </p>
-          <p className="text-coffee-600 text-sm mb-4">{authError}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-coffee-600 text-white px-6 py-2 rounded-full"
-          >
-            {"\u041F\u043E\u043F\u0440\u043E\u0431\u043E\u0432\u0430\u0442\u044C \u0441\u043D\u043E\u0432\u0430"}
-          </button>
-        </div>
-      </main>
-    );
-  }
 
   if (loading || !user) {
     return (

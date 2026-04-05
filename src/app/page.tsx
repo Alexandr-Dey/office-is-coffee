@@ -21,34 +21,33 @@ const stagger = {
 const features = [
   {
     icon: "\u2615",
-    title: "Групповые заказы",
-    description: "Собирайте заказы кофе от всей команды в один тап. Никаких чатов в Slack.",
+    title: "\u0413\u0440\u0443\u043F\u043F\u043E\u0432\u044B\u0435 \u0437\u0430\u043A\u0430\u0437\u044B",
+    description: "\u0421\u043E\u0431\u0438\u0440\u0430\u0439\u0442\u0435 \u0437\u0430\u043A\u0430\u0437\u044B \u043A\u043E\u0444\u0435 \u043E\u0442 \u0432\u0441\u0435\u0439 \u043A\u043E\u043C\u0430\u043D\u0434\u044B \u0432 \u043E\u0434\u0438\u043D \u0442\u0430\u043F. \u041D\u0438\u043A\u0430\u043A\u0438\u0445 \u0447\u0430\u0442\u043E\u0432 \u0432 Slack.",
   },
   {
     icon: "\ud83e\udd1d",
-    title: "Кофе-друзья",
-    description: "Находите коллег со схожим вкусом. Стройте связи за чашкой эспрессо.",
+    title: "\u041A\u043E\u0444\u0435-\u0434\u0440\u0443\u0437\u044C\u044F",
+    description: "\u041D\u0430\u0445\u043E\u0434\u0438\u0442\u0435 \u043A\u043E\u043B\u043B\u0435\u0433 \u0441\u043E \u0441\u0445\u043E\u0436\u0438\u043C \u0432\u043A\u0443\u0441\u043E\u043C. \u0421\u0442\u0440\u043E\u0439\u0442\u0435 \u0441\u0432\u044F\u0437\u0438 \u0437\u0430 \u0447\u0430\u0448\u043A\u043E\u0439 \u044D\u0441\u043F\u0440\u0435\u0441\u0441\u043E.",
   },
   {
     icon: "\ud83d\udcca",
-    title: "Статистика офиса",
-    description: "Смотрите кофе-культуру офиса \u2014 топ напитков, пиковые часы и тренды.",
+    title: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u043E\u0444\u0438\u0441\u0430",
+    description: "\u0421\u043C\u043E\u0442\u0440\u0438\u0442\u0435 \u043A\u043E\u0444\u0435-\u043A\u0443\u043B\u044C\u0442\u0443\u0440\u0443 \u043E\u0444\u0438\u0441\u0430 \u2014 \u0442\u043E\u043F \u043D\u0430\u043F\u0438\u0442\u043A\u043E\u0432, \u043F\u0438\u043A\u043E\u0432\u044B\u0435 \u0447\u0430\u0441\u044B \u0438 \u0442\u0440\u0435\u043D\u0434\u044B.",
   },
   {
     icon: "\ud83c\udfaf",
-    title: "Умные рекомендации",
-    description: "AI-подсказки на основе настроения, погоды и прошлых заказов.",
+    title: "\u0423\u043C\u043D\u044B\u0435 \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u0430\u0446\u0438\u0438",
+    description: "AI-\u043F\u043E\u0434\u0441\u043A\u0430\u0437\u043A\u0438 \u043D\u0430 \u043E\u0441\u043D\u043E\u0432\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u044F, \u043F\u043E\u0433\u043E\u0434\u044B \u0438 \u043F\u0440\u043E\u0448\u043B\u044B\u0445 \u0437\u0430\u043A\u0430\u0437\u043E\u0432.",
   },
 ];
 
 export default function Home() {
-  const { user, loading, hasAvatar, authError, signInWithGoogle } = useAuth();
+  const { user, loading, hasAvatar, signInWithName } = useAuth();
   const router = useRouter();
-  const [signingIn, setSigningIn] = useState(false);
+  const [name, setName] = useState("");
 
-  /* После входа — редирект по наличию аватара */
   useEffect(() => {
-    if (!loading && user && hasAvatar !== null) {
+    if (!loading && user) {
       if (hasAvatar) {
         router.replace("/office");
       } else {
@@ -57,15 +56,9 @@ export default function Home() {
     }
   }, [user, loading, hasAvatar, router]);
 
-  const handleSignIn = async () => {
-    setSigningIn(true);
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      console.error("Ошибка входа:", err);
-    } finally {
-      setSigningIn(false);
-    }
+  const handleSignIn = () => {
+    if (!name.trim()) return;
+    signInWithName(name.trim());
   };
 
   return (
@@ -84,17 +77,29 @@ export default function Home() {
                 OiC
               </span>
             </motion.div>
-            <motion.button
-              onClick={handleSignIn}
-              disabled={signingIn || loading}
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-coffee-600 text-white px-6 py-2.5 rounded-full font-medium text-sm hover:bg-coffee-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2"
             >
-              {signingIn ? "Входим..." : "Войти через Google"}
-            </motion.button>
+              <input
+                type="text"
+                placeholder={"\u0412\u0430\u0448\u0435 \u0438\u043C\u044F"}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+                className="px-4 py-2 rounded-full border border-coffee-200 text-sm text-coffee-900 w-36 focus:border-coffee-500 focus:ring-1 focus:ring-coffee-200 outline-none"
+              />
+              <motion.button
+                onClick={handleSignIn}
+                disabled={!name.trim()}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-coffee-600 text-white px-5 py-2 rounded-full font-medium text-sm hover:bg-coffee-700 transition-colors disabled:opacity-50"
+              >
+                {"\u0412\u043E\u0439\u0442\u0438"}
+              </motion.button>
+            </motion.div>
           </div>
         </nav>
 
@@ -108,58 +113,42 @@ export default function Home() {
           >
             <motion.div variants={fadeUp} className="mb-6">
               <span className="inline-block bg-coffee-100 text-coffee-700 text-sm font-medium px-4 py-1.5 rounded-full">
-                Сейчас в бете
+                {"\u0421\u0435\u0439\u0447\u0430\u0441 \u0432 \u0431\u0435\u0442\u0435"}
               </span>
             </motion.div>
             <motion.h1
               variants={fadeUp}
               className="font-display text-5xl md:text-7xl font-bold text-coffee-950 mb-6 text-balance"
             >
-              Твой офис работает на{" "}
-              <span className="text-coffee-600">кофе</span>
+              {"\u0422\u0432\u043E\u0439 \u043E\u0444\u0438\u0441 \u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u043D\u0430 "}
+              <span className="text-coffee-600">{"\u043A\u043E\u0444\u0435"}</span>
             </motion.h1>
             <motion.p
               variants={fadeUp}
               className="text-lg md:text-xl text-coffee-700 max-w-2xl mx-auto mb-10 text-balance"
             >
-              OiC — социальная платформа, которая превращает кофе-паузы в командообразование.
-              Заказывайте вместе, открывайте новые бленды и подпитывайте лучшую работу.
+              OiC {"\u2014"} {"\u0441\u043E\u0446\u0438\u0430\u043B\u044C\u043D\u0430\u044F \u043F\u043B\u0430\u0442\u0444\u043E\u0440\u043C\u0430, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u043F\u0440\u0435\u0432\u0440\u0430\u0449\u0430\u0435\u0442 \u043A\u043E\u0444\u0435-\u043F\u0430\u0443\u0437\u044B \u0432 \u043A\u043E\u043C\u0430\u043D\u0434\u043E\u043E\u0431\u0440\u0430\u0437\u043E\u0432\u0430\u043D\u0438\u0435. \u0417\u0430\u043A\u0430\u0437\u044B\u0432\u0430\u0439\u0442\u0435 \u0432\u043C\u0435\u0441\u0442\u0435, \u043E\u0442\u043A\u0440\u044B\u0432\u0430\u0439\u0442\u0435 \u043D\u043E\u0432\u044B\u0435 \u0431\u043B\u0435\u043D\u0434\u044B \u0438 \u043F\u043E\u0434\u043F\u0438\u0442\u044B\u0432\u0430\u0439\u0442\u0435 \u043B\u0443\u0447\u0448\u0443\u044E \u0440\u0430\u0431\u043E\u0442\u0443."}
             </motion.p>
-            <motion.div variants={fadeUp} className="flex gap-4 justify-center flex-wrap">
-              <motion.button
-                onClick={handleSignIn}
-                disabled={signingIn || loading}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-coffee-600 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-700 transition-colors shadow-lg shadow-coffee-600/25 disabled:opacity-50 flex items-center gap-3"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="#fff"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                  />
-                  <path
-                    fill="#fff"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#fff"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="#fff"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                {signingIn ? "Входим..." : "Войти через Google"}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="border-2 border-coffee-300 text-coffee-700 px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-50 transition-colors"
-              >
-                Узнать больше
-              </motion.button>
+            <motion.div variants={fadeUp}>
+              <div className="flex gap-3 justify-center items-center max-w-md mx-auto">
+                <input
+                  type="text"
+                  placeholder={"\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0438\u043C\u044F"}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+                  className="flex-1 px-6 py-3.5 rounded-full border-2 border-coffee-200 text-coffee-900 font-medium text-lg focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 outline-none"
+                />
+                <motion.button
+                  onClick={handleSignIn}
+                  disabled={!name.trim()}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-coffee-600 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-700 transition-colors shadow-lg shadow-coffee-600/25 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {"\u0412\u043E\u0439\u0442\u0438 \u2615"}
+                </motion.button>
+              </div>
             </motion.div>
           </motion.div>
         </section>
@@ -173,7 +162,7 @@ export default function Home() {
               viewport={{ once: true }}
               className="font-display text-3xl md:text-4xl font-bold text-coffee-950 text-center mb-16"
             >
-              Всё, что нужно твоему офису
+              {"\u0412\u0441\u0451, \u0447\u0442\u043E \u043D\u0443\u0436\u043D\u043E \u0442\u0432\u043E\u0435\u043C\u0443 \u043E\u0444\u0438\u0441\u0443"}
             </motion.h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {features.map((feature, i) => (
@@ -208,20 +197,30 @@ export default function Home() {
             className="max-w-3xl mx-auto bg-gradient-to-br from-coffee-800 to-coffee-950 rounded-3xl p-12 text-center"
           >
             <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-              Готовы преобразить кофе-культуру?
+              {"\u0413\u043E\u0442\u043E\u0432\u044B \u043F\u0440\u0435\u043E\u0431\u0440\u0430\u0437\u0438\u0442\u044C \u043A\u043E\u0444\u0435-\u043A\u0443\u043B\u044C\u0442\u0443\u0440\u0443?"}
             </h2>
             <p className="text-coffee-200 text-lg mb-8 max-w-xl mx-auto">
-              Присоединяйтесь к 500+ командам, которые уже строят лучшие связи в офисе.
+              {"\u041F\u0440\u0438\u0441\u043E\u0435\u0434\u0438\u043D\u044F\u0439\u0442\u0435\u0441\u044C \u043A 500+ \u043A\u043E\u043C\u0430\u043D\u0434\u0430\u043C, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0443\u0436\u0435 \u0441\u0442\u0440\u043E\u044F\u0442 \u043B\u0443\u0447\u0448\u0438\u0435 \u0441\u0432\u044F\u0437\u0438 \u0432 \u043E\u0444\u0438\u0441\u0435."}
             </p>
-            <motion.button
-              onClick={handleSignIn}
-              disabled={signingIn || loading}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-block bg-white text-coffee-900 px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-cream-100 transition-colors disabled:opacity-50"
-            >
-              {signingIn ? "Входим..." : "Начать сейчас"}
-            </motion.button>
+            <div className="flex gap-3 justify-center items-center max-w-md mx-auto">
+              <input
+                type="text"
+                placeholder={"\u0412\u0430\u0448\u0435 \u0438\u043C\u044F"}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+                className="flex-1 px-6 py-3.5 rounded-full text-coffee-900 font-medium text-lg outline-none"
+              />
+              <motion.button
+                onClick={handleSignIn}
+                disabled={!name.trim()}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-white text-coffee-900 px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-cream-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {"\u041D\u0430\u0447\u0430\u0442\u044C"}
+              </motion.button>
+            </div>
           </motion.div>
         </section>
 
@@ -235,7 +234,7 @@ export default function Home() {
               </span>
             </div>
             <p className="text-coffee-500 text-sm">
-              &copy; {new Date().getFullYear()} OiC. Заряжаем команды, по чашке за раз.
+              &copy; {new Date().getFullYear()} OiC. {"\u0417\u0430\u0440\u044F\u0436\u0430\u0435\u043C \u043A\u043E\u043C\u0430\u043D\u0434\u044B, \u043F\u043E \u0447\u0430\u0448\u043A\u0435 \u0437\u0430 \u0440\u0430\u0437."}
             </p>
           </div>
         </footer>
