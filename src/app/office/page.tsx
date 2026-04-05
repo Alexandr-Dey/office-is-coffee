@@ -13,6 +13,7 @@ type Mood = "happy" | "cool" | "excited" | "sleepy" | "angry";
 type Status = "working" | "break" | "away";
 type Floor = 0 | 1;
 type AvatarAction = "idle" | "coffee" | "monitor" | "phone" | "yawn" | "reach";
+type NPCAction = "idle" | "making_coffee" | "waving";
 
 interface AvatarConfig {
   gender: Gender;
@@ -731,21 +732,36 @@ function drawCoffeeShopFg(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke();
   }
 
-  /* стопки красных стаканчиков СПРАВА на стойке (3 стопки) */
+  /* стопки конических стаканчиков LiC СПРАВА на стойке (3 стопки) */
   for (let si = 0; si < 3; si++) {
     const sx = barX + barW - 130 + si * 30;
     for (let sj = 0; sj < 4; sj++) {
-      const sy2 = barY - 8 - sj * 10;
-      ctx.fillStyle = "#C0392B";
+      const sy2 = barY - 6 - sj * 9;
+      /* конический бумажный стаканчик */
+      ctx.fillStyle = sj % 2 === 0 ? "#F5EDE5" : "#E8D5C4";
       ctx.beginPath();
-      ctx.moveTo(sx - 6, sy2);
+      ctx.moveTo(sx - 3, sy2);
       ctx.lineTo(sx - 5, sy2 - 10);
-      ctx.lineTo(sx + 9, sy2 - 10);
-      ctx.lineTo(sx + 10, sy2);
+      ctx.lineTo(sx + 7, sy2 - 10);
+      ctx.lineTo(sx + 5, sy2);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = "#E8E8E8";
-      ctx.fillRect(sx - 6, sy2 - 12, 16, 2);
+      /* ободок сверху */
+      ctx.strokeStyle = "rgba(139,94,60,0.5)";
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(sx - 5, sy2 - 10);
+      ctx.lineTo(sx + 7, sy2 - 10);
+      ctx.stroke();
+      /* полоска с логотипом */
+      ctx.fillStyle = "#C0392B";
+      ctx.fillRect(sx - 3, sy2 - 6, 8, 3);
+      /* сердечко */
+      ctx.fillStyle = "#FFF";
+      ctx.font = "4px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("\u2764", sx + 1, sy2 - 3.5);
+      ctx.textAlign = "start";
     }
   }
 
@@ -775,7 +791,8 @@ function drawNPC(
   y: number,
   skinIdx: number,
   _clothIdx: number,
-  bobOff: number
+  bobOff: number,
+  action: NPCAction = "idle"
 ) {
   ctx.save();
   const s = 0.9;
@@ -830,18 +847,72 @@ function drawNPC(
   ctx.fillText("LiC", 0, 28 * s);
   ctx.textAlign = "start";
 
-  /* руки (рукава чёрные) */
-  ctx.fillStyle = "#1A1A1A";
-  ctx.fillRect(-24 * s, 14 * s, 8 * s, 16 * s);
-  ctx.fillRect(16 * s, 14 * s, 8 * s, 16 * s);
-  /* кисти рук */
-  ctx.fillStyle = skin;
-  ctx.beginPath();
-  ctx.arc(-20 * s, 30 * s, 4 * s, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(20 * s, 30 * s, 4 * s, 0, Math.PI * 2);
-  ctx.fill();
+  /* руки (рукава чёрные) — зависят от действия */
+  if (action === "waving") {
+    /* левая рука обычная */
+    ctx.fillStyle = "#1A1A1A";
+    ctx.fillRect(-24 * s, 14 * s, 8 * s, 16 * s);
+    /* правая рука поднята вверх — машет */
+    ctx.save();
+    ctx.translate(20 * s, 8 * s);
+    ctx.rotate(-0.9);
+    ctx.fillStyle = "#1A1A1A";
+    ctx.fillRect(-4 * s, -20 * s, 8 * s, 22 * s);
+    ctx.restore();
+    /* кисти */
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.arc(-20 * s, 30 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(34 * s, -8 * s, 5 * s, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (action === "making_coffee") {
+    /* обе руки вниз к стойке — готовит кофе */
+    ctx.fillStyle = "#1A1A1A";
+    ctx.save();
+    ctx.translate(-18 * s, 18 * s);
+    ctx.rotate(0.35);
+    ctx.fillRect(-4 * s, -2 * s, 8 * s, 20 * s);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(18 * s, 18 * s);
+    ctx.rotate(-0.35);
+    ctx.fillRect(-4 * s, -2 * s, 8 * s, 20 * s);
+    ctx.restore();
+    /* кисти */
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.arc(-10 * s, 38 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(10 * s, 38 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    /* стаканчик LiC в руках */
+    ctx.fillStyle = "#C0392B";
+    ctx.beginPath();
+    ctx.moveTo(-5 * s, 32 * s);
+    ctx.lineTo(-3 * s, 22 * s);
+    ctx.lineTo(3 * s, 22 * s);
+    ctx.lineTo(5 * s, 32 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#FFF";
+    ctx.fillRect(-4 * s, 21 * s, 8 * s, 2 * s);
+  } else {
+    /* idle — руки вдоль тела */
+    ctx.fillStyle = "#1A1A1A";
+    ctx.fillRect(-24 * s, 14 * s, 8 * s, 16 * s);
+    ctx.fillRect(16 * s, 14 * s, 8 * s, 16 * s);
+    /* кисти рук */
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.arc(-20 * s, 30 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(20 * s, 30 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   /* шея */
   ctx.fillStyle = skin;
@@ -958,7 +1029,9 @@ export default function OfficePage() {
   const bobRef = useRef(0);
   const frameRef = useRef(0);
   const actionTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const myXRef = useRef(200);
+  const myXRef = useRef(100);
+  const npc1ActionRef = useRef<NPCAction>("idle");
+  const npc2ActionRef = useRef<NPCAction>("idle");
   const canvasW = 880;
   const canvasH = 420;
   const floorRef = useRef<Floor>(0);
@@ -1056,6 +1129,31 @@ export default function OfficePage() {
     };
   }, []);
 
+  /* Анимации NPC-баристов */
+  useEffect(() => {
+    const npcActions: NPCAction[] = ["making_coffee", "waving"];
+    let alive = true;
+    const loopNPC = (actionRef: React.MutableRefObject<NPCAction>, baseDelay: number) => {
+      const tick = () => {
+        if (!alive) return;
+        const delay = baseDelay + Math.random() * 5000;
+        setTimeout(() => {
+          if (!alive) return;
+          actionRef.current = npcActions[Math.floor(Math.random() * npcActions.length)];
+          setTimeout(() => {
+            if (!alive) return;
+            actionRef.current = "idle";
+            tick();
+          }, 2000 + Math.random() * 1500);
+        }, delay);
+      };
+      tick();
+    };
+    loopNPC(npc1ActionRef, 3000);
+    loopNPC(npc2ActionRef, 4500);
+    return () => { alive = false; };
+  }, []);
+
   /* Основной цикл рисования */
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1074,10 +1172,27 @@ export default function OfficePage() {
       /* Фон кофейни */
       drawCoffeeShopBg(ctx, canvasW, canvasH);
       /* NPC-баристы ЗА стойкой (рисуем до стойки) */
-      drawNPC(ctx, "\u0412\u0438\u0442\u0430\u043B\u0438\u0439", canvasW / 2 - 60, canvasH - 155, 0, 3, bob * 0.5);
-      drawNPC(ctx, "\u0410\u0441\u043B\u0430\u043D", canvasW / 2 + 60, canvasH - 155, 2, 3, bob * 0.7);
+      drawNPC(ctx, "\u0412\u0438\u0442\u0430\u043B\u0438\u0439", canvasW / 2 - 60, canvasH - 155, 0, 3, bob * 0.5, npc1ActionRef.current);
+      drawNPC(ctx, "\u0410\u0441\u043B\u0430\u043D", canvasW / 2 + 60, canvasH - 155, 2, 3, bob * 0.7, npc2ActionRef.current);
       /* Стойка и предметы ПОВЕРХ NPC */
       drawCoffeeShopFg(ctx, canvasW, canvasH);
+
+      /* Пар от кофемашины на стойке */
+      const steamTime = bobRef.current;
+      const _barY = canvasH - 120;
+      const _barW = 340;
+      const _barX = canvasW / 2 - _barW / 2;
+      const steamCmx = _barX + _barW - 35;
+      for (let pi = 0; pi < 6; pi++) {
+        const t = ((steamTime * 1.2 + pi * 0.8) % 3.5);
+        const alpha = Math.max(0, 0.5 - t / 3.5 * 0.5);
+        const yOff = -t * 20;
+        const xOff = Math.sin(steamTime * 1.5 + pi * 1.1) * 7;
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.beginPath();
+        ctx.ellipse(steamCmx + xOff + (pi % 3) * 8, _barY - 55 + yOff, 4, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     /* онлайн-пользователи */
