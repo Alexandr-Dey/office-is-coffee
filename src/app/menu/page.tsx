@@ -30,91 +30,91 @@ interface CartItem {
 
 const MENU_DATA: MenuCategory[] = [
   {
-    id: "classic",
-    title: "\u041A\u043E\u0444\u0435\u0439\u043D\u0430\u044F \u043A\u043B\u0430\u0441\u0441\u0438\u043A\u0430",
+    id: "coffee",
+    title: "Кофейная классика",
     icon: "\u2615",
     items: [
-      { name: "\u041A\u0430\u043F\u0443\u0447\u0438\u043D\u043E", prices: { S: 850, M: 1050, L: 1150 } },
-      { name: "\u041B\u0430\u0442\u0442\u0435", prices: { S: 900, M: 1050 } },
-      { name: "\u0424\u043B\u044D\u0442 \u0443\u0430\u0439\u0442", prices: { S: 1000, M: 1150, L: 1250 } },
-      { name: "\u0410\u043C\u0435\u0440\u0438\u043A\u0430\u043D\u043E", prices: { S: 750, M: 850, L: 950 } },
-      { name: "\u042D\u0441\u043F\u0440\u0435\u0441\u0441\u043E", prices: { S: 450, M: 550 } },
+      { name: "Капучино", prices: { S: 850, M: 1050, L: 1150 } },
+      { name: "Латте", prices: { M: 900, L: 1050 } },
+      { name: "Флэт уайт", prices: { S: 1000, M: 1150, L: 1250 } },
+      { name: "Американо", prices: { S: 750, M: 850, L: 950 } },
+      { name: "Эспрессо", prices: { S: 450, M: 550 } },
     ],
   },
   {
     id: "author",
-    title: "\u0410\u0432\u0442\u043E\u0440\u0441\u043A\u0438\u0439 \u043A\u043E\u0444\u0435",
+    title: "Авторский кофе",
     icon: "\u2728",
     items: [
-      { name: "\u0420\u0430\u0444 \u043A\u043B\u0430\u0441\u0441\u0438\u043A\u0430", prices: { M: 1250, L: 1350 }, tag: "\u0425\u0438\u0442" },
-      { name: "\u0420\u0430\u0444 \u043C\u0435\u0434\u043E\u0432\u044B\u0439", prices: { M: 1250, L: 1350 }, tag: "\u0425\u0438\u0442" },
-      { name: "\u0420\u0430\u0444 \u0431\u0430\u043D\u0430\u043D-\u043A\u0430\u0440\u0430\u043C\u0435\u043B\u044C", prices: { M: 1350, L: 1450 }, tag: "\u0425\u0438\u0442" },
-      { name: "\u041C\u043E\u043A\u043A\u043E", prices: { M: 1250, L: 1350 } },
-      { name: "\u0410\u0439\u0440\u0438\u0448 \u043A\u043E\u0444\u0435", prices: { M: 950, L: 1050 } },
-      { name: "\u041B\u0430\u0442\u0442\u0435 \u0445\u0430\u043B\u0432\u0430", prices: { M: 950, L: 1050 } },
+      { name: "Раф классика", prices: { M: 1250, L: 1350 }, tag: "Хит" },
+      { name: "Раф медовый", prices: { M: 1250, L: 1350 }, tag: "Хит" },
+      { name: "Раф банан-карамель", prices: { M: 1350, L: 1450 }, tag: "Хит" },
+      { name: "Мокко", prices: { M: 1250, L: 1350 } },
+      { name: "Айриш кофе", prices: { M: 950, L: 1050 } },
+      { name: "Латте халва", prices: { M: 950, L: 1050 } },
     ],
   },
   {
     id: "ice",
-    title: "\u0410\u0439\u0441 \u043A\u043E\u0444\u0435",
+    title: "Айс кофе",
     icon: "\u2744\uFE0F",
     items: [
-      { name: "\u0410\u0439\u0441 \u0430\u043C\u0435\u0440\u0438\u043A\u0430\u043D\u043E", prices: { M: 950, L: 1050 } },
-      { name: "\u0410\u0439\u0441 \u043A\u0430\u043F\u0443\u0447\u0438\u043D\u043E", prices: { M: 1250, L: 1350 } },
-      { name: "\u0424\u0440\u0430\u043F\u043F\u0443\u0447\u0438\u043D\u043E", prices: { M: 1350, L: 1450 }, tag: "\u0425\u0438\u0442" },
-      { name: "\u0411\u0430\u043D\u0430\u043D\u043E\u0432\u044B\u0439 \u043A\u043E\u0444\u0435", prices: { M: 1350, L: 1450 }, tag: "\u0425\u0438\u0442" },
-      { name: "\u042D\u0441\u043F\u0440\u0435\u0441\u0441\u043E \u0442\u043E\u043D\u0438\u043A", prices: { M: 1150, L: 1250 } },
+      { name: "Айс американо", prices: { M: 950, L: 1050 } },
+      { name: "Айс капучино", prices: { M: 1250, L: 1350 } },
+      { name: "Фраппучино", prices: { M: 1350, L: 1450 }, tag: "Хит" },
+      { name: "Банановый кофе", prices: { M: 1350, L: 1450 }, tag: "Хит" },
+      { name: "Эспрессо тоник", prices: { M: 1150, L: 1250 } },
     ],
   },
   {
     id: "tea",
-    title: "\u0414\u043E\u043C\u0430\u0448\u043D\u0438\u0439 \u0447\u0430\u0439",
+    title: "Домашний чай",
     icon: "\uD83C\uDF75",
     items: [
-      { name: "\u041D\u0430\u0440\u044F\u0434\u043D\u044B\u0439", prices: { one: 950 }, tag: "\u0425\u0438\u0442" },
-      { name: "\u0418\u043C\u0431\u0438\u0440\u043D\u044B\u0439", prices: { one: 950 } },
-      { name: "\u041E\u0431\u043B\u0435\u043F\u0438\u0445\u043E\u0432\u044B\u0439", prices: { one: 1050 }, tag: "\u0425\u0438\u0442" },
-      { name: "\u041C\u0430\u043B\u0438\u043D\u043E\u0432\u044B\u0439", prices: { one: 1150 } },
-      { name: "\u0413\u043B\u0438\u043D\u0442\u0432\u0435\u0439\u043D", prices: { one: 1150 }, tag: "\u0425\u0438\u0442" },
+      { name: "Нарядный", prices: { one: 950 }, tag: "Хит" },
+      { name: "Имбирный", prices: { one: 950 } },
+      { name: "Облепиховый", prices: { one: 1050 }, tag: "Хит" },
+      { name: "Малиновый", prices: { one: 1150 } },
+      { name: "Глинтвейн", prices: { one: 1150 }, tag: "Хит" },
     ],
   },
   {
     id: "matcha",
-    title: "\u041C\u0430\u0442\u0447\u0430",
+    title: "Матча",
     icon: "\uD83C\uDF35",
     items: [
-      { name: "\u0417\u0435\u043B\u0451\u043D\u0430\u044F \u043C\u0430\u0442\u0447\u0430", prices: { one: 1250 } },
-      { name: "\u0413\u043E\u043B\u0443\u0431\u0430\u044F \u043C\u0430\u0442\u0447\u0430", prices: { one: 1250 } },
+      { name: "Зелёная матча", prices: { one: 1250 } },
+      { name: "Голубая матча", prices: { one: 1250 } },
     ],
   },
   {
     id: "cocoa",
-    title: "\u041A\u0430\u043A\u0430\u043E",
+    title: "Какао",
     icon: "\uD83E\uDD5B",
     items: [
-      { name: "\u041A\u0430\u043A\u0430\u043E", prices: { one: 1150 } },
-      { name: "\u0413\u043E\u0440\u044F\u0447\u0438\u0439 \u0448\u043E\u043A\u043E\u043B\u0430\u0434", prices: { one: 1250 } },
+      { name: "Какао", prices: { one: 1150 } },
+      { name: "Горячий шоколад", prices: { one: 1250 } },
     ],
   },
   {
-    id: "shakes",
-    title: "\u041C\u043E\u043B\u043E\u0447\u043D\u044B\u0435 \u043A\u043E\u043A\u0442\u0435\u0439\u043B\u0438",
+    id: "cocktail",
+    title: "Молочные коктейли",
     icon: "\uD83E\uDD64",
     items: [
-      { name: "\u0411\u0430\u043D\u0430\u043D\u043E\u0432\u044B\u0439", prices: { one: 1450 } },
-      { name: "\u041A\u043B\u0443\u0431\u043D\u0438\u0447\u043D\u044B\u0439", prices: { one: 1350 } },
-      { name: "\u0428\u043E\u043A\u043E\u043B\u0430\u0434\u043D\u044B\u0439", prices: { one: 1350 } },
+      { name: "Банановый коктейль", prices: { one: 1450 } },
+      { name: "Клубничный коктейль", prices: { one: 1350 } },
+      { name: "Шоколадный коктейль", prices: { one: 1350 } },
     ],
   },
   {
     id: "lemonade",
-    title: "\u041B\u0438\u043C\u043E\u043D\u0430\u0434\u044B",
+    title: "Лимонады",
     icon: "\uD83C\uDF4B",
     items: [
-      { name: "\u0414\u043E\u043C\u0430\u0448\u043D\u0438\u0439", prices: { one: 950 } },
-      { name: "\u041C\u043E\u0445\u0438\u0442\u043E", prices: { one: 1050 } },
-      { name: "\u0410\u0440\u0431\u0443\u0437-\u043A\u0438\u0432\u0438", prices: { one: 1050 } },
-      { name: "\u042F\u0431\u043B\u043E\u043A\u043E-\u043C\u0430\u0440\u0430\u043A\u0443\u0439\u044F", prices: { one: 1150 }, tag: "\u0425\u0438\u0442" },
+      { name: "Домашний лимонад", prices: { one: 950 } },
+      { name: "Мохито", prices: { one: 1050 } },
+      { name: "Арбуз-киви", prices: { one: 1050 } },
+      { name: "Яблоко-маракуйя", prices: { one: 1150 }, tag: "Хит" },
     ],
   },
 ];
@@ -223,7 +223,7 @@ function MenuItemRow({
    СТРАНИЦА МЕНЮ
    ═══════════════════════════════════════════ */
 export default function MenuPage() {
-  const [activeCategory, setActiveCategory] = useState("classic");
+  const [activeCategory, setActiveCategory] = useState("coffee");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
 
