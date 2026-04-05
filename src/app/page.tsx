@@ -42,7 +42,7 @@ const features = [
 ];
 
 export default function Home() {
-  const { user, loading, hasAvatar, signInWithGoogle } = useAuth();
+  const { user, loading, hasAvatar, authError, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
 

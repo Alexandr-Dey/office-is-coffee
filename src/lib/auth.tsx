@@ -15,6 +15,7 @@ import {
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   type User,
+  type Unsubscribe,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
@@ -24,6 +25,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   hasAvatar: boolean | null;
+  authError: string | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -32,6 +34,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
   hasAvatar: null,
+  authError: null,
   signInWithGoogle: async () => {},
   signOut: async () => {},
 });
@@ -44,30 +47,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
+    let unsub: Unsubscribe | undefined;
 
-    // Проверяем результат redirect-авторизации (для мобильных)
-    getRedirectResult(auth).catch(() => {});
+    try {
+      const auth = getFirebaseAuth();
 
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        try {
-          const db = getFirebaseDb();
-          const snap = await getDoc(doc(db, "avatars", u.uid));
-          setHasAvatar(snap.exists());
-        } catch (err) {
-          console.error("Ошибка проверки аватара:", err);
-          setHasAvatar(false);
+      getRedirectResult(auth).catch(() => {});
+
+      unsub = onAuthStateChanged(auth, async (u) => {
+        setUser(u);
+        if (u) {
+          try {
+            const db = getFirebaseDb();
+            const snap = await getDoc(doc(db, "avatars", u.uid));
+            setHasAvatar(snap.exists());
+          } catch (err) {
+            console.error("Avatar check error:", err);
+            setHasAvatar(false);
+          }
+        } else {
+          setHasAvatar(null);
         }
-      } else {
-        setHasAvatar(null);
-      }
+        setLoading(false);
+      });
+    } catch (err) {
+      console.error("Firebase auth init error:", err);
+      setAuthError(
+        err instanceof Error ? err.message : "Firebase init failed"
+      );
       setLoading(false);
-    });
-    return unsub;
+    }
+
+    return () => unsub?.();
   }, []);
 
   const signInWithGoogle = async () => {
@@ -77,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithPopup(auth, provider);
     } catch (err: unknown) {
       const code = (err as { code?: string }).code;
-      // Popup заблокирован или закрыт — пробуем redirect
       if (
         code === "auth/popup-blocked" ||
         code === "auth/popup-closed-by-user" ||
@@ -98,14 +111,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, hasAvatar, signInWithGoogle, signOut }}
+      value={{ user, loading, hasAvatar, authError, signInWithGoogle, signOut }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
 
-/** Хук-гард: редиректит неавторизованных на / */
 export function useRequireAuth() {
   const { user, loading } = useAuth();
   const router = useRouter();
