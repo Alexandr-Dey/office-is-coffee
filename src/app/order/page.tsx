@@ -24,12 +24,18 @@ export default function OrderPage() {
     if (raw) {
       try { setCart(JSON.parse(raw)); } catch { /* ignore */ }
     }
-    /* имя из localStorage (профиль аватара) */
-    const saved = localStorage.getItem("oic_guest_name");
-    if (saved) setName(saved);
-    else {
-      const nick = localStorage.getItem("oic_nickname");
-      if (nick) setName(nick);
+    /* имя: из профиля → из guest_name → из nickname */
+    const userRaw = localStorage.getItem("oic_user");
+    if (userRaw) {
+      try { const u = JSON.parse(userRaw); if (u.displayName) setName(u.displayName); } catch { /* ignore */ }
+    }
+    if (!name) {
+      const saved = localStorage.getItem("oic_guest_name");
+      if (saved) setName(saved);
+      else {
+        const nick = localStorage.getItem("oic_nickname");
+        if (nick) setName(nick);
+      }
     }
   }, []);
 
@@ -39,10 +45,12 @@ export default function OrderPage() {
     if (cart.length === 0) return;
     setSending(true);
     try {
+      const userId = localStorage.getItem("oic_userId") || "anonymous";
       const avatarSkin = parseInt(localStorage.getItem("oic_skin") ?? "0", 10);
       const avatarCloth = parseInt(localStorage.getItem("oic_cloth") ?? "0", 10);
       const docRef = await addDoc(collection(getFirebaseDb(), "orders"), {
         name: name || "\u0413\u043E\u0441\u0442\u044C",
+        userId,
         items: cart.map((i) => ({ name: i.name, size: i.size, price: i.price, qty: i.qty })),
         comment: comment.trim(),
         total,
