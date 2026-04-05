@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
+import { useRequireBarista } from "@/lib/auth";
 import {
   collection,
   query,
@@ -137,6 +138,7 @@ function OrderCard({ order }: { order: Order }) {
    СТРАНИЦА АДМИНКИ КОФЕЙНИ
    ═══════════════════════════════════════════ */
 export default function AdminPage() {
+  const { user, loading: authLoading } = useRequireBarista();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"all" | "pending" | "accepted" | "ready">("all");
   const [now, setNow] = useState(Date.now());
@@ -168,6 +170,14 @@ export default function AdminPage() {
     accepted: orders.filter((o) => o.status === "accepted").length,
     ready: orders.filter((o) => o.status === "ready").length,
   };
+
+  if (authLoading || !user) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-cream-50 to-cream-100">
+        <p className="text-coffee-600 text-lg">{"\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."}</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100">

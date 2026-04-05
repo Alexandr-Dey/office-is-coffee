@@ -10,13 +10,16 @@ import {
 import { useRouter } from "next/navigation";
 
 /**
- * Временная авторизация по имени (localStorage).
- * TODO: вернуть Firebase Auth + Google Sign-In когда разберёмся с ключами.
+ * Temporary name-based auth (localStorage + Firestore for role).
+ * TODO: return Firebase Auth + Google Sign-In when keys are fixed.
  */
 
-interface SimpleUser {
+export type Role = "client" | "barista";
+
+export interface SimpleUser {
   uid: string;
   displayName: string;
+  role: Role;
 }
 
 interface AuthContextValue {
@@ -24,7 +27,7 @@ interface AuthContextValue {
   loading: boolean;
   hasAvatar: boolean;
   authError: string | null;
-  signInWithName: (name: string) => void;
+  signInWithName: (name: string, role: Role) => void;
   signOut: () => void;
 }
 
@@ -50,26 +53,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("oic_user");
     if (saved) {
       try {
-        setUser(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // migrate old users without role
+        if (!parsed.role) parsed.role = "client";
+        setUser(parsed);
       } catch { /* ignore */ }
     }
     setHasAvatar(!!localStorage.getItem("oic_avatar"));
     setLoading(false);
   }, []);
 
-  const signInWithName = (name: string) => {
+  const signInWithName = (name: string, role: Role) => {
     const u: SimpleUser = {
       uid: `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       displayName: name,
+      role,
     };
     localStorage.setItem("oic_user", JSON.stringify(u));
+    localStorage.setItem("oic_role", role);
     setUser(u);
+
+    // Save role to Firestore (fire-and-forget)
+    try {
+      import("@/lib/firebase").then(({ getFirebaseDb }) => {
+        import("firebase/firestore").then(({ doc, setDoc }) => {
+          setDoc(doc(getFirebaseDb(), "users", u.uid), {
+            displayName: name,
+            role,
+            createdAt: new Date().toISOString(),
+          }).catch(() => {});
+        });
+      });
+    } catch { /* ignore */ }
   };
 
   const signOut = () => {
     localStorage.removeItem("oic_user");
     localStorage.removeItem("oic_avatar");
     localStorage.removeItem("oic_userId");
+    localStorage.removeItem("oic_role");
     setUser(null);
     setHasAvatar(false);
   };
@@ -90,6 +112,23 @@ export function useRequireAuth() {
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/");
+    }
+  }, [user, loading, router]);
+
+  return { user, loading };
+}
+
+export function useRequireBarista() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.replace("/");
+      } else if (user.role !== "barista") {
+        router.replace("/office");
+      }
     }
   }, [user, loading, router]);
 

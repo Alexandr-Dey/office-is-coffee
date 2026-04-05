@@ -45,10 +45,13 @@ export default function Home() {
   const { user, loading, hasAvatar, signInWithName } = useAuth();
   const router = useRouter();
   const [name, setName] = useState("");
+  const [step, setStep] = useState<"name" | "role">("name");
 
   useEffect(() => {
     if (!loading && user) {
-      if (hasAvatar) {
+      if (user.role === "barista") {
+        router.replace("/admin");
+      } else if (hasAvatar) {
         router.replace("/office");
       } else {
         router.replace("/avatar");
@@ -56,9 +59,13 @@ export default function Home() {
     }
   }, [user, loading, hasAvatar, router]);
 
-  const handleSignIn = () => {
+  const handleNameNext = () => {
     if (!name.trim()) return;
-    signInWithName(name.trim());
+    setStep("role");
+  };
+
+  const handleRole = (role: "client" | "barista") => {
+    signInWithName(name.trim(), role);
   };
 
   return (
@@ -82,23 +89,46 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2"
             >
-              <input
-                type="text"
-                placeholder={"\u0412\u0430\u0448\u0435 \u0438\u043C\u044F"}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                className="px-4 py-2 rounded-full border border-coffee-200 text-sm text-coffee-900 w-36 focus:border-coffee-500 focus:ring-1 focus:ring-coffee-200 outline-none"
-              />
-              <motion.button
-                onClick={handleSignIn}
-                disabled={!name.trim()}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-coffee-600 text-white px-5 py-2 rounded-full font-medium text-sm hover:bg-coffee-700 transition-colors disabled:opacity-50"
-              >
-                {"\u0412\u043E\u0439\u0442\u0438"}
-              </motion.button>
+              {step === "name" ? (
+                <>
+                  <input
+                    type="text"
+                    placeholder={"\u0412\u0430\u0448\u0435 \u0438\u043C\u044F"}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleNameNext()}
+                    className="px-4 py-2 rounded-full border border-coffee-200 text-sm text-coffee-900 w-36 focus:border-coffee-500 focus:ring-1 focus:ring-coffee-200 outline-none"
+                  />
+                  <motion.button
+                    onClick={handleNameNext}
+                    disabled={!name.trim()}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-coffee-600 text-white px-5 py-2 rounded-full font-medium text-sm hover:bg-coffee-700 transition-colors disabled:opacity-50"
+                  >
+                    {"\u0414\u0430\u043B\u0435\u0435"}
+                  </motion.button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    onClick={() => handleRole("client")}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-coffee-600 text-white px-4 py-2 rounded-full font-medium text-sm"
+                  >
+                    {"\u2615 \u041A\u043B\u0438\u0435\u043D\u0442"}
+                  </motion.button>
+                  <motion.button
+                    onClick={() => handleRole("barista")}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-coffee-800 text-white px-4 py-2 rounded-full font-medium text-sm"
+                  >
+                    {"\u{1F9D1}\u200D\u{1F373} \u0411\u0430\u0440\u0438\u0441\u0442\u0430"}
+                  </motion.button>
+                </div>
+              )}
             </motion.div>
           </div>
         </nav>
@@ -130,25 +160,52 @@ export default function Home() {
               OiC {"\u2014"} {"\u0441\u043E\u0446\u0438\u0430\u043B\u044C\u043D\u0430\u044F \u043F\u043B\u0430\u0442\u0444\u043E\u0440\u043C\u0430, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u043F\u0440\u0435\u0432\u0440\u0430\u0449\u0430\u0435\u0442 \u043A\u043E\u0444\u0435-\u043F\u0430\u0443\u0437\u044B \u0432 \u043A\u043E\u043C\u0430\u043D\u0434\u043E\u043E\u0431\u0440\u0430\u0437\u043E\u0432\u0430\u043D\u0438\u0435. \u0417\u0430\u043A\u0430\u0437\u044B\u0432\u0430\u0439\u0442\u0435 \u0432\u043C\u0435\u0441\u0442\u0435, \u043E\u0442\u043A\u0440\u044B\u0432\u0430\u0439\u0442\u0435 \u043D\u043E\u0432\u044B\u0435 \u0431\u043B\u0435\u043D\u0434\u044B \u0438 \u043F\u043E\u0434\u043F\u0438\u0442\u044B\u0432\u0430\u0439\u0442\u0435 \u043B\u0443\u0447\u0448\u0443\u044E \u0440\u0430\u0431\u043E\u0442\u0443."}
             </motion.p>
             <motion.div variants={fadeUp}>
-              <div className="flex gap-3 justify-center items-center max-w-md mx-auto">
-                <input
-                  type="text"
-                  placeholder={"\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0438\u043C\u044F"}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                  className="flex-1 px-6 py-3.5 rounded-full border-2 border-coffee-200 text-coffee-900 font-medium text-lg focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 outline-none"
-                />
-                <motion.button
-                  onClick={handleSignIn}
-                  disabled={!name.trim()}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-coffee-600 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-700 transition-colors shadow-lg shadow-coffee-600/25 disabled:opacity-50 whitespace-nowrap"
-                >
-                  {"\u0412\u043E\u0439\u0442\u0438 \u2615"}
-                </motion.button>
-              </div>
+              {step === "name" ? (
+                <div className="flex gap-3 justify-center items-center max-w-md mx-auto">
+                  <input
+                    type="text"
+                    placeholder={"\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0438\u043C\u044F"}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleNameNext()}
+                    className="flex-1 px-6 py-3.5 rounded-full border-2 border-coffee-200 text-coffee-900 font-medium text-lg focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 outline-none"
+                  />
+                  <motion.button
+                    onClick={handleNameNext}
+                    disabled={!name.trim()}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-coffee-600 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-700 transition-colors shadow-lg shadow-coffee-600/25 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {"\u0414\u0430\u043B\u0435\u0435 \u2192"}
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="max-w-md mx-auto">
+                  <p className="text-coffee-600 mb-4">{"\u041F\u0440\u0438\u0432\u0435\u0442, "}<span className="font-bold text-coffee-900">{name}</span>{"! \u041A\u0442\u043E \u0442\u044B?"}</p>
+                  <div className="flex gap-4 justify-center">
+                    <motion.button
+                      onClick={() => handleRole("client")}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="bg-coffee-600 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-700 transition-colors shadow-lg shadow-coffee-600/25"
+                    >
+                      {"\u2615 \u041A\u043B\u0438\u0435\u043D\u0442"}
+                    </motion.button>
+                    <motion.button
+                      onClick={() => handleRole("barista")}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="bg-coffee-800 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-900 transition-colors shadow-lg shadow-coffee-800/25"
+                    >
+                      {"\u{1F9D1}\u200D\u{1F373} \u0411\u0430\u0440\u0438\u0441\u0442\u0430"}
+                    </motion.button>
+                  </div>
+                  <button onClick={() => setStep("name")} className="text-coffee-400 text-sm mt-3 hover:text-coffee-600">
+                    {"\u2190 \u041D\u0430\u0437\u0430\u0434"}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         </section>
@@ -208,11 +265,11 @@ export default function Home() {
                 placeholder={"\u0412\u0430\u0448\u0435 \u0438\u043C\u044F"}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+                onKeyDown={(e) => e.key === "Enter" && handleNameNext()}
                 className="flex-1 px-6 py-3.5 rounded-full text-coffee-900 font-medium text-lg outline-none"
               />
               <motion.button
-                onClick={handleSignIn}
+                onClick={handleNameNext}
                 disabled={!name.trim()}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
