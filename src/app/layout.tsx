@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Office is Coffee — Социальная кофе-платформа для команд",
@@ -15,7 +16,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

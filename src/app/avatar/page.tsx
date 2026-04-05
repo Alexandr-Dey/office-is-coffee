@@ -4,6 +4,8 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
+import { useRequireAuth, useAuth } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 /* ─── типы ─── */
 type Gender = "male" | "female";
@@ -507,6 +509,10 @@ function ColorPicker({
 
 /* ─── основная страница ─── */
 export default function AvatarPage() {
+  const { user, loading } = useRequireAuth();
+  const { hasAvatar } = useAuth();
+  const router = useRouter();
+
   const [config, setConfig] = useState<AvatarConfig>({
     gender: "male",
     skinColor: 0,
@@ -524,19 +530,19 @@ export default function AvatarPage() {
   const hairstyles = config.gender === "male" ? HAIRSTYLES_M : HAIRSTYLES_F;
 
   const handleSave = async () => {
-    if (!config.name.trim()) return;
+    if (!config.name.trim() || !user) return;
     setSaving(true);
     try {
-      const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      await setDoc(doc(db, "avatars", userId), {
+      await setDoc(doc(db, "avatars", user.uid), {
         ...config,
         createdAt: new Date().toISOString(),
-        userId,
+        userId: user.uid,
+        email: user.email,
       });
       /* Сохраняем в localStorage для экрана офиса */
       if (typeof window !== "undefined") {
         localStorage.setItem("oic_avatar", JSON.stringify(config));
-        localStorage.setItem("oic_userId", userId);
+        localStorage.setItem("oic_userId", user.uid);
       }
       setSaved(true);
     } catch (err) {
@@ -545,6 +551,14 @@ export default function AvatarPage() {
       setSaving(false);
     }
   };
+
+  if (loading || !user) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-cream-50 to-cream-100">
+        <p className="text-coffee-600 text-lg">Загрузка...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100">

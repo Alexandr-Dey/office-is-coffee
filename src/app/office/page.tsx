@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { rtdb } from "@/lib/firebase";
 import { ref, set, onValue, off, onDisconnect } from "firebase/database";
+import { useRequireAuth } from "@/lib/auth";
 
 /* ═══════════════════════════════════════════
    ТИПЫ
@@ -1008,23 +1009,14 @@ function drawNPC(
    ГЛАВНЫЙ КОМПОНЕНТ
    ═══════════════════════════════════════════ */
 export default function OfficePage() {
+  const { user, loading } = useRequireAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [floor, setFloor] = useState<Floor>(0);
   const [status, setStatus] = useState<Status>("working");
   const [myAvatar, setMyAvatar] = useState<AvatarConfig | null>(null);
   const [myAction, setMyAction] = useState<AvatarAction>("idle");
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
-  const [userId] = useState(() => {
-    if (typeof window !== "undefined") {
-      let id = localStorage.getItem("oic_userId");
-      if (!id) {
-        id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        localStorage.setItem("oic_userId", id);
-      }
-      return id;
-    }
-    return "anon";
-  });
+  const userId = user?.uid ?? "anon";
 
   const bobRef = useRef(0);
   const frameRef = useRef(0);
@@ -1295,10 +1287,10 @@ export default function OfficePage() {
     myXRef.current = Math.max(50, Math.min(canvasW - 50, clickX));
   };
 
-  if (!myAvatar) {
+  if (loading || !user || !myAvatar) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-cream-50">
-        <p className="text-coffee-600">{"\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."}</p>
+        <p className="text-coffee-600">Загрузка...</p>
       </div>
     );
   }

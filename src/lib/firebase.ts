@@ -1,7 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getDatabase } from "firebase/database";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getDatabase, type Database } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,15 +13,32 @@ const firebaseConfig = {
   databaseURL: `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com`,
 };
 
-let app: FirebaseApp;
-
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
+function getApp(): FirebaseApp {
+  if (getApps().length) return getApps()[0];
+  return initializeApp(firebaseConfig);
 }
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const rtdb = getDatabase(app);
-export default app;
+let _auth: Auth;
+let _db: Firestore;
+let _rtdb: Database;
+
+export function getFirebaseAuth(): Auth {
+  if (!_auth) _auth = getAuth(getApp());
+  return _auth;
+}
+
+export function getFirebaseDb(): Firestore {
+  if (!_db) _db = getFirestore(getApp());
+  return _db;
+}
+
+export function getFirebaseRtdb(): Database {
+  if (!_rtdb) _rtdb = getDatabase(getApp());
+  return _rtdb;
+}
+
+// Keep backward-compatible exports as getters so they only init when accessed client-side
+export const auth = typeof window !== "undefined" ? getFirebaseAuth() : (null as unknown as Auth);
+export const db = typeof window !== "undefined" ? getFirebaseDb() : (null as unknown as Firestore);
+export const rtdb = typeof window !== "undefined" ? getFirebaseRtdb() : (null as unknown as Database);
+export default typeof window !== "undefined" ? getApp() : (null as unknown as FirebaseApp);
