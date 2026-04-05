@@ -74,7 +74,7 @@ export default function OrderPage() {
         <div className="text-center">
           <p className="text-6xl mb-4">{"\u2615"}</p>
           <p className="text-coffee-500 text-lg mb-4">{"\u041A\u043E\u0440\u0437\u0438\u043D\u0430 \u043F\u0443\u0441\u0442\u0430"}</p>
-          <a href="/menu" className="text-red-600 font-semibold hover:underline">
+          <a href="/menu" className="text-coffee-600 font-semibold hover:underline">
             {"\u2190 \u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0432 \u043C\u0435\u043D\u044E"}
           </a>
         </div>
@@ -91,7 +91,7 @@ export default function OrderPage() {
             {"\u2190 \u041D\u0430\u0437\u0430\u0434 \u0432 \u043C\u0435\u043D\u044E"}
           </a>
           <span className="font-display text-xl font-bold text-coffee-900">
-            {"\u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435 \u0437\u0430\u043A\u0430\u0437\u0430"}
+            {"☕ \u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435"}
           </span>
           <div className="w-20" />
         </div>
@@ -117,7 +117,7 @@ export default function OrderPage() {
                       <span className="ml-1 text-coffee-400 text-xs">({item.size})</span>
                     )}
                     {item.qty > 1 && (
-                      <span className="ml-1 text-red-500 font-bold text-xs">{"\u00D7"}{item.qty}</span>
+                      <span className="ml-1 text-coffee-500 font-bold text-xs">{"\u00D7"}{item.qty}</span>
                     )}
                   </div>
                   <span className="font-bold text-coffee-800">{item.price * item.qty} {"\u20B8"}</span>
@@ -126,7 +126,7 @@ export default function OrderPage() {
             </div>
             <div className="border-t border-coffee-100 mt-3 pt-3 flex justify-between">
               <span className="font-bold text-coffee-900">{"\u0418\u0442\u043E\u0433\u043E"}</span>
-              <span className="font-bold text-red-600 text-lg">{total} {"\u20B8"}</span>
+              <span className="font-bold text-coffee-600 text-lg">{total} {"\u20B8"}</span>
             </div>
           </motion.div>
 
@@ -146,7 +146,7 @@ export default function OrderPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={"\u041A\u0430\u043A \u0442\u0435\u0431\u044F \u0437\u043E\u0432\u0443\u0442?"}
-                className="w-full px-4 py-3 rounded-xl border border-coffee-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none text-sm text-coffee-900 bg-cream-50"
+                className="w-full px-4 py-3 rounded-xl border border-coffee-200 focus:border-coffee-500 focus:ring-1 focus:ring-coffee-500 outline-none text-sm text-coffee-900 bg-cream-50"
               />
             </div>
             <div>
@@ -159,7 +159,7 @@ export default function OrderPage() {
                 onChange={(e) => setComment(e.target.value)}
                 placeholder={"\u0411\u0435\u0437 \u0441\u0430\u0445\u0430\u0440\u0430, \u0434\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0439 \u0441\u0438\u0440\u043E\u043F..."}
                 rows={2}
-                className="w-full px-4 py-3 rounded-xl border border-coffee-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none text-sm text-coffee-900 bg-cream-50 resize-none"
+                className="w-full px-4 py-3 rounded-xl border border-coffee-200 focus:border-coffee-500 focus:ring-1 focus:ring-coffee-500 outline-none text-sm text-coffee-900 bg-cream-50 resize-none"
               />
             </div>
           </motion.div>
@@ -176,7 +176,7 @@ export default function OrderPage() {
             className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all ${
               sending
                 ? "bg-coffee-300 text-white cursor-wait"
-                : "bg-gradient-to-r from-red-600 to-red-500 text-white hover:shadow-xl"
+                : "bg-gradient-to-r from-coffee-600 to-coffee-500 text-white hover:shadow-xl"
             }`}
           >
             {sending ? "\u041e\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0435\u043C..." : `\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0437\u0430\u043A\u0430\u0437 \u2022 ${total} \u20B8`}

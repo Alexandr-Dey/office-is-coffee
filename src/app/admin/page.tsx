@@ -100,7 +100,7 @@ function OrderCard({ order }: { order: Order }) {
       )}
 
       <div className="flex items-center justify-between border-t border-coffee-50 pt-3">
-        <span className="font-bold text-red-600">{order.total} {"\u20B8"}</span>
+        <span className="font-bold text-coffee-700">{order.total} {"\u20B8"}</span>
         <div className="flex gap-2">
           {order.status === "pending" && (
             <motion.button
@@ -188,7 +188,7 @@ export default function AdminPage() {
             <span className="font-display text-xl font-bold text-coffee-900">
               Love is Coffee
             </span>
-            <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full">
+            <span className="px-2 py-0.5 bg-coffee-100 text-coffee-700 text-xs font-bold rounded-full">
               {"\u0410\u0434\u043C\u0438\u043D"}
             </span>
           </div>
@@ -229,7 +229,7 @@ export default function AdminPage() {
                 onClick={() => setFilter(f.key)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   filter === f.key
-                    ? "bg-red-600 text-white shadow-md"
+                    ? "bg-coffee-600 text-white shadow-md"
                     : "bg-white text-coffee-700 border border-coffee-200 hover:border-red-300"
                 }`}
               >

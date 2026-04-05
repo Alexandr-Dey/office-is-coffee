@@ -322,7 +322,7 @@ export default function OrderWaitPage() {
         <div className="text-center">
           <p className="text-6xl mb-4">{"\uD83E\uDD14"}</p>
           <p className="text-coffee-700 text-lg font-medium mb-2">{"\u0417\u0430\u043A\u0430\u0437 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D"}</p>
-          <a href="/menu" className="text-red-600 font-semibold hover:underline">
+          <a href="/menu" className="text-coffee-700 font-semibold hover:underline">
             {"\u2190 \u0412 \u043C\u0435\u043D\u044E"}
           </a>
         </div>
@@ -406,14 +406,14 @@ export default function OrderWaitPage() {
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
                       active
-                        ? "bg-red-600 text-white"
+                        ? "bg-coffee-600 text-white"
                         : "bg-coffee-100 text-coffee-400"
                     }`}
                   >
                     {i + 1}
                   </div>
                   {i < 2 && (
-                    <div className={`w-8 h-0.5 ${active && i < current ? "bg-red-600" : "bg-coffee-100"}`} />
+                    <div className={`w-8 h-0.5 ${active && i < current ? "bg-coffee-600" : "bg-coffee-100"}`} />
                   )}
                 </div>
               );
@@ -438,7 +438,7 @@ export default function OrderWaitPage() {
             ))}
             <div className="border-t border-coffee-100 mt-2 pt-2 flex justify-between">
               <span className="font-bold text-coffee-900">{"\u0418\u0442\u043E\u0433\u043E"}</span>
-              <span className="font-bold text-red-600">{order.total} {"\u20B8"}</span>
+              <span className="font-bold text-coffee-700">{order.total} {"\u20B8"}</span>
             </div>
           </motion.div>
 
@@ -448,7 +448,7 @@ export default function OrderWaitPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="inline-block mt-6 px-8 py-3 bg-gradient-to-r from-red-600 to-red-500 text-white font-bold rounded-2xl shadow-lg"
+              className="inline-block mt-6 px-8 py-3 bg-gradient-to-r from-coffee-600 to-coffee-500 text-white font-bold rounded-2xl shadow-lg"
             >
               {"\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0432 \u043E\u0444\u0438\u0441"}
             </motion.a>
