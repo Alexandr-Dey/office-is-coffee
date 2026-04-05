@@ -64,7 +64,6 @@ export default function OrderPage() {
       sessionStorage.removeItem("oic_cart");
       window.location.href = `/order/${docRef.id}`;
     } catch (err) {
-      console.error("Order error:", err);
       setSending(false);
     }
   };

@@ -148,7 +148,7 @@ export default function Home() {
             </motion.div>
             <motion.h1
               variants={fadeUp}
-              className="font-display text-5xl md:text-7xl font-bold text-coffee-950 mb-6 text-balance"
+              className="font-display text-3xl sm:text-5xl md:text-7xl font-bold text-coffee-950 mb-6 text-balance"
             >
               {"\u0422\u0432\u043E\u0439 \u043E\u0444\u0438\u0441 \u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u043D\u0430 "}
               <span className="text-coffee-600">{"\u043A\u043E\u0444\u0435"}</span>
@@ -161,7 +161,7 @@ export default function Home() {
             </motion.p>
             <motion.div variants={fadeUp}>
               {step === "name" ? (
-                <div className="flex gap-3 justify-center items-center max-w-md mx-auto">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-md mx-auto">
                   <input
                     type="text"
                     placeholder={"\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0438\u043C\u044F"}
@@ -181,27 +181,37 @@ export default function Home() {
                   </motion.button>
                 </div>
               ) : (
-                <div className="max-w-md mx-auto">
-                  <p className="text-coffee-600 mb-4">{"\u041F\u0440\u0438\u0432\u0435\u0442, "}<span className="font-bold text-coffee-900">{name}</span>{"! \u041A\u0442\u043E \u0442\u044B?"}</p>
-                  <div className="flex gap-4 justify-center">
-                    <motion.button
+                <div className="max-w-lg mx-auto">
+                  <p className="text-coffee-600 mb-6">{"\u041F\u0440\u0438\u0432\u0435\u0442, "}<span className="font-bold text-coffee-900">{name}</span>{"! \u041A\u0442\u043E \u0442\u044B?"}</p>
+                  <div className="flex gap-6 justify-center">
+                    <motion.div
                       onClick={() => handleRole("client")}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-coffee-600 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-700 transition-colors shadow-lg shadow-coffee-600/25"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
+                      whileHover={{ scale: 1.05, y: -4 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="bg-coffee-600 text-white rounded-2xl p-8 min-w-[180px] cursor-pointer hover:shadow-lg transition-shadow"
                     >
-                      {"\u2615 \u041A\u043B\u0438\u0435\u043D\u0442"}
-                    </motion.button>
-                    <motion.button
+                      <span className="text-5xl block mb-3">{"\u2615"}</span>
+                      <h3 className="font-display text-xl font-bold mb-1">{"\u042F \u043A\u043B\u0438\u0435\u043D\u0442"}</h3>
+                      <p className="text-coffee-100 text-sm">{"\u0417\u0430\u043A\u0430\u0437\u044B\u0432\u0430\u044E \u043A\u043E\u0444\u0435 \u0432 \u043E\u0444\u0438\u0441\u0435"}</p>
+                    </motion.div>
+                    <motion.div
                       onClick={() => handleRole("barista")}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-coffee-800 text-white px-8 py-3.5 rounded-full font-semibold text-lg hover:bg-coffee-900 transition-colors shadow-lg shadow-coffee-800/25"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25, duration: 0.4, ease: "easeOut" }}
+                      whileHover={{ scale: 1.05, y: -4 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="bg-coffee-800 text-white rounded-2xl p-8 min-w-[180px] cursor-pointer hover:shadow-lg transition-shadow"
                     >
-                      {"\u{1F9D1}\u200D\u{1F373} \u0411\u0430\u0440\u0438\u0441\u0442\u0430"}
-                    </motion.button>
+                      <span className="text-5xl block mb-3">{"\u{1F9D1}\u200D\u{1F373}"}</span>
+                      <h3 className="font-display text-xl font-bold mb-1">{"\u042F \u0431\u0430\u0440\u0438\u0441\u0442\u0430"}</h3>
+                      <p className="text-coffee-200 text-sm">{"\u0413\u043E\u0442\u043E\u0432\u043B\u044E \u043A\u043E\u0444\u0435 \u0434\u043B\u044F \u043A\u043E\u043C\u0430\u043D\u0434\u044B"}</p>
+                    </motion.div>
                   </div>
-                  <button onClick={() => setStep("name")} className="text-coffee-400 text-sm mt-3 hover:text-coffee-600">
+                  <button onClick={() => setStep("name")} className="text-coffee-400 text-sm mt-5 hover:text-coffee-600 transition-colors">
                     {"\u2190 \u041D\u0430\u0437\u0430\u0434"}
                   </button>
                 </div>

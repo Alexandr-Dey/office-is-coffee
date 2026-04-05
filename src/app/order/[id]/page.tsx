@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import { useToast } from "@/components/Toast";
 
 /* ═══════════════════════════════════════════
    ТИПЫ
@@ -285,6 +286,8 @@ export default function OrderWaitPage() {
   const orderId = params.id as string;
   const [order, setOrder] = useState<OrderData | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const prevStatus = useRef<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!orderId) return;
@@ -295,15 +298,23 @@ export default function OrderWaitPage() {
           setNotFound(true);
           return;
         }
-        setOrder(snap.data() as OrderData);
+        const data = snap.data() as OrderData;
+        if (prevStatus.current && prevStatus.current !== data.status) {
+          if (data.status === "accepted") {
+            showToast("\u2615 \u0412\u0430\u0448 \u043A\u043E\u0444\u0435 \u0433\u043E\u0442\u043E\u0432\u0438\u0442\u0441\u044F!", "info");
+          } else if (data.status === "ready") {
+            showToast("\u2705 \u0412\u0430\u0448 \u043A\u043E\u0444\u0435 \u0433\u043E\u0442\u043E\u0432! \u0417\u0430\u0431\u0435\u0440\u0438\u0442\u0435 \u0443 \u0441\u0442\u043E\u0439\u043A\u0438", "success");
+          }
+        }
+        prevStatus.current = data.status;
+        setOrder(data);
       },
-      (err) => {
-        console.error("Firestore listen error:", err);
+      () => {
         setNotFound(true);
       }
     );
     return () => unsub();
-  }, [orderId]);
+  }, [orderId, showToast]);
 
   if (notFound) {
     return (
@@ -321,12 +332,23 @@ export default function OrderWaitPage() {
 
   if (!order) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-          className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full"
-        />
+      <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100 pt-20 px-4">
+        <div className="max-w-lg mx-auto space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-coffee-100 animate-pulse">
+            <div className="h-6 bg-coffee-100 rounded-lg w-3/4 mb-3" />
+            <div className="h-4 bg-coffee-50 rounded-lg w-1/2 mb-6" />
+            <div className="h-40 bg-coffee-50 rounded-xl mb-4" />
+            <div className="flex gap-2">
+              <div className="h-8 bg-coffee-100 rounded-full flex-1" />
+              <div className="h-8 bg-coffee-100 rounded-full flex-1" />
+              <div className="h-8 bg-coffee-100 rounded-full flex-1" />
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-coffee-100 animate-pulse">
+            <div className="h-4 bg-coffee-50 rounded-lg w-2/3 mb-2" />
+            <div className="h-4 bg-coffee-50 rounded-lg w-1/2" />
+          </div>
+        </div>
       </main>
     );
   }

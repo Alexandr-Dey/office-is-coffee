@@ -242,69 +242,164 @@ function drawHair(
       ctx.restore();
       break;
     }
-    case 1: { /* Wavy */
+    case 1: { /* Wavy — clipped to head with organic bumps */
+      ctx.save();
       ctx.beginPath();
-      ctx.ellipse(cx, ht + r * 0.44, r * 0.98, r * 0.58, 0, Math.PI, 0, true);
+      ctx.ellipse(cx, cy, r, r * 1.06, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      /* upper fill covering top of head */
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(cx - r - 2, cy + 12);
+      ctx.lineTo(cx - r - 2, cy - r * 1.2);
+      ctx.lineTo(cx + r + 2, cy - r * 1.2);
+      ctx.lineTo(cx + r + 2, cy + 12);
+      /* wavy hairline */
+      ctx.quadraticCurveTo(cx + r * 0.5, cy + 2, cx + r * 0.2, cy - 6);
+      ctx.quadraticCurveTo(cx, cy - 16, cx - r * 0.2, cy - 6);
+      ctx.quadraticCurveTo(cx - r * 0.5, cy + 2, cx - r - 2, cy + 12);
+      ctx.closePath();
       ctx.fill();
-      /* side waves */
+
+      /* wavy bumps along both sides */
       for (const s of [-1, 1]) {
+        ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.ellipse(cx + s * (r * 0.7), cy + 4, 14, 22, s * 0.2, 0, Math.PI * 2);
+        ctx.ellipse(cx + s * (r * 0.75), cy + 6, 16, 20, s * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + s * (r * 0.55), cy - 14, 14, 16, s * 0.15, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.fillStyle = hi;
-      ctx.beginPath();
-      ctx.ellipse(cx + 6, ht + r * 0.18, r * 0.28, r * 0.14, 0.2, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    }
-    case 2: { /* Curly */
-      /* base cap */
-      ctx.beginPath();
-      ctx.ellipse(cx, ht + r * 0.42, r * 0.96, r * 0.54, 0, Math.PI, 0, true);
-      ctx.fill();
-      /* curls along top and sides */
-      for (let a = -2.9; a <= 0.15; a += 0.36) {
-        const x2 = cx + Math.cos(a) * r * 0.84;
-        const y2 = cy + Math.sin(a) * r * 0.96;
-        ctx.fillStyle = color;
-        ctx.beginPath(); ctx.arc(x2, y2, 12, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = hi;
-        ctx.beginPath(); ctx.arc(x2 + 2, y2 - 3, 5, 0, Math.PI * 2); ctx.fill();
-      }
-      break;
-    }
-    case 3: { /* Long - symmetric both sides */
-      /* top cap */
-      ctx.beginPath();
-      ctx.ellipse(cx, ht + r * 0.48, r * 1.04, r * 0.64, 0, Math.PI, 0, true);
-      ctx.fill();
-      /* left strand */
-      rrect(ctx, cx - r - 4, cy - 10, 18, 62, 9); ctx.fill();
-      /* right strand */
-      rrect(ctx, cx + r - 14, cy - 10, 18, 62, 9); ctx.fill();
+
       /* highlight */
       ctx.fillStyle = hi;
       ctx.beginPath();
-      ctx.ellipse(cx - 10, ht + r * 0.2, r * 0.28, r * 0.13, -0.15, 0, Math.PI * 2);
+      ctx.ellipse(cx + 6, cy - r * 0.55, r * 0.26, r * 0.1, 0.2, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.restore();
       break;
     }
-    case 4: { /* Ponytail */
+    case 2: { /* Curly — packed small circles clipped to head */
+      ctx.save();
       ctx.beginPath();
-      ctx.ellipse(cx, ht + r * 0.42, r * 0.94, r * 0.54, 0, Math.PI, 0, true);
-      ctx.fill();
-      /* band */
-      ctx.fillStyle = "#D4573B";
-      ctx.beginPath(); ctx.ellipse(cx, ht - 1, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
-      /* tail */
-      ctx.fillStyle = color;
-      ctx.beginPath(); ctx.ellipse(cx, ht - 22, 11, 22, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = hi;
-      ctx.beginPath(); ctx.ellipse(cx - 2, ht - 28, 4, 8, -0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.ellipse(cx, cy, r, r * 1.06, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      /* pack small curly circles along top and sides */
+      const curlR = 8;
+      for (let a = -Math.PI; a <= 0; a += 0.28) {
+        for (let layer = 0; layer < 3; layer++) {
+          const rad = r * (0.7 + layer * 0.18);
+          const x2 = cx + Math.cos(a) * rad;
+          const y2 = cy + Math.sin(a) * rad * 1.06;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(x2, y2, curlR, 0, Math.PI * 2);
+          ctx.fill();
+          /* tiny highlight per curl */
+          ctx.fillStyle = hi;
+          ctx.beginPath();
+          ctx.arc(x2 + 2, y2 - 2, curlR * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      /* fill along sides going slightly below midline */
+      for (const s of [-1, 1]) {
+        for (let dy = -10; dy <= 14; dy += 10) {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(cx + s * r * 0.92, cy + dy, curlR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
       break;
     }
-    case 5: { /* Bald - nothing */
+    case 3: { /* Long — cap clipped to head + side strands */
+      /* clipped cap portion */
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r, r * 1.06, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(cx - r - 2, cy + 6);
+      ctx.lineTo(cx - r - 2, cy - r * 1.2);
+      ctx.lineTo(cx + r + 2, cy - r * 1.2);
+      ctx.lineTo(cx + r + 2, cy + 6);
+      /* smooth hairline */
+      ctx.quadraticCurveTo(cx + r * 0.6, cy - 8, cx, cy - 14);
+      ctx.quadraticCurveTo(cx - r * 0.6, cy - 8, cx - r - 2, cy + 6);
+      ctx.closePath();
+      ctx.fill();
+
+      /* highlight */
+      ctx.fillStyle = hi;
+      ctx.beginPath();
+      ctx.ellipse(cx - 10, cy - r * 0.6, r * 0.28, r * 0.13, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      /* side strands extending to shoulders (outside clip) */
+      ctx.fillStyle = color;
+      /* left strand */
+      rrect(ctx, cx - r - 2, cy - 6, 16, 56, 8); ctx.fill();
+      /* right strand */
+      rrect(ctx, cx + r - 14, cy - 6, 16, 56, 8); ctx.fill();
+      break;
+    }
+    case 4: { /* Ponytail — smooth front clipped + ponytail behind */
+      /* clipped front hair */
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r, r * 1.06, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(cx - r - 2, cy + 4);
+      ctx.lineTo(cx - r - 2, cy - r * 1.2);
+      ctx.lineTo(cx + r + 2, cy - r * 1.2);
+      ctx.lineTo(cx + r + 2, cy + 4);
+      /* smooth hairline pulled back */
+      ctx.quadraticCurveTo(cx + r * 0.5, cy - 10, cx, cy - 18);
+      ctx.quadraticCurveTo(cx - r * 0.5, cy - 10, cx - r - 2, cy + 4);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+
+      /* ponytail behind/above the head */
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(cx, ht - 16, 12, 24, 0, 0, Math.PI * 2);
+      ctx.fill();
+      /* hair band */
+      ctx.fillStyle = "#D4573B";
+      ctx.beginPath();
+      ctx.ellipse(cx, ht - 2, 9, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      /* ponytail highlight */
+      ctx.fillStyle = hi;
+      ctx.beginPath();
+      ctx.ellipse(cx - 2, ht - 24, 4, 9, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 5: { /* Bald — subtle specular highlight */
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.ellipse(cx - 6, cy - r * 0.7, r * 0.32, r * 0.16, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
       break;
     }
   }
@@ -614,7 +709,6 @@ export default function AvatarPage() {
       localStorage.setItem("oic_userId", user.uid);
       router.push("/office");
     } catch (err) {
-      console.error("Save error:", err);
       setError("\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.");
       setSaving(false);
     }
@@ -654,7 +748,7 @@ export default function AvatarPage() {
           transition={{ duration: 0.6 }}
           className="max-w-4xl mx-auto"
         >
-          <h1 className="font-display text-3xl md:text-5xl font-bold text-coffee-950 text-center mb-2">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-coffee-950 text-center mb-2">
             {"\u0421\u043E\u0437\u0434\u0430\u0439 \u0441\u0432\u043E\u0435\u0433\u043E "}
             <span className="text-coffee-600">{"\u043A\u043E\u0444\u0435-\u0430\u0432\u0430\u0442\u0430\u0440\u0430"}</span>
           </h1>

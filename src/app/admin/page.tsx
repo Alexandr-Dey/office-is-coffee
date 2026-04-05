@@ -56,7 +56,6 @@ function OrderCard({ order }: { order: Order }) {
     try {
       await updateDoc(doc(getFirebaseDb(), "orders", order.id), { status: newStatus });
     } catch (err) {
-      console.error("Update error:", err);
     }
     setUpdating(false);
   };
