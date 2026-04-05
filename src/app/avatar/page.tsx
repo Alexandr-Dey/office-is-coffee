@@ -211,15 +211,37 @@ function drawHair(
   const hi = lighten(color, 30);
 
   switch (style) {
-    case 0: { /* Short */
+    case 0: { /* Short — hair clipped to head shape */
+      ctx.save();
+      /* clip to head ellipse so hair follows the skull */
       ctx.beginPath();
-      ctx.ellipse(cx, ht + r * 0.38, r * 0.92, r * 0.50, 0, Math.PI, 0, true);
+      ctx.ellipse(cx, cy, r, r * 1.06, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      /* left sideburn area */
+      ctx.moveTo(cx - r - 2, cy + 8);
+      /* up the left side */
+      ctx.lineTo(cx - r - 2, cy - r * 1.2);
+      /* across the top */
+      ctx.lineTo(cx + r + 2, cy - r * 1.2);
+      /* down the right side */
+      ctx.lineTo(cx + r + 2, cy + 8);
+      /* curved natural hairline across forehead */
+      ctx.quadraticCurveTo(cx + r * 0.65, cy - 4, cx + r * 0.25, cy - 10);
+      ctx.quadraticCurveTo(cx, cy - 14, cx - r * 0.25, cy - 10);
+      ctx.quadraticCurveTo(cx - r * 0.65, cy - 4, cx - r - 2, cy + 8);
+      ctx.closePath();
       ctx.fill();
-      /* soft texture */
+
+      /* highlight streak */
       ctx.fillStyle = hi;
       ctx.beginPath();
-      ctx.ellipse(cx - 8, ht + r * 0.14, r * 0.35, r * 0.18, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(cx - 8, cy - r * 0.6, r * 0.22, r * 0.09, -0.2, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.restore();
       break;
     }
     case 1: { /* Wavy */
