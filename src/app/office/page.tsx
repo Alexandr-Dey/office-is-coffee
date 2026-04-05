@@ -1021,7 +1021,8 @@ export default function OfficePage() {
   const bobRef = useRef(0);
   const frameRef = useRef(0);
   const actionTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const myXRef = useRef(100);
+  const myXRef = useRef(100 + Math.random() * 600);
+  const myTargetX = useRef(100 + Math.random() * 600);
   const npc1ActionRef = useRef<NPCAction>("idle");
   const npc2ActionRef = useRef<NPCAction>("idle");
   const canvasW = 880;
@@ -1103,15 +1104,20 @@ export default function OfficePage() {
     return () => off(presenceRef, "value", unsub as never);
   }, [userId]);
 
-  /* Рандомные анимации каждые 5-10 сек — зависят от этажа */
+  /* Автономное поведение: гуляет + делает действия */
   useEffect(() => {
     const scheduleAction = () => {
-      const delay = 5000 + Math.random() * 5000;
+      const delay = 3000 + Math.random() * 4000;
       actionTimerRef.current = setTimeout(() => {
-        const available = floorRef.current === 1 ? COFFEE_ACTIONS : ACTIONS;
-        const randomAction = available[Math.floor(Math.random() * available.length)];
-        setMyAction(randomAction);
-        setTimeout(() => setMyAction("idle"), 2500 + Math.random() * 1500);
+        /* 60% шанс пойти куда-то, 40% — сделать действие на месте */
+        if (Math.random() < 0.6) {
+          myTargetX.current = 80 + Math.random() * (canvasW - 160);
+        } else {
+          const available = floorRef.current === 1 ? COFFEE_ACTIONS : ACTIONS;
+          const randomAction = available[Math.floor(Math.random() * available.length)];
+          setMyAction(randomAction);
+          setTimeout(() => setMyAction("idle"), 2000 + Math.random() * 1500);
+        }
         scheduleAction();
       }, delay);
     };
@@ -1156,6 +1162,12 @@ export default function OfficePage() {
     bobRef.current += 0.03;
     const bob = Math.sin(bobRef.current) * 2.5;
 
+    /* плавное движение к целевой позиции */
+    const dx = myTargetX.current - myXRef.current;
+    if (Math.abs(dx) > 1) {
+      myXRef.current += dx * 0.04;
+    }
+
     ctx.clearRect(0, 0, canvasW, canvasH);
 
     if (floor === 0) {
@@ -1187,11 +1199,13 @@ export default function OfficePage() {
       }
     }
 
-    /* онлайн-пользователи */
+    /* онлайн-пользователи — лёгкое блуждание */
     onlineUsers
       .filter((u) => u.floor === floor)
       .forEach((u, i) => {
-        const ux = 120 + (i * 160 + (u.x % 100));
+        const baseX = 120 + (i * 160 + (u.x % 100));
+        const wander = Math.sin(bobRef.current * 0.5 + i * 2.1) * 30;
+        const ux = Math.max(60, Math.min(canvasW - 60, baseX + wander));
         const uy = canvasH - 120;
         drawMiniAvatar(ctx, u.avatar, ux, uy, 0.9, u.action, bob * 0.6);
 
@@ -1279,12 +1293,9 @@ export default function OfficePage() {
     if (diff < -50) setFloor(0);
   };
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const scaleX = canvasW / rect.width;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    myXRef.current = Math.max(50, Math.min(canvasW - 50, clickX));
+  const handleCanvasClick = () => {
+    /* тап по canvas — аватар идёт в случайное место */
+    myTargetX.current = 80 + Math.random() * (canvasW - 160);
   };
 
   if (loading || !user || !myAvatar) {
