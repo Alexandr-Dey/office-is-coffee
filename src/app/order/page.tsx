@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 interface CartItem {
@@ -41,7 +41,7 @@ export default function OrderPage() {
     try {
       const avatarSkin = parseInt(localStorage.getItem("oic_skin") ?? "0", 10);
       const avatarCloth = parseInt(localStorage.getItem("oic_cloth") ?? "0", 10);
-      const docRef = await addDoc(collection(db, "orders"), {
+      const docRef = await addDoc(collection(getFirebaseDb(), "orders"), {
         name: name || "\u0413\u043E\u0441\u0442\u044C",
         items: cart.map((i) => ({ name: i.name, size: i.size, price: i.price, qty: i.qty })),
         comment: comment.trim(),

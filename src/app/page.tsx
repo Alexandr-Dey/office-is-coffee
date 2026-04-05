@@ -63,6 +63,7 @@ export default function Home() {
       await signInWithGoogle();
     } catch (err) {
       console.error("Ошибка входа:", err);
+    } finally {
       setSigningIn(false);
     }
   };

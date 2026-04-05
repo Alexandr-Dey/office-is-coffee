@@ -10,12 +10,14 @@ import {
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   type User,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
 interface AuthContextValue {
@@ -44,11 +46,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
+
+    // Проверяем результат redirect-авторизации (для мобильных)
+    getRedirectResult(auth).catch(() => {});
+
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const snap = await getDoc(doc(db, "avatars", u.uid));
-        setHasAvatar(snap.exists());
+        try {
+          const db = getFirebaseDb();
+          const snap = await getDoc(doc(db, "avatars", u.uid));
+          setHasAvatar(snap.exists());
+        } catch (err) {
+          console.error("Ошибка проверки аватара:", err);
+          setHasAvatar(false);
+        }
       } else {
         setHasAvatar(null);
       }
@@ -58,11 +71,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
+    const auth = getFirebaseAuth();
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      // Popup заблокирован или закрыт — пробуем redirect
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/cancelled-popup-request"
+      ) {
+        await signInWithRedirect(auth, provider);
+      } else {
+        throw err;
+      }
+    }
   };
 
   const signOut = async () => {
+    const auth = getFirebaseAuth();
     await firebaseSignOut(auth);
     setHasAvatar(null);
   };

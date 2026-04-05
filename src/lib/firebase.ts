@@ -1,7 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
-import { getDatabase, type Database } from "firebase/database";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -18,27 +18,15 @@ function getApp(): FirebaseApp {
   return initializeApp(firebaseConfig);
 }
 
-let _auth: Auth;
-let _db: Firestore;
-let _rtdb: Database;
-
-export function getFirebaseAuth(): Auth {
-  if (!_auth) _auth = getAuth(getApp());
-  return _auth;
+// Lazy getters — safe for both SSR and client
+export function getFirebaseAuth() {
+  return getAuth(getApp());
 }
 
-export function getFirebaseDb(): Firestore {
-  if (!_db) _db = getFirestore(getApp());
-  return _db;
+export function getFirebaseDb() {
+  return getFirestore(getApp());
 }
 
-export function getFirebaseRtdb(): Database {
-  if (!_rtdb) _rtdb = getDatabase(getApp());
-  return _rtdb;
+export function getFirebaseRtdb() {
+  return getDatabase(getApp());
 }
-
-// Keep backward-compatible exports as getters so they only init when accessed client-side
-export const auth = typeof window !== "undefined" ? getFirebaseAuth() : (null as unknown as Auth);
-export const db = typeof window !== "undefined" ? getFirebaseDb() : (null as unknown as Firestore);
-export const rtdb = typeof window !== "undefined" ? getFirebaseRtdb() : (null as unknown as Database);
-export default typeof window !== "undefined" ? getApp() : (null as unknown as FirebaseApp);

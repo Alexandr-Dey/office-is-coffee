@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRequireAuth, useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
@@ -533,7 +533,7 @@ export default function AvatarPage() {
     if (!config.name.trim() || !user) return;
     setSaving(true);
     try {
-      await setDoc(doc(db, "avatars", user.uid), {
+      await setDoc(doc(getFirebaseDb(), "avatars", user.uid), {
         ...config,
         createdAt: new Date().toISOString(),
         userId: user.uid,

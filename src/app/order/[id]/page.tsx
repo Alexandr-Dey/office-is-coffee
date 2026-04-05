@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 
 /* ═══════════════════════════════════════════
@@ -289,7 +289,7 @@ export default function OrderWaitPage() {
   useEffect(() => {
     if (!orderId) return;
     const unsub = onSnapshot(
-      doc(db, "orders", orderId),
+      doc(getFirebaseDb(), "orders", orderId),
       (snap) => {
         if (!snap.exists()) {
           setNotFound(true);

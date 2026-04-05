@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { rtdb } from "@/lib/firebase";
+import { getFirebaseRtdb } from "@/lib/firebase";
 import { ref, set, onValue, off, onDisconnect } from "firebase/database";
 import { useRequireAuth } from "@/lib/auth";
 
@@ -1061,7 +1061,7 @@ export default function OfficePage() {
 
   useEffect(() => {
     if (!myAvatar || userId === "anon") return;
-    const userRef = ref(rtdb, `presence/${userId}`);
+    const userRef = ref(getFirebaseRtdb(), `presence/${userId}`);
     const userData: OnlineUser = {
       id: userId,
       avatar: myAvatar,
@@ -1077,7 +1077,7 @@ export default function OfficePage() {
 
   useEffect(() => {
     if (!myAvatar || userId === "anon") return;
-    const userRef = ref(rtdb, `presence/${userId}`);
+    const userRef = ref(getFirebaseRtdb(), `presence/${userId}`);
     set(userRef, {
       id: userId,
       avatar: myAvatar,
@@ -1090,7 +1090,7 @@ export default function OfficePage() {
   }, [status, floor, myAction, myAvatar, userId]);
 
   useEffect(() => {
-    const presenceRef = ref(rtdb, "presence");
+    const presenceRef = ref(getFirebaseRtdb(), "presence");
     const unsub = onValue(presenceRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) {

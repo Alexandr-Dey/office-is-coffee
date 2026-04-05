@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebase";
 import {
   collection,
   query,
@@ -53,7 +53,7 @@ function OrderCard({ order }: { order: Order }) {
   const changeStatus = async (newStatus: "accepted" | "ready") => {
     setUpdating(true);
     try {
-      await updateDoc(doc(db, "orders", order.id), { status: newStatus });
+      await updateDoc(doc(getFirebaseDb(), "orders", order.id), { status: newStatus });
     } catch (err) {
       console.error("Update error:", err);
     }
@@ -149,7 +149,7 @@ export default function AdminPage() {
 
   /* слушаем Firestore в реальном времени */
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    const q = query(collection(getFirebaseDb(), "orders"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       const list: Order[] = snap.docs.map((d) => ({
         id: d.id,
