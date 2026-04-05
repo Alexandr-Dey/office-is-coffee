@@ -12,7 +12,7 @@ type Gender = "male" | "female";
 type Mood = "happy" | "cool" | "excited" | "sleepy" | "angry";
 type Status = "working" | "break" | "away";
 type Floor = 0 | 1;
-type AvatarAction = "idle" | "coffee" | "monitor" | "phone" | "yawn";
+type AvatarAction = "idle" | "coffee" | "monitor" | "phone" | "yawn" | "reach";
 
 interface AvatarConfig {
   gender: Gender;
@@ -51,6 +51,7 @@ const STATUS_COLORS: Record<Status, string> = {
 };
 
 const ACTIONS: AvatarAction[] = ["coffee", "monitor", "phone", "yawn"];
+const COFFEE_ACTIONS: AvatarAction[] = ["coffee", "phone", "yawn", "reach", "reach"];
 
 /* ═══════════════════════════════════════════
    МИНИ-РИСОВАЛКА АВАТАРА (КРУПНАЯ)
@@ -100,16 +101,13 @@ function drawMiniAvatar(
   /* руки */
   ctx.fillStyle = cloth;
   if (action === "coffee") {
-    /* правая рука держит кружку */
     ctx.save();
     ctx.translate(20 * s, 18 * s);
     ctx.rotate(0.3);
     ctx.fillRect(-4 * s, -2 * s, 8 * s, 18 * s);
     ctx.restore();
-    /* левая рука опущена */
     ctx.fillRect(-24 * s, 16 * s, 8 * s, 18 * s);
   } else if (action === "phone") {
-    /* левая рука к уху */
     ctx.save();
     ctx.translate(-20 * s, 8 * s);
     ctx.rotate(-0.4);
@@ -117,9 +115,20 @@ function drawMiniAvatar(
     ctx.restore();
     ctx.fillRect(16 * s, 16 * s, 8 * s, 18 * s);
   } else if (action === "monitor") {
-    /* обе руки вперёд */
     ctx.fillRect(-24 * s, 14 * s, 8 * s, 16 * s);
     ctx.fillRect(16 * s, 14 * s, 8 * s, 16 * s);
+  } else if (action === "reach") {
+    /* обе руки тянутся вперёд-вниз к стойке */
+    ctx.save();
+    ctx.translate(18 * s, 22 * s);
+    ctx.rotate(0.5);
+    ctx.fillRect(-4 * s, -2 * s, 8 * s, 20 * s);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(-18 * s, 22 * s);
+    ctx.rotate(-0.5);
+    ctx.fillRect(-4 * s, -2 * s, 8 * s, 20 * s);
+    ctx.restore();
   } else {
     /* idle / yawn */
     ctx.fillRect(-24 * s, 16 * s, 8 * s, 18 * s);
@@ -140,6 +149,13 @@ function drawMiniAvatar(
     ctx.fill();
     ctx.beginPath();
     ctx.arc(20 * s, 34 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (action === "reach") {
+    ctx.beginPath();
+    ctx.arc(30 * s, 40 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-30 * s, 40 * s, 4 * s, 0, Math.PI * 2);
     ctx.fill();
   } else {
     ctx.beginPath();
@@ -282,7 +298,6 @@ function drawMiniAvatar(
     ctx.fillStyle = "#4488CC";
     ctx.fillRect(px + 1 * s, py + 2 * s, 6 * s, 10 * s);
   } else if (action === "monitor") {
-    /* рука вперёд к монитору */
     ctx.fillStyle = skin;
     ctx.beginPath();
     ctx.arc(22 * s, 20 * s, 5 * s, 0, Math.PI * 2);
@@ -310,7 +325,6 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
   /* пол паркет */
   ctx.fillStyle = "#D4B896";
   ctx.fillRect(0, h - 70, w, 70);
-  /* линии паркета */
   ctx.strokeStyle = "#C4A882";
   ctx.lineWidth = 0.5;
   for (let i = 0; i < w; i += 60) {
@@ -329,14 +343,12 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
   /* потолочные лампы */
   for (let i = 0; i < 4; i++) {
     const lx = 120 + i * 200;
-    /* провод */
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(lx, 0);
     ctx.lineTo(lx, 18);
     ctx.stroke();
-    /* плафон */
     ctx.fillStyle = "#F5E6C8";
     ctx.beginPath();
     ctx.moveTo(lx - 20, 18);
@@ -348,7 +360,6 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.strokeStyle = "#D4A33B";
     ctx.lineWidth = 1;
     ctx.stroke();
-    /* свет */
     ctx.fillStyle = "rgba(255,240,200,0.15)";
     ctx.beginPath();
     ctx.moveTo(lx - 14, 34);
@@ -362,23 +373,19 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
   /* окна */
   for (let i = 0; i < 3; i++) {
     const wx = 100 + i * 280;
-    /* рама */
     ctx.fillStyle = "#C8E0F0";
     ctx.fillRect(wx, 30, 90, 110);
-    /* небо в окне */
     const skyGrad = ctx.createLinearGradient(wx, 30, wx, 140);
     skyGrad.addColorStop(0, "#87CEEB");
     skyGrad.addColorStop(1, "#B8E0F8");
     ctx.fillStyle = skyGrad;
     ctx.fillRect(wx + 3, 33, 84, 104);
-    /* облачко */
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.beginPath();
     ctx.arc(wx + 30, 60, 12, 0, Math.PI * 2);
     ctx.arc(wx + 45, 55, 16, 0, Math.PI * 2);
     ctx.arc(wx + 60, 60, 12, 0, Math.PI * 2);
     ctx.fill();
-    /* рама */
     ctx.strokeStyle = "#8B7355";
     ctx.lineWidth = 3;
     ctx.strokeRect(wx, 30, 90, 110);
@@ -388,7 +395,6 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.moveTo(wx, 85);
     ctx.lineTo(wx + 90, 85);
     ctx.stroke();
-    /* подоконник */
     ctx.fillStyle = "#8B7355";
     ctx.fillRect(wx - 5, 138, 100, 6);
   }
@@ -399,13 +405,10 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     { x: 740, y: 55, color: "#2ECC71" },
   ];
   for (const p of paintings) {
-    /* рама */
     ctx.fillStyle = "#8B5E3C";
     ctx.fillRect(p.x - 2, p.y - 2, 44, 54);
-    /* холст */
     ctx.fillStyle = "#FFF8E8";
     ctx.fillRect(p.x, p.y, 40, 50);
-    /* абстрактное искусство */
     ctx.fillStyle = p.color;
     ctx.beginPath();
     ctx.arc(p.x + 20, p.y + 25, 14, 0, Math.PI * 2);
@@ -419,15 +422,12 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
   /* кофемашина в углу */
   const cmx = w - 60;
   const cmy = h - 78;
-  /* корпус */
   ctx.fillStyle = "#444";
   ctx.fillRect(cmx, cmy - 60, 45, 60);
   ctx.fillStyle = "#333";
   ctx.fillRect(cmx + 2, cmy - 55, 41, 30);
-  /* экран */
   ctx.fillStyle = "#4488CC";
   ctx.fillRect(cmx + 8, cmy - 50, 20, 14);
-  /* кнопки */
   ctx.fillStyle = "#e74c3c";
   ctx.beginPath();
   ctx.arc(cmx + 35, cmy - 42, 3, 0, Math.PI * 2);
@@ -436,18 +436,14 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.beginPath();
   ctx.arc(cmx + 35, cmy - 34, 3, 0, Math.PI * 2);
   ctx.fill();
-  /* носик */
   ctx.fillStyle = "#555";
   ctx.fillRect(cmx + 15, cmy - 24, 12, 8);
-  /* поддон */
   ctx.fillStyle = "#666";
   ctx.fillRect(cmx + 5, cmy - 16, 35, 4);
-  /* стаканчик */
   ctx.fillStyle = "#C0392B";
   ctx.fillRect(cmx + 17, cmy - 16, 12, 14);
   ctx.fillStyle = "#FFF";
   ctx.fillRect(cmx + 17, cmy - 16, 12, 2);
-  /* надпись */
   ctx.fillStyle = "#999";
   ctx.font = "8px sans-serif";
   ctx.textAlign = "center";
@@ -459,36 +455,29 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
     const dx = 60 + i * 190;
     const dy = h - 70;
 
-    /* стол */
     ctx.fillStyle = "#C4A882";
     ctx.fillRect(dx, dy - 48, 130, 10);
-    /* ножки */
     ctx.fillStyle = "#8B7355";
     ctx.fillRect(dx + 5, dy - 38, 6, 38);
     ctx.fillRect(dx + 119, dy - 38, 6, 38);
 
-    /* монитор */
     ctx.fillStyle = "#2A2A2A";
     ctx.fillRect(dx + 38, dy - 85, 54, 35);
     ctx.fillStyle = "#4488CC";
     ctx.fillRect(dx + 40, dy - 83, 50, 31);
-    /* подставка */
     ctx.fillStyle = "#2A2A2A";
     ctx.fillRect(dx + 60, dy - 50, 10, 5);
     ctx.fillRect(dx + 52, dy - 46, 26, 3);
 
-    /* клавиатура */
     ctx.fillStyle = "#555";
     ctx.beginPath();
     ctx.roundRect(dx + 32, dy - 44, 46, 8, 2);
     ctx.fill();
-    /* мышка */
     ctx.fillStyle = "#666";
     ctx.beginPath();
     ctx.ellipse(dx + 95, dy - 42, 6, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    /* стул */
     ctx.fillStyle = "#5B3A1E";
     ctx.fillRect(dx + 52, dy - 20, 26, 6);
     ctx.fillRect(dx + 56, dy - 14, 4, 14);
@@ -537,9 +526,9 @@ function drawBankOffice(ctx: CanvasRenderingContext2D, w: number, h: number) {
 }
 
 /* ═══════════════════════════════════════════
-   РИСОВАЛКА КОФЕЙНИ (нижний этаж) — детализированная
+   РИСОВАЛКА КОФЕЙНИ — ФОН (стены, пол, декор, меню-борды)
    ═══════════════════════════════════════════ */
-function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
+function drawCoffeeShopBg(ctx: CanvasRenderingContext2D, w: number, h: number) {
   /* красная кирпичная стена */
   const grad = ctx.createLinearGradient(0, 0, 0, h - 70);
   grad.addColorStop(0, "#B83224");
@@ -561,7 +550,6 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   /* пол */
   ctx.fillStyle = "#3D2B1A";
   ctx.fillRect(0, h - 70, w, 70);
-  /* плитка шахматная */
   for (let i = 0; i < Math.ceil(w / 35); i++) {
     for (let j = 0; j < 2; j++) {
       if ((i + j) % 2 === 0) {
@@ -580,12 +568,10 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.beginPath();
   ctx.arc(w / 2, 70, 55, 0, Math.PI * 2);
   ctx.fill();
-  /* сердце */
   ctx.fillStyle = "#FFF";
   ctx.font = "28px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("➔", w / 2, 58);
-  /* текст */
+  ctx.fillText("\u2764", w / 2, 58);
   ctx.fillStyle = "#FFD700";
   ctx.font = "bold 13px sans-serif";
   ctx.fillText("LOVE IS", w / 2, 80);
@@ -593,55 +579,107 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillText("COFFEE", w / 2, 98);
   ctx.textAlign = "start";
 
-  /* меню-борды на стене */
-  for (const mbx of [40, w - 170]) {
+  /* меню-борды на стене — УВЕЛИЧЕННЫЕ */
+  for (const mbx of [20, w - 190]) {
     /* доска */
     ctx.fillStyle = "#2C2C2C";
-    ctx.fillRect(mbx, 20, 130, 90);
+    ctx.fillRect(mbx, 10, 170, 120);
     /* рамка */
     ctx.strokeStyle = "#8B5E3C";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(mbx, 20, 130, 90);
+    ctx.lineWidth = 4;
+    ctx.strokeRect(mbx, 10, 170, 120);
     /* заголовок */
     ctx.fillStyle = "#FFD700";
-    ctx.font = "bold 11px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("МЕНЮ", mbx + 65, 40);
+    ctx.fillText("МЕНЮ", mbx + 85, 34);
+    /* разделитель */
+    ctx.strokeStyle = "#FFD700";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(mbx + 20, 40);
+    ctx.lineTo(mbx + 150, 40);
+    ctx.stroke();
     /* позиции */
     ctx.fillStyle = "#FFF";
-    ctx.font = "9px sans-serif";
+    ctx.font = "13px sans-serif";
     const items =
       mbx < 100
-        ? ["Эспрессо ........ 150₽", "Капучино ........ 220₽", "Латте ............. 250₽", "Раф ................ 280₽"]
-        : ["Круассан ........ 180₽", "Чизкейк ......... 320₽", "Маффин ......... 160₽", "Тирамису ....... 350₽"];
+        ? [
+            "Эспрессо ......... 150\u20BD",
+            "Капучино ......... 220\u20BD",
+            "Латте ................ 250\u20BD",
+            "Раф ................... 280\u20BD",
+            "Флэт Уайт ....... 260\u20BD",
+          ]
+        : [
+            "Круассан .......... 180\u20BD",
+            "Чизкейк ........... 320\u20BD",
+            "Маффин ........... 160\u20BD",
+            "Тирамису ......... 350\u20BD",
+            "Брауни ............. 220\u20BD",
+          ];
     items.forEach((item, idx) => {
-      ctx.fillText(item, mbx + 65, 56 + idx * 14);
+      ctx.fillText(item, mbx + 85, 58 + idx * 17);
     });
     ctx.textAlign = "start";
   }
 
   /* полки на стене */
   for (const sy of [30, 65]) {
-    const shelfX = 200;
+    const shelfX = 220;
     ctx.fillStyle = "#6B4226";
     ctx.fillRect(shelfX, sy, 160, 6);
-    /* кронштейны */
     ctx.fillRect(shelfX + 10, sy, 4, 12);
     ctx.fillRect(shelfX + 146, sy, 4, 12);
     for (let i = 0; i < 5; i++) {
       ctx.fillStyle = ["#E8D5B7", "#C4956B", "#A67B5B", "#DDD", "#B8755D"][i];
       ctx.fillRect(shelfX + 5 + i * 30, sy - 22, 18, 22);
-      /* этикетка */
       ctx.fillStyle = "rgba(255,255,255,0.3)";
       ctx.fillRect(shelfX + 8 + i * 30, sy - 16, 12, 8);
     }
   }
 
-  /* зелёная стойка с надписью Center Coffee */
+  /* потолочные лампы */
+  for (let i = 0; i < 3; i++) {
+    const lx = 150 + i * 260;
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lx, 0);
+    ctx.lineTo(lx, 12);
+    ctx.stroke();
+    ctx.fillStyle = "#FFD700";
+    ctx.beginPath();
+    ctx.arc(lx, 18, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,215,0,0.08)";
+    ctx.beginPath();
+    ctx.arc(lx, 18, 40, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /* вывеска сверху */
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath();
+  ctx.roundRect(w / 2 - 85, 2, 170, 22, 4);
+  ctx.fill();
+  ctx.fillStyle = "#FFD700";
+  ctx.font = "bold 14px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("\u2615  LOVE IS COFFEE  \u2615", w / 2, 18);
+  ctx.textAlign = "start";
+}
+
+/* ═══════════════════════════════════════════
+   РИСОВАЛКА КОФЕЙНИ — ПЕРЕДНИЙ ПЛАН (стойка, предметы, столики)
+   ═══════════════════════════════════════════ */
+function drawCoffeeShopFg(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const barY = h - 120;
   const barW = 340;
   const barX = w / 2 - barW / 2;
-  /* основание */
+
+  /* основание стойки */
   ctx.fillStyle = "#1B5E20";
   ctx.fillRect(barX, barY, barW, 50);
   /* столешница */
@@ -675,13 +713,27 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.beginPath();
   ctx.arc(cmx + 38, barY - 18, 4, 0, Math.PI * 2);
   ctx.fill();
-  /* носик */
   ctx.fillStyle = "#666";
   ctx.fillRect(cmx + 18, barY - 10, 14, 6);
 
-  /* стопки красных стаканчиков (3 стопки) */
+  /* белые стаканы на стойке (слева) */
+  for (let i = 0; i < 2; i++) {
+    const cx2 = barX + 20 + i * 35;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(cx2, barY - 22, 16, 20);
+    ctx.fillStyle = "#8B5E3C";
+    ctx.fillRect(cx2 + 1, barY - 21, 14, 8);
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx2 + 5, barY - 24);
+    ctx.quadraticCurveTo(cx2 + 7, barY - 32, cx2 + 4, barY - 38);
+    ctx.stroke();
+  }
+
+  /* стопки красных стаканчиков СПРАВА на стойке (3 стопки) */
   for (let si = 0; si < 3; si++) {
-    const sx = barX + 25 + si * 55;
+    const sx = barX + barW - 130 + si * 30;
     for (let sj = 0; sj < 4; sj++) {
       const sy2 = barY - 8 - sj * 10;
       ctx.fillStyle = "#C0392B";
@@ -692,26 +744,9 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
       ctx.lineTo(sx + 10, sy2);
       ctx.closePath();
       ctx.fill();
-      /* крышка */
       ctx.fillStyle = "#E8E8E8";
       ctx.fillRect(sx - 6, sy2 - 12, 16, 2);
     }
-  }
-
-  /* белые стаканы на стойке */
-  for (let i = 0; i < 2; i++) {
-    const cx2 = barX + 200 + i * 40;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(cx2, barY - 22, 16, 20);
-    ctx.fillStyle = "#8B5E3C";
-    ctx.fillRect(cx2 + 1, barY - 21, 14, 8);
-    /* пар */
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx2 + 5, barY - 24);
-    ctx.quadraticCurveTo(cx2 + 7, barY - 32, cx2 + 4, barY - 38);
-    ctx.stroke();
   }
 
   /* столики для гостей */
@@ -724,47 +759,14 @@ function drawCoffeeShop(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.beginPath();
     ctx.arc(tx, h - 90, 26, 0, Math.PI * 2);
     ctx.fill();
-    /* ножка */
     ctx.fillStyle = "#5B3A1E";
     ctx.fillRect(tx - 4, h - 62, 8, 62);
-    /* основание */
     ctx.fillRect(tx - 14, h - 4, 28, 4);
   }
-
-  /* потолочные лампы */
-  for (let i = 0; i < 3; i++) {
-    const lx = 150 + i * 260;
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(lx, 0);
-    ctx.lineTo(lx, 12);
-    ctx.stroke();
-    /* лампочка */
-    ctx.fillStyle = "#FFD700";
-    ctx.beginPath();
-    ctx.arc(lx, 18, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,215,0,0.08)";
-    ctx.beginPath();
-    ctx.arc(lx, 18, 40, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /* вывеска сверху */
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.beginPath();
-  ctx.roundRect(w / 2 - 85, 2, 170, 22, 4);
-  ctx.fill();
-  ctx.fillStyle = "#FFD700";
-  ctx.font = "bold 14px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("☕  LOVE IS COFFEE  ☕", w / 2, 18);
-  ctx.textAlign = "start";
 }
 
 /* ═══════════════════════════════════════════
-   РИСОВКА NPC (Виталий и Аслан)
+   РИСОВКА NPC-БАРИСТА (красный фартук, за стойкой)
    ═══════════════════════════════════════════ */
 function drawNPC(
   ctx: CanvasRenderingContext2D,
@@ -772,30 +774,162 @@ function drawNPC(
   x: number,
   y: number,
   skinIdx: number,
-  clothIdx: number,
+  _clothIdx: number,
   bobOff: number
 ) {
-  const cfg: AvatarConfig = {
-    gender: "male",
-    skinColor: skinIdx,
-    hairstyle: skinIdx === 0 ? 1 : 3,
-    clothingColor: clothIdx,
-    mood: "happy",
-    name,
-  };
+  ctx.save();
+  const s = 0.9;
+  ctx.translate(x, y + bobOff * s);
 
-  /* фартук зелёный */
-  drawMiniAvatar(ctx, cfg, x, y + bobOff, 0.9, "idle", 0);
+  const skin = SKIN_COLORS[skinIdx];
+  const hairColor = skinIdx <= 1 ? "#3B2410" : skinIdx <= 3 ? "#1A0E06" : "#0A0503";
 
-  /* бейдж */
+  /* ноги (будут скрыты за стойкой) */
+  ctx.fillStyle = "#1A1A2C";
+  ctx.fillRect(-8 * s, 36 * s, 7 * s, 16 * s);
+  ctx.fillRect(2 * s, 36 * s, 7 * s, 16 * s);
+  ctx.fillStyle = "#2A2A2A";
+  ctx.fillRect(-9 * s, 50 * s, 9 * s, 5 * s);
+  ctx.fillRect(1 * s, 50 * s, 9 * s, 5 * s);
+
+  /* тело (чёрная футболка под фартуком) */
+  ctx.fillStyle = "#1A1A1A";
+  ctx.beginPath();
+  ctx.ellipse(0, 28 * s, 20 * s, 16 * s, 0, Math.PI, 0, true);
+  ctx.fill();
+
+  /* КРАСНЫЙ ФАРТУК поверх тела */
+  ctx.fillStyle = "#C0392B";
+  /* нагрудник */
+  ctx.beginPath();
+  ctx.moveTo(-14 * s, 10 * s);
+  ctx.lineTo(-16 * s, 36 * s);
+  ctx.lineTo(16 * s, 36 * s);
+  ctx.lineTo(14 * s, 10 * s);
+  ctx.closePath();
+  ctx.fill();
+  /* лямки */
+  ctx.fillStyle = "#A02018";
+  ctx.fillRect(-14 * s, 8 * s, 5 * s, 6 * s);
+  ctx.fillRect(9 * s, 8 * s, 5 * s, 6 * s);
+  /* завязки сзади (видны по бокам) */
+  ctx.strokeStyle = "#A02018";
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(-16 * s, 22 * s);
+  ctx.lineTo(-20 * s, 24 * s);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(16 * s, 22 * s);
+  ctx.lineTo(20 * s, 24 * s);
+  ctx.stroke();
+  /* надпись LiC на фартуке */
+  ctx.fillStyle = "#FFD700";
+  ctx.font = `bold ${11 * s}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText("LiC", 0, 28 * s);
+  ctx.textAlign = "start";
+
+  /* руки (рукава чёрные) */
+  ctx.fillStyle = "#1A1A1A";
+  ctx.fillRect(-24 * s, 14 * s, 8 * s, 16 * s);
+  ctx.fillRect(16 * s, 14 * s, 8 * s, 16 * s);
+  /* кисти рук */
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.arc(-20 * s, 30 * s, 4 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(20 * s, 30 * s, 4 * s, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* шея */
+  ctx.fillStyle = skin;
+  ctx.fillRect(-5 * s, 6 * s, 10 * s, 8 * s);
+
+  /* голова */
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.ellipse(0, -2 * s, 20 * s, 21 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* уши */
+  ctx.beginPath();
+  ctx.ellipse(-18 * s, 0, 5 * s, 6 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(18 * s, 0, 5 * s, 6 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* волосы */
+  ctx.fillStyle = hairColor;
+  ctx.beginPath();
+  ctx.ellipse(0, -14 * s, 19 * s, 13 * s, 0, Math.PI, 0, true);
+  ctx.fill();
+
+  /* КЕПКА БАРИСТА (красная с козырьком) */
+  ctx.fillStyle = "#C0392B";
+  ctx.beginPath();
+  ctx.ellipse(0, -18 * s, 22 * s, 10 * s, 0, Math.PI, 0, true);
+  ctx.fill();
+  /* ободок кепки */
+  ctx.fillStyle = "#A02018";
+  ctx.fillRect(-22 * s, -18 * s, 44 * s, 4 * s);
+  /* козырёк */
+  ctx.fillStyle = "#8B1A12";
+  ctx.beginPath();
+  ctx.moveTo(-18 * s, -18 * s);
+  ctx.quadraticCurveTo(0, -28 * s, 18 * s, -18 * s);
+  ctx.lineTo(24 * s, -16 * s);
+  ctx.quadraticCurveTo(0, -22 * s, -24 * s, -16 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  /* глаза */
+  const eyeY2 = -5 * s;
+  for (const side of [-1, 1]) {
+    const ex = side * 8 * s;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(ex, eyeY2, 4.5 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#2A1810";
+    ctx.beginPath();
+    ctx.arc(ex + 1 * s, eyeY2, 2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FFF";
+    ctx.beginPath();
+    ctx.arc(ex + 2 * s, eyeY2 - 1 * s, 0.8 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /* щёки */
+  ctx.fillStyle = "rgba(255,150,150,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(-11 * s, 4 * s, 4 * s, 2.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(11 * s, 4 * s, 4 * s, 2.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* улыбка */
+  ctx.strokeStyle = "#2A1810";
+  ctx.lineWidth = 1.5 * s;
+  ctx.beginPath();
+  ctx.arc(0, 4 * s, 6 * s, 0.15 * Math.PI, 0.85 * Math.PI);
+  ctx.stroke();
+
+  ctx.restore();
+
+  /* бейдж БАРИСТА — под аватаром */
   ctx.fillStyle = "#FFD700";
   ctx.font = "bold 9px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("БАРИСТА", x, y + 46);
+  ctx.fillText("\u0411\u0410\u0420\u0418\u0421\u0422\u0410", x, y + bobOff * s + 46);
 
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "bold 11px sans-serif";
-  ctx.fillText(name, x, y + 58);
+  ctx.fillText(name, x, y + bobOff * s + 58);
   ctx.textAlign = "start";
 }
 
@@ -827,6 +961,11 @@ export default function OfficePage() {
   const myXRef = useRef(200);
   const canvasW = 880;
   const canvasH = 420;
+  const floorRef = useRef<Floor>(0);
+
+  useEffect(() => {
+    floorRef.current = floor;
+  }, [floor]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -845,7 +984,7 @@ export default function OfficePage() {
         hairstyle: 0,
         clothingColor: 2,
         mood: "happy",
-        name: "Гость",
+        name: "\u0413\u043E\u0441\u0442\u044C",
       });
     }
   }, []);
@@ -899,12 +1038,13 @@ export default function OfficePage() {
     return () => off(presenceRef, "value", unsub as never);
   }, [userId]);
 
-  /* Рандомные анимации каждые 5-10 сек */
+  /* Рандомные анимации каждые 5-10 сек — зависят от этажа */
   useEffect(() => {
     const scheduleAction = () => {
       const delay = 5000 + Math.random() * 5000;
       actionTimerRef.current = setTimeout(() => {
-        const randomAction = ACTIONS[Math.floor(Math.random() * ACTIONS.length)];
+        const available = floorRef.current === 1 ? COFFEE_ACTIONS : ACTIONS;
+        const randomAction = available[Math.floor(Math.random() * available.length)];
         setMyAction(randomAction);
         setTimeout(() => setMyAction("idle"), 2500 + Math.random() * 1500);
         scheduleAction();
@@ -931,9 +1071,13 @@ export default function OfficePage() {
     if (floor === 0) {
       drawBankOffice(ctx, canvasW, canvasH);
     } else {
-      drawCoffeeShop(ctx, canvasW, canvasH);
-      drawNPC(ctx, "Виталий", canvasW / 2 - 60, canvasH - 170, 0, 3, bob * 0.5);
-      drawNPC(ctx, "Аслан", canvasW / 2 + 60, canvasH - 170, 2, 3, bob * 0.7);
+      /* Фон кофейни */
+      drawCoffeeShopBg(ctx, canvasW, canvasH);
+      /* NPC-баристы ЗА стойкой (рисуем до стойки) */
+      drawNPC(ctx, "\u0412\u0438\u0442\u0430\u043B\u0438\u0439", canvasW / 2 - 60, canvasH - 155, 0, 3, bob * 0.5);
+      drawNPC(ctx, "\u0410\u0441\u043B\u0430\u043D", canvasW / 2 + 60, canvasH - 155, 2, 3, bob * 0.7);
+      /* Стойка и предметы ПОВЕРХ NPC */
+      drawCoffeeShopFg(ctx, canvasW, canvasH);
     }
 
     /* онлайн-пользователи */
@@ -990,12 +1134,12 @@ export default function OfficePage() {
       if (myAction !== "idle") {
         const actionLabels: Record<AvatarAction, string> = {
           idle: "",
-          coffee: "Пьёт кофе ☕",
-          monitor: "Работает 💻",
-          phone: "По телефону 📞",
-          yawn: "Зевает 🥱",
+          coffee: "\u041F\u044C\u0451\u0442 \u043A\u043E\u0444\u0435 \u2615",
+          monitor: "\u0420\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \uD83D\uDCBB",
+          phone: "\u041F\u043E \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0443 \uD83D\uDCDE",
+          yawn: "\u0417\u0435\u0432\u0430\u0435\u0442 \uD83E\uDD71",
+          reach: "\u0422\u044F\u043D\u0435\u0442\u0441\u044F \u0437\u0430 \u043A\u043E\u0444\u0435 \u2615",
         };
-        /* облачко */
         const label = actionLabels[myAction];
         const tw = ctx.measureText(label).width;
         ctx.fillStyle = "rgba(0,0,0,0.65)";
@@ -1039,7 +1183,7 @@ export default function OfficePage() {
   if (!myAvatar) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-cream-50">
-        <p className="text-coffee-600">Загрузка...</p>
+        <p className="text-coffee-600">{"\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."}</p>
       </div>
     );
   }
@@ -1055,7 +1199,7 @@ export default function OfficePage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-2"
           >
-            <span className="text-2xl">☕</span>
+            <span className="text-2xl">{"\u2615"}</span>
             <span className="font-display text-xl font-bold text-coffee-900">OiC</span>
           </motion.a>
           <div className="flex items-center gap-3">
@@ -1084,7 +1228,7 @@ export default function OfficePage() {
                   : "bg-white text-coffee-600 border border-coffee-200"
               }`}
             >
-              🏦 Офис банка
+              {"\uD83C\uDFE6 \u041E\u0444\u0438\u0441 \u0431\u0430\u043D\u043A\u0430"}
             </button>
             <button
               onClick={() => setFloor(1)}
@@ -1094,7 +1238,7 @@ export default function OfficePage() {
                   : "bg-white text-red-600 border border-red-200"
               }`}
             >
-              ☕ Кофейня
+              {"\u2615 \u041A\u043E\u0444\u0435\u0439\u043D\u044F"}
             </button>
           </div>
 
@@ -1137,8 +1281,8 @@ export default function OfficePage() {
                   whileTap={{ scale: 0.95 }}
                   className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold rounded-2xl shadow-lg flex items-center gap-2 text-base"
                 >
-                  <span className="text-xl">☕</span>
-                  Заказать кофе
+                  <span className="text-xl">{"\u2615"}</span>
+                  {"\u0417\u0430\u043A\u0430\u0437\u0430\u0442\u044C \u043A\u043E\u0444\u0435"}
                 </motion.a>
               </motion.div>
             )}
@@ -1146,7 +1290,7 @@ export default function OfficePage() {
 
           {/* Подсказка */}
           <p className="text-coffee-400 text-xs text-center mt-2">
-            Нажми на офис чтобы переместить аватара • Свайпни для смены этажа
+            {"\u041D\u0430\u0436\u043C\u0438 \u043D\u0430 \u043E\u0444\u0438\u0441 \u0447\u0442\u043E\u0431\u044B \u043F\u0435\u0440\u0435\u043C\u0435\u0441\u0442\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440\u0430 \u2022 \u0421\u0432\u0430\u0439\u043F\u043D\u0438 \u0434\u043B\u044F \u0441\u043C\u0435\u043D\u044B \u044D\u0442\u0430\u0436\u0430"}
           </p>
 
           {/* Панель управления */}
@@ -1159,7 +1303,7 @@ export default function OfficePage() {
             {/* Статус */}
             <div className="bg-white rounded-2xl p-5 border border-coffee-100 shadow-sm">
               <h3 className="text-sm font-semibold text-coffee-800 mb-3">
-                Статус присутствия
+                {"\u0421\u0442\u0430\u0442\u0443\u0441 \u043F\u0440\u0438\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u044F"}
               </h3>
               <div className="flex gap-2">
                 {(["working", "break", "away"] as Status[]).map((s) => (
@@ -1188,7 +1332,7 @@ export default function OfficePage() {
             {/* Онлайн */}
             <div className="bg-white rounded-2xl p-5 border border-coffee-100 shadow-sm">
               <h3 className="text-sm font-semibold text-coffee-800 mb-3">
-                В офисе сейчас ({onlineUsers.length + 1})
+                {"\u0412 \u043E\u0444\u0438\u0441\u0435 \u0441\u0435\u0439\u0447\u0430\u0441"} ({onlineUsers.length + 1})
               </h3>
               <div className="flex flex-wrap gap-2">
                 <div className="flex items-center gap-2 bg-coffee-50 rounded-lg px-3 py-1.5">
@@ -1197,7 +1341,7 @@ export default function OfficePage() {
                     style={{ backgroundColor: STATUS_COLORS[status] }}
                   />
                   <span className="text-sm text-coffee-800 font-medium">
-                    {myAvatar.name} (ты)
+                    {myAvatar.name} ({"\u0442\u044B"})
                   </span>
                 </div>
                 {onlineUsers.map((u) => (
@@ -1214,7 +1358,7 @@ export default function OfficePage() {
                 ))}
                 {onlineUsers.length === 0 && (
                   <p className="text-xs text-coffee-400">
-                    Пока только ты. Поделись ссылкой!
+                    {"\u041F\u043E\u043A\u0430 \u0442\u043E\u043B\u044C\u043A\u043E \u0442\u044B. \u041F\u043E\u0434\u0435\u043B\u0438\u0441\u044C \u0441\u0441\u044B\u043B\u043A\u043E\u0439!"}
                   </p>
                 )}
               </div>
