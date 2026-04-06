@@ -23,7 +23,11 @@ export default function OnboardingPage() {
     const ua = navigator.userAgent;
     setIsIOS(/iPad|iPhone|iPod/.test(ua));
     setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
-  }, []);
+
+    /* If already logged in, skip to geo step */
+    if (user && step === "welcome") setStep("geo");
+    if (user && step === "auth") setStep("geo");
+  }, [user, step]);
 
   const next = () => {
     const idx = STEPS.indexOf(step);

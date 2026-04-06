@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, arrayUnion } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, arrayUnion, runTransaction } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import confetti from "canvas-confetti";
+import { getAlmatyDate } from "@/lib/constants";
 
 interface CartItem { name: string; size: string; price: number; qty: number; milk?: string }
 
@@ -36,9 +37,6 @@ export default function OrderPage() {
   }, [user]);
 
   const total = isFree ? 0 : cart.reduce((s, i) => s + i.price * i.qty, 0);
-
-  /* UTC+5 date helper */
-  const getAlmatyDate = () => new Date().toLocaleString("sv", { timeZone: "Asia/Almaty" }).split(" ")[0];
 
   const handleConfirm = async () => {
     if (cart.length === 0) return;
@@ -92,18 +90,20 @@ export default function OrderPage() {
             lastOrderDate: today,
           });
 
-          /* Deposit: deduct balance if paying with deposit */
+          /* Deposit: deduct balance atomically via transaction */
           if (payMethod === "deposit" && !isFree && total > 0) {
             const depRef = doc(getFirebaseDb(), "deposits", user.uid);
-            const depSnap = await getDoc(depRef);
-            if (depSnap.exists()) {
-              const depData = depSnap.data();
-              await updateDoc(depRef, {
-                balance: (depData.balance || 0) - total,
-                totalSpent: (depData.totalSpent || 0) + total,
+            await runTransaction(getFirebaseDb(), async (tx) => {
+              const depSnap = await tx.get(depRef);
+              if (!depSnap.exists()) throw new Error("No deposit");
+              const bal = depSnap.data().balance || 0;
+              if (bal < total) throw new Error("Insufficient balance");
+              tx.update(depRef, {
+                balance: bal - total,
+                totalSpent: (depSnap.data().totalSpent || 0) + total,
                 history: arrayUnion({ type: "payment", amount: total, date: new Date().toISOString(), orderId: docRef.id }),
               });
-            }
+            });
           }
 
           /* 07:31 easter egg */

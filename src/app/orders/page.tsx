@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, query, orderBy, where, limit, getDocs, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, where as fbWhere, limit, getDocs, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string }
@@ -36,13 +36,12 @@ export default function OrdersPage() {
     if (!user) { setLoading(false); return; }
     const q = query(
       collection(getFirebaseDb(), "orders"),
+      fbWhere("userId", "==", user.uid),
       orderBy("createdAt", "desc"),
       limit(20),
     );
     getDocs(q).then((snap) => {
-      const list = snap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) }))
-        .filter((o) => o.name === user.displayName || (o as any).userId === user.uid);
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) }));
       setOrders(list);
       setLoading(false);
     }).catch(() => setLoading(false));

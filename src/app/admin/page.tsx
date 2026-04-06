@@ -6,7 +6,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireBarista, useAuth } from "@/lib/auth";
 import {
   collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, getDoc,
-  Timestamp, increment, arrayUnion,
+  Timestamp, increment, arrayUnion, where, getDocs,
 } from "firebase/firestore";
 
 interface OrderItem { name: string; size: string; price: number; qty: number }
@@ -295,9 +295,8 @@ function DepositsTab({ baristaId }: { baristaId: string }) {
     if (!phone.trim()) return;
     setSearching(true); setFoundUser(null);
     try {
-      const { getDocs: gd, where: w } = await import("firebase/firestore");
-      const q = query(collection(getFirebaseDb(), "users"), w("phone", "==", phone.trim()));
-      const snap = await gd(q);
+      const q = query(collection(getFirebaseDb(), "users"), where("phone", "==", phone.trim()));
+      const snap = await getDocs(q);
       if (!snap.empty) {
         const d = snap.docs[0];
         const depSnap = await getDoc(doc(getFirebaseDb(), "deposits", d.id));

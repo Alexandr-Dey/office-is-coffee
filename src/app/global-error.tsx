@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -11,22 +10,23 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    console.error("Global error:", error);
   }, [error]);
 
   return (
     <html>
       <body>
-        <div className="min-h-screen flex items-center justify-center bg-cream-50">
+        <div className="min-h-screen flex items-center justify-center bg-brand-bg">
           <div className="text-center p-8">
-            <h2 className="text-2xl font-bold text-coffee-900 mb-4">
-              Something went wrong!
+            <p className="text-4xl mb-4">😔</p>
+            <h2 className="text-2xl font-bold text-brand-text mb-4">
+              Что-то пошло не так
             </h2>
             <button
               onClick={() => reset()}
-              className="bg-coffee-600 text-white px-6 py-3 rounded-full"
+              className="bg-brand-dark text-white px-6 py-3 rounded-full font-bold"
             >
-              Try again
+              Попробовать снова
             </button>
           </div>
         </div>

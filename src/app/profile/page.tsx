@@ -6,6 +6,8 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { QRCodeSVG } from "qrcode.react";
+import { CAFE_ADDRESS } from "@/lib/constants";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -93,10 +95,8 @@ export default function ProfilePage() {
                 <p className="text-xs text-brand-text/50">Депозит</p>
                 <p className="text-2xl font-bold text-brand-dark">{depositBalance}\u20B8</p>
               </div>
-              <div className="bg-brand-bg p-2 rounded-xl">
-                <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center border border-[#d0f0e0]">
-                  <span className="text-[8px] text-brand-text/40 text-center leading-tight">QR<br/>{user.uid.slice(0, 8)}</span>
-                </div>
+              <div className="bg-white p-2 rounded-xl border border-[#d0f0e0]">
+                <QRCodeSVG value={`oic:deposit:${user.uid}`} size={64} bgColor="#ffffff" fgColor="#1a7a44" level="M" />
               </div>
             </div>
             <p className="text-xs text-brand-text/40">Покажи QR баристе для пополнения</p>
@@ -131,7 +131,7 @@ export default function ProfilePage() {
             <span className="text-green-500 text-xl">\u2705</span>
             <div>
               <p className="font-bold text-brand-text text-sm">Геолокация включена</p>
-              <p className="text-xs text-brand-text/50">Ул. Момышулы 14, Аксай</p>
+              <p className="text-xs text-brand-text/50">{CAFE_ADDRESS}</p>
             </div>
           </div>
         )}

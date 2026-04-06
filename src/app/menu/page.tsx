@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import CoffeeScene from "@/components/CoffeeScene";
+import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, where } from "firebase/firestore";
+import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants";
 
 /* ═══ TYPES ═══ */
 type Size = "S" | "M" | "L";
@@ -292,9 +293,9 @@ function QuickRepeat({ onRepeat }: { onRepeat: (items: CartItem[]) => void }) {
       limit(1)
     );
     getDocs(q).then((snap) => {
-      if (!snap.empty) {
+      if (!snap.empty && snap.docs[0]) {
         const d = snap.docs[0].data();
-        if (d.userId === user.uid || d.name === user.displayName) {
+        if (d && d.items && (d.userId === user.uid || d.name === user.displayName)) {
           setLastOrder({ items: d.items, name: d.items.map((i: CartItem) => i.name).join(", ") });
         }
       }
@@ -368,9 +369,8 @@ export default function MenuPage() {
     const unsub2 = onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
       if (snap.exists() && snap.data().geolocationAllowed) {
         navigator.geolocation.getCurrentPosition((pos) => {
-          const lat = 43.2220, lng = 76.8512;
-          const dist = getDistanceKm(pos.coords.latitude, pos.coords.longitude, lat, lng) * 1000;
-          if (dist <= 300) setGeoNearby(true);
+          const dist = getDistanceM(pos.coords.latitude, pos.coords.longitude, CAFE_LAT, CAFE_LNG);
+          if (dist <= CAFE_RADIUS_M) setGeoNearby(true);
         }, () => {});
       }
     }, () => {});
@@ -431,7 +431,7 @@ export default function MenuPage() {
           <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
         </div>
       </div>
-      <div className="px-3 pt-1"><CoffeeScene orderStatus={activeOrderStatus as any} /></div>
+      <div className="px-3 pt-1"><CoffeeScene orderStatus={activeOrderStatus === "new" ? "pending" : activeOrderStatus as BaristaState} /></div>
 
       <div className="px-3 mt-3 space-y-3">
         <LoyaltyBanner count={loyaltyCount} />
@@ -561,12 +561,3 @@ export default function MenuPage() {
   );
 }
 
-function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}

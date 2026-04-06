@@ -16,6 +16,7 @@ function drawScene(
   aslanTaps: number,
   isNight: boolean,
   orderCount: number,
+  isWokeUp?: boolean,
 ) {
   ctx.clearRect(0, 0, W, H);
 
@@ -138,15 +139,17 @@ function drawScene(
   ctx.fillRect(0, H - 15, W, 15);
 
   /* ---- BARISTAS ---- */
-  const sleeping = isNight;
+  const sleeping = isNight && !isWokeUp;
   const vAngry = vitaliyTaps >= 8 && vitaliyTaps < 99;
   const vGone = vitaliyTaps >= 99;
   const aFlip = aslanTaps >= 5 && aslanTaps < 99;
   const aFalling = aslanTaps >= 99;
 
+  const scared = isNight && isWokeUp;
+
   /* D1: Vitaliy gone — don't draw him */
   if (!vGone) {
-    drawBarista(ctx, W / 2 - 80, cy, t, "left", state, sleeping, vAngry, false, orderCount);
+    drawBarista(ctx, W / 2 - 80, cy, t, "left", state, sleeping, vAngry, false, orderCount, scared);
   } else {
     /* Draw thrown apron on floor */
     ctx.fillStyle = "#C0392B";
@@ -185,7 +188,7 @@ function drawScene(
     }
     ctx.restore();
   } else {
-    drawBarista(ctx, W / 2 + 80, cy, t, "right", state, sleeping, false, aFlip, orderCount);
+    drawBarista(ctx, W / 2 + 80, cy, t, "right", state, sleeping, false, aFlip, orderCount, scared);
   }
 
   /* Names */
@@ -268,6 +271,7 @@ function drawBarista(
   angry?: boolean,
   flipping?: boolean,
   orderCount?: number,
+  scared?: boolean,
 ) {
   ctx.save();
   const s = 0.85;
@@ -429,7 +433,42 @@ function drawBarista(
 
   /* FACE */
   const fy = -48 * s + bob;
-  if (angry) {
+  if (scared) {
+    /* Wide open eyes — scared after waking up */
+    for (const sx of [-5, 5]) {
+      ctx.fillStyle = "#FFF";
+      ctx.beginPath();
+      ctx.ellipse(sx * s, fy - 2, 5 * s, 5.5 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#2A1810";
+      ctx.beginPath();
+      ctx.arc(sx * s, fy - 1, 3 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    /* Open mouth — surprised */
+    ctx.fillStyle = "#6B3E26";
+    ctx.beginPath();
+    ctx.ellipse(0, fy + 6, 3 * s, 4 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    /* Raised arms */
+    ctx.fillStyle = "#F5C193";
+    ctx.save();
+    ctx.translate(-16 * s, -24 * s + bob);
+    ctx.rotate(-0.6);
+    ctx.fillRect(-3 * s, -14 * s, 6 * s, 14 * s);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(16 * s, -24 * s + bob);
+    ctx.rotate(0.6);
+    ctx.fillRect(-3 * s, -14 * s, 6 * s, 14 * s);
+    ctx.restore();
+    /* Exclamation mark */
+    ctx.fillStyle = "rgba(255,50,50,0.8)";
+    ctx.font = `bold ${16 * s}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText("!", 0, fy - 22 * s);
+    ctx.textAlign = "start";
+  } else if (angry) {
     ctx.fillStyle = "#222";
     ctx.fillRect(-6 * s, fy - 3, 4 * s, 2);
     ctx.fillRect(2 * s, fy - 3, 4 * s, 2);
@@ -514,13 +553,18 @@ export default function CoffeeScene({ orderStatus, orderCount, orderLabel }: { o
   const state = orderStatus ?? "idle";
   const isNight = typeof window !== "undefined" && new Date().getHours() >= 23;
 
-  /* D1: Vitaliy — 8 taps: angry → gone 30s → returns */
+  /* D1: Vitaliy — 8 taps: angry 2s → gone 30s → returns smiling */
+  const [vAngryPhase, setVAngryPhase] = useState(false);
   useEffect(() => {
-    if (vTaps >= 8 && !vGone) {
-      setVGone(true);
-      setTimeout(() => { setVGone(false); setVTaps(0); }, 30000);
+    if (vTaps >= 8 && !vGone && !vAngryPhase) {
+      setVAngryPhase(true); // show angry face first
+      setTimeout(() => {
+        setVAngryPhase(false);
+        setVGone(true); // then leave
+        setTimeout(() => { setVGone(false); setVTaps(0); }, 30000);
+      }, 2000);
     }
-  }, [vTaps, vGone]);
+  }, [vTaps, vGone, vAngryPhase]);
 
   /* D2: Aslan — 5 taps: flip → fall → embarrassed */
   useEffect(() => {
@@ -562,12 +606,13 @@ export default function CoffeeScene({ orderStatus, orderCount, orderLabel }: { o
     if (!ctx) return;
     tRef.current += 0.02;
     drawScene(ctx, tRef.current, state,
-      vGone ? 99 : vTaps, // 99 signals "gone"
-      aFalling ? 99 : aTaps, // 99 signals "falling"
-      isNight && !wokeUp,
-      isDancing ? 10 : 0); // 10 triggers dance in drawScene
+      vGone ? 99 : (vAngryPhase ? 8 : vTaps),
+      aFalling ? 99 : aTaps,
+      isNight,
+      isDancing ? 10 : 0,
+      wokeUp);
     frameRef.current = requestAnimationFrame(draw);
-  }, [state, vTaps, aTaps, isNight, isDancing, vGone, aFalling, wokeUp, shaking]);
+  }, [state, vTaps, aTaps, isNight, isDancing, vGone, aFalling, wokeUp, shaking, vAngryPhase]);
 
   useEffect(() => {
     frameRef.current = requestAnimationFrame(draw);
