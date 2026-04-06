@@ -24,7 +24,12 @@ interface MenuCategory { id: string; shortTitle: string; icon: string; items: Me
 interface CartItem { name: string; size: string; price: number; qty: number; milk?: string }
 
 /* ═══ DATA ═══ */
-const MILKS = ["Стандарт", "Овсяное", "Кокосовое", "Без молока"];
+const MILKS: { name: string; surcharge: number }[] = [
+  { name: "Стандарт", surcharge: 0 },
+  { name: "Овсяное", surcharge: 150 },
+  { name: "Кокосовое", surcharge: 200 },
+  { name: "Без молока", surcharge: 0 },
+];
 const currentMonth = new Date().getMonth() + 1;
 
 const MENU: MenuCategory[] = [
@@ -124,7 +129,9 @@ function DrinkDetail({ item, catIcon, onAdd, onClose }: {
   const sizes = getSizes(item);
   const [sz, setSz] = useState<Size | null>(getDefault(item));
   const [milk, setMilk] = useState(0);
-  const price = getPrice(item, sz);
+  const basePrice = getPrice(item, sz);
+  const milkSurcharge = item.milk ? MILKS[milk].surcharge : 0;
+  const totalPrice = basePrice + milkSurcharge;
 
   return (
     <motion.div
@@ -165,7 +172,7 @@ function DrinkDetail({ item, catIcon, onAdd, onClose }: {
                 <button key={s} onClick={() => setSz(s)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
                     sz === s ? "bg-brand-dark text-white shadow-md" : "bg-gray-100 text-brand-text/50"
-                  }`}>{s} — {item.prices[s]} \u20B8</button>
+                  }`}>{s} — {item.prices[s]}\u20B8</button>
               ))}
             </div>
           </div>
@@ -176,10 +183,13 @@ function DrinkDetail({ item, catIcon, onAdd, onClose }: {
             <p className="text-xs text-brand-text/50 mb-2">Молоко</p>
             <div className="flex gap-2 flex-wrap">
               {MILKS.map((m, i) => (
-                <button key={m} onClick={() => setMilk(i)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                <button key={m.name} onClick={() => setMilk(i)}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                     milk === i ? "bg-brand-mint/20 text-brand-dark border border-brand-mint" : "bg-gray-100 text-gray-500"
-                  }`}>{m}</button>
+                  }`}>
+                  {m.name}
+                  {m.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{m.surcharge}\u20B8</span>}
+                </button>
               ))}
             </div>
           </div>
@@ -187,10 +197,10 @@ function DrinkDetail({ item, catIcon, onAdd, onClose }: {
 
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => { onAdd(item.name, sz ?? "\u2014", price, item.milk ? MILKS[milk] : undefined); onClose(); }}
+          onClick={() => { onAdd(item.name, sz ?? "\u2014", totalPrice, item.milk ? MILKS[milk].name : undefined); onClose(); }}
           className="w-full mt-6 py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-lg"
         >
-          Добавить — {price} \u20B8
+          Добавить — {totalPrice}\u20B8
         </motion.button>
       </motion.div>
     </motion.div>
@@ -220,7 +230,7 @@ function DrinkCard({ item, catIcon, onAdd, onDetail, idx, stopped, catId }: {
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (unavailable) return;
-    onAdd(item.name, sz ?? "\u2014", price, item.milk ? "Стандарт" : undefined);
+    onAdd(item.name, sz ?? "\u2014", price, item.milk ? MILKS[0].name : undefined);
     setAdded(true);
     setTimeout(() => setAdded(false), 700);
   };
@@ -463,7 +473,7 @@ export default function MenuPage() {
           <div className="flex items-center gap-3">
             <span className="font-bold text-lg">1250 \u20B8</span>
             <motion.button whileTap={{ scale: 0.9 }}
-              onClick={() => { if (cafeOpen) addToCart("Раф классика", "M", 1250, "Стандарт"); }}
+              onClick={() => { if (cafeOpen) addToCart("Раф классика", "M", 1250, MILKS[0].name); }}
               disabled={!cafeOpen}
               className="bg-white text-brand-dark px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-50">В корзину</motion.button>
           </div>
