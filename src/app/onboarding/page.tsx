@@ -24,9 +24,9 @@ export default function OnboardingPage() {
     setIsIOS(/iPad|iPhone|iPod/.test(ua));
     setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
 
-    /* If already logged in, skip to geo step */
-    if (user && step === "welcome") setStep("geo");
-    if (user && step === "auth") setStep("geo");
+    /* If already logged in with a name, skip auth steps */
+    if (user && user.displayName && step === "welcome") setStep("geo");
+    if (user && user.displayName && step === "auth") setStep("geo");
   }, [user, step]);
 
   const next = () => {

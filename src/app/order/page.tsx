@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, arrayUnion, runTransaction } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, arrayUnion, runTransaction, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import confetti from "canvas-confetti";
 import { getAlmatyDate } from "@/lib/constants";
@@ -19,6 +19,8 @@ export default function OrderPage() {
   const [isFree, setIsFree] = useState(false);
   const [payMethod, setPayMethod] = useState<"deposit" | "cash">("cash");
   const [depositBalance, setDepositBalance] = useState(0);
+  const [cafeOpen, setCafeOpen] = useState(true);
+  const [orderError, setOrderError] = useState("");
 
   useEffect(() => {
     const raw = sessionStorage.getItem("oic_cart");
@@ -28,12 +30,17 @@ export default function OrderPage() {
 
     if (user) {
       getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
-        if (snap.exists() && snap.data().loyaltyCount >= 7) setIsFree(true);
+        if (snap.exists() && snap.data().loyaltyCount === 7) setIsFree(true);
       }).catch(() => {});
       getDoc(doc(getFirebaseDb(), "deposits", user.uid)).then((snap) => {
         if (snap.exists()) setDepositBalance(snap.data().balance ?? 0);
       }).catch(() => {});
     }
+    /* Listen to cafe status */
+    const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
+      if (snap.exists()) setCafeOpen(snap.data().isOpen ?? true);
+    }, () => {});
+    return () => unsub();
   }, [user]);
 
   const total = isFree ? 0 : cart.reduce((s, i) => s + i.price * i.qty, 0);
@@ -118,7 +125,8 @@ export default function OrderPage() {
       sessionStorage.removeItem("oic_cart");
       window.location.href = `/order/${docRef.id}`;
     } catch (err) {
-      console.error(err);
+      const msg = err instanceof Error ? err.message : "Ошибка";
+      setOrderError(msg.includes("Insufficient") ? "Недостаточно средств на депозите" : "Ошибка при создании заказа");
       setSending(false);
     }
   };
@@ -137,7 +145,12 @@ export default function OrderPage() {
 
   return (
     <main className="min-h-screen bg-brand-bg">
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
+      {!cafeOpen && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-red-500 text-white text-center py-2 text-sm font-bold">
+          Кофейня закрыта. Заказ нельзя оформить.
+        </div>
+      )}
+      <nav className={`fixed ${cafeOpen ? "top-0" : "top-9"} w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0] transition-all`}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <a href="/menu" className="flex items-center gap-2 text-brand-text/50 hover:text-brand-dark text-sm">\u2190 Назад в меню</a>
           <span className="font-display text-xl font-bold text-brand-text">\u2615 Оформление</span>
@@ -221,12 +234,13 @@ export default function OrderPage() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             onClick={handleConfirm}
-            disabled={sending || (payMethod === "deposit" && depositBalance < total && !isFree)}
+            disabled={sending || !cafeOpen || (payMethod === "deposit" && depositBalance < total && !isFree)}
             className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all ${
               sending ? "bg-brand-mid/50 text-white cursor-wait" : "bg-brand-dark text-white hover:shadow-xl disabled:opacity-50"
             }`}>
-            {sending ? "Отправляем..." : isFree ? "Забрать бесплатно \uD83C\uDF89" : `Подтвердить заказ \u2022 ${total} \u20B8`}
+            {sending ? "Отправляем..." : !cafeOpen ? "Кофейня закрыта" : isFree ? "Забрать бесплатно \uD83C\uDF89" : `Подтвердить заказ \u2022 ${total} \u20B8`}
           </motion.button>
+          {orderError && <p className="text-red-500 text-sm text-center mt-3 font-medium">{orderError}</p>}
         </div>
       </div>
     </main>

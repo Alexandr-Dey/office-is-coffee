@@ -289,13 +289,14 @@ function QuickRepeat({ onRepeat }: { onRepeat: (items: CartItem[]) => void }) {
     if (!user) return;
     const q = query(
       collection(getFirebaseDb(), "orders"),
+      where("userId", "==", user.uid),
       orderBy("createdAt", "desc"),
       limit(1)
     );
     getDocs(q).then((snap) => {
       if (!snap.empty && snap.docs[0]) {
         const d = snap.docs[0].data();
-        if (d && d.items && (d.userId === user.uid || d.name === user.displayName)) {
+        if (d && d.items) {
           setLastOrder({ items: d.items, name: d.items.map((i: CartItem) => i.name).join(", ") });
         }
       }

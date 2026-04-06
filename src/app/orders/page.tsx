@@ -28,11 +28,12 @@ const statusLabel: Record<string, { text: string; color: string }> = {
 const ratingEmoji: Record<number, string> = { 3: "\uD83D\uDE0D", 2: "\uD83D\uDC4D", 1: "\uD83D\uDE15" };
 
 export default function OrdersPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { setLoading(false); return; }
     const q = query(
       collection(getFirebaseDb(), "orders"),
@@ -45,7 +46,7 @@ export default function OrdersPage() {
       setOrders(list);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [user]);
+  }, [user, authLoading]);
 
   const repeatOrder = (items: OrderItem[]) => {
     sessionStorage.setItem("oic_cart", JSON.stringify(items));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -141,6 +141,8 @@ export default function OrderWaitPage() {
     return () => { unsub(); clearTimeout(feedbackTimer.current); };
   }, [orderId, showToast]);
 
+  const dismissFeedback = useCallback(() => setShowFeedback(false), []);
+
   if (notFound) {
     return (
       <main className="min-h-screen bg-brand-bg flex items-center justify-center">
@@ -244,7 +246,7 @@ export default function OrderWaitPage() {
       {/* Feedback */}
       <AnimatePresence>
         {showFeedback && !order.rating && (
-          <FeedbackSheet orderId={orderId} onDismiss={() => setShowFeedback(false)} />
+          <FeedbackSheet orderId={orderId} onDismiss={dismissFeedback} />
         )}
       </AnimatePresence>
     </main>

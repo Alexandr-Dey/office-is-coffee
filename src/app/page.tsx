@@ -20,24 +20,28 @@ export default function Home() {
   const [step, setStep] = useState<"name" | "role">("name");
 
   useEffect(() => {
-    if (!loading && user) {
-      if (user.role === "barista" || user.role === "ceo") {
-        router.replace("/admin");
-      } else {
-        /* Check onboarding */
-        import("@/lib/firebase").then(({ getFirebaseDb }) => {
-          import("firebase/firestore").then(({ doc, getDoc }) => {
-            getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
-              if (snap.exists() && snap.data().onboardingDone) {
-                router.replace("/menu");
-              } else {
-                router.replace("/onboarding");
-              }
-            }).catch(() => router.replace("/menu"));
-          });
-        });
-      }
+    if (loading || !user) return;
+    if (user.role === "barista" || user.role === "ceo") {
+      router.replace("/admin");
+      return;
     }
+    /* Check onboarding — use direct imports */
+    const checkOnboarding = async () => {
+      try {
+        const { getFirebaseDb } = await import("@/lib/firebase");
+        const { doc, getDoc } = await import("firebase/firestore");
+        const snap = await getDoc(doc(getFirebaseDb(), "users", user.uid));
+        if (snap.exists() && snap.data().onboardingDone) {
+          router.replace("/menu");
+        } else {
+          router.replace("/onboarding");
+        }
+      } catch {
+        /* Firestore unavailable — send to onboarding as safe default */
+        router.replace("/onboarding");
+      }
+    };
+    checkOnboarding();
   }, [user, loading, router]);
 
   const handleNameNext = () => { if (!name.trim()) return; setStep("role"); };

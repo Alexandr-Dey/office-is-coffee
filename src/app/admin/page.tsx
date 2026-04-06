@@ -6,7 +6,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireBarista, useAuth } from "@/lib/auth";
 import {
   collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, getDoc,
-  Timestamp, increment, arrayUnion, where, getDocs,
+  Timestamp, increment, arrayUnion, where, getDocs, limit, runTransaction,
 } from "firebase/firestore";
 
 interface OrderItem { name: string; size: string; price: number; qty: number }
@@ -53,44 +53,62 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const changeStatus = async (newStatus: "pending" | "accepted" | "ready" | "paid", minutes?: number) => {
     setUpdating(true);
     try {
-      const updates: Record<string, unknown> = { status: newStatus };
-      if (newStatus === "accepted" && minutes) {
-        updates.estimatedMinutes = minutes;
-        updates.acceptedAt = Date.now();
-        updates.baristaid = baristaId;
-      }
-      if (newStatus === "paid") {
-        updates.paidAt = new Date().toISOString();
-      }
-      await updateDoc(doc(getFirebaseDb(), "orders", order.id), updates);
+      const orderRef = doc(getFirebaseDb(), "orders", order.id);
 
-      /* Barista bonus on ready — only if not free by loyalty */
+      /* Atomic status transition — prevents two baristas accepting same order */
+      await runTransaction(getFirebaseDb(), async (tx) => {
+        const orderSnap = await tx.get(orderRef);
+        if (!orderSnap.exists()) throw new Error("Order not found");
+        const current = orderSnap.data().status;
+
+        /* Validate transition: only allow expected previous status */
+        const allowed: Record<string, string[]> = {
+          accepted: ["new", "pending"],
+          ready: ["accepted"],
+          paid: ["ready"],
+        };
+        if (allowed[newStatus] && !allowed[newStatus].includes(current)) {
+          throw new Error(`Cannot transition ${current} → ${newStatus}`);
+        }
+
+        const updates: Record<string, unknown> = { status: newStatus };
+        if (newStatus === "accepted" && minutes) {
+          updates.estimatedMinutes = minutes;
+          updates.acceptedAt = Date.now();
+          updates.baristaid = baristaId;
+        }
+        if (newStatus === "paid") {
+          updates.paidAt = new Date().toISOString();
+        }
+        tx.update(orderRef, updates);
+      });
+
+      /* Barista bonus on ready — atomic with duplicate check */
       if (newStatus === "ready" && !order.isFreeByLoyalty) {
         const bonusBarista = order.baristaid || baristaId;
         const bonusRef = doc(getFirebaseDb(), "barista_bonuses", bonusBarista);
-        const bonusSnap = await getDoc(bonusRef);
-        /* Duplicate check */
-        if (bonusSnap.exists()) {
-          const hist = bonusSnap.data().history || [];
-          if (!hist.some((h: { orderId: string }) => h.orderId === order.id)) {
-            await updateDoc(bonusRef, {
+
+        await runTransaction(getFirebaseDb(), async (tx) => {
+          const bonusSnap = await tx.get(bonusRef);
+          if (bonusSnap.exists()) {
+            const hist = bonusSnap.data().history || [];
+            if (hist.some((h: { orderId: string }) => h.orderId === order.id)) return;
+            tx.update(bonusRef, {
               totalBonus: increment(5),
               pendingPayout: increment(5),
               history: arrayUnion({ orderId: order.id, amount: 5, date: new Date().toISOString() }),
             });
+          } else {
+            tx.set(bonusRef, {
+              totalBonus: 5, pendingPayout: 5,
+              history: [{ orderId: order.id, amount: 5, date: new Date().toISOString() }],
+            });
           }
-        } else {
-          await setDoc(bonusRef, {
-            totalBonus: 5,
-            pendingPayout: 5,
-            history: [{ orderId: order.id, amount: 5, date: new Date().toISOString() }],
-          });
-        }
-        /* Write baristaBonus on order */
-        await updateDoc(doc(getFirebaseDb(), "orders", order.id), { baristaBonus: 5 });
+        });
+        await updateDoc(orderRef, { baristaBonus: 5 });
       }
     } catch (err) {
-      console.error(err);
+      console.error("Status change failed:", err);
     }
     setUpdating(false);
     setShowTimePicker(false);
@@ -391,7 +409,7 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(getFirebaseDb(), "orders"), orderBy("createdAt", "desc"));
+    const q = query(collection(getFirebaseDb(), "orders"), orderBy("createdAt", "desc"), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) })));
     });

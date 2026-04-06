@@ -47,7 +47,7 @@ export default function CoinsPage() {
             ))}
           </div>
           <p className="text-center text-xs text-brand-text/40 mt-2">{loyaltyCount} / 8</p>
-          {loyaltyCount >= 7 ? (
+          {loyaltyCount === 7 ? (
             <motion.p initial={{ scale: 0.8 }} animate={{ scale: 1 }}
               className="text-center mt-3 text-brand-dark font-bold bg-brand-mint/20 rounded-full py-2">
               \uD83C\uDF89 Следующий кофе бесплатный!
