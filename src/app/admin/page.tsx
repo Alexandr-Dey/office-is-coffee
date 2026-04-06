@@ -12,9 +12,10 @@ import {
 interface OrderItem { name: string; size: string; price: number; qty: number }
 interface Order {
   id: string; name: string; items: OrderItem[]; total: number;
-  status: "pending" | "accepted" | "ready"; comment?: string;
+  status: "new" | "pending" | "accepted" | "ready" | "paid"; comment?: string;
   createdAt: Timestamp | null; estimatedMinutes?: number; acceptedAt?: number;
-  rating?: number; baristaid?: string;
+  rating?: number; baristaid?: string; paymentMethod?: "deposit" | "cash";
+  isFreeByLoyalty?: boolean; paidAt?: unknown;
 }
 
 function timeAgo(ts: Timestamp | null): string {
@@ -26,9 +27,11 @@ function timeAgo(ts: Timestamp | null): string {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: "Новый", color: "bg-yellow-100 text-yellow-800" },
+  new: { label: "Новый", color: "bg-purple-100 text-purple-800" },
+  pending: { label: "Ожидает", color: "bg-yellow-100 text-yellow-800" },
   accepted: { label: "Готовится", color: "bg-blue-100 text-blue-800" },
   ready: { label: "Готов", color: "bg-green-100 text-green-800" },
+  paid: { label: "Оплачен", color: "bg-emerald-100 text-emerald-800" },
 };
 
 const TIME_OPTIONS = [5, 10, 15, 20];
@@ -47,7 +50,7 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const [updating, setUpdating] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const changeStatus = async (newStatus: "accepted" | "ready", minutes?: number) => {
+  const changeStatus = async (newStatus: "pending" | "accepted" | "ready" | "paid", minutes?: number) => {
     setUpdating(true);
     try {
       const updates: Record<string, unknown> = { status: newStatus };
@@ -56,19 +59,26 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
         updates.acceptedAt = Date.now();
         updates.baristaid = baristaId;
       }
+      if (newStatus === "paid") {
+        updates.paidAt = new Date().toISOString();
+      }
       await updateDoc(doc(getFirebaseDb(), "orders", order.id), updates);
 
-      /* Barista bonus on ready */
-      if (newStatus === "ready") {
+      /* Barista bonus on ready — only if not free by loyalty */
+      if (newStatus === "ready" && !order.isFreeByLoyalty) {
         const bonusBarista = order.baristaid || baristaId;
         const bonusRef = doc(getFirebaseDb(), "barista_bonuses", bonusBarista);
         const bonusSnap = await getDoc(bonusRef);
+        /* Duplicate check */
         if (bonusSnap.exists()) {
-          await updateDoc(bonusRef, {
-            totalBonus: increment(5),
-            pendingPayout: increment(5),
-            history: arrayUnion({ orderId: order.id, amount: 5, date: new Date().toISOString() }),
-          });
+          const hist = bonusSnap.data().history || [];
+          if (!hist.some((h: { orderId: string }) => h.orderId === order.id)) {
+            await updateDoc(bonusRef, {
+              totalBonus: increment(5),
+              pendingPayout: increment(5),
+              history: arrayUnion({ orderId: order.id, amount: 5, date: new Date().toISOString() }),
+            });
+          }
         } else {
           await setDoc(bonusRef, {
             totalBonus: 5,
@@ -76,6 +86,8 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
             history: [{ orderId: order.id, amount: 5, date: new Date().toISOString() }],
           });
         }
+        /* Write baristaBonus on order */
+        await updateDoc(doc(getFirebaseDb(), "orders", order.id), { baristaBonus: 5 });
       }
     } catch (err) {
       console.error(err);
@@ -116,10 +128,13 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
         <div className="bg-brand-bg rounded-xl px-3 py-2 text-xs text-brand-text/60 mb-3">\uD83D\uDCAC {order.comment}</div>
       )}
 
+      {order.paymentMethod === "cash" && order.status !== "paid" && (
+        <div className="mb-2"><span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">{"\uD83D\uDCB5"} НАЛИЧНЫЕ</span></div>
+      )}
       <div className="flex items-center justify-between border-t border-[#d0f0e0] pt-3">
         <span className="font-bold text-brand-dark">{order.total} \u20B8</span>
         <div className="flex gap-2">
-          {order.status === "pending" && !showTimePicker && (
+          {(order.status === "new" || order.status === "pending") && !showTimePicker && (
             <motion.button whileTap={{ scale: 0.95 }} disabled={updating}
               onClick={() => setShowTimePicker(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
@@ -145,7 +160,14 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
             </motion.button>
           )}
           {order.status === "ready" && (
-            <span className="px-4 py-2 text-green-600 text-sm font-bold">\u2713 Выдан</span>
+            <motion.button whileTap={{ scale: 0.95 }} disabled={updating}
+              onClick={() => changeStatus("paid")}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50">
+              {order.paymentMethod === "cash" ? "\uD83D\uDCB5 Получил оплату" : "\u2713 Выдано"}
+            </motion.button>
+          )}
+          {order.status === "paid" && (
+            <span className="px-4 py-2 text-emerald-600 text-sm font-bold">\u2713 Завершён</span>
           )}
         </div>
       </div>
@@ -261,12 +283,106 @@ function RatingsTab({ orders }: { orders: Order[] }) {
   );
 }
 
+/* ═══ DEPOSITS TAB ═══ */
+function DepositsTab({ baristaId }: { baristaId: string }) {
+  const [phone, setPhone] = useState("");
+  const [foundUser, setFoundUser] = useState<{ uid: string; name: string; balance: number } | null>(null);
+  const [amount, setAmount] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const searchUser = async () => {
+    if (!phone.trim()) return;
+    setSearching(true); setFoundUser(null);
+    try {
+      const { getDocs: gd, where: w } = await import("firebase/firestore");
+      const q = query(collection(getFirebaseDb(), "users"), w("phone", "==", phone.trim()));
+      const snap = await gd(q);
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        const depSnap = await getDoc(doc(getFirebaseDb(), "deposits", d.id));
+        setFoundUser({ uid: d.id, name: d.data().displayName || "Клиент", balance: depSnap.exists() ? depSnap.data().balance ?? 0 : 0 });
+      }
+    } catch { /* ignore */ }
+    setSearching(false);
+  };
+
+  const topUp = async () => {
+    if (!foundUser || !amount) return;
+    const amt = parseInt(amount, 10);
+    if (isNaN(amt) || amt <= 0) return;
+    try {
+      const depRef = doc(getFirebaseDb(), "deposits", foundUser.uid);
+      const depSnap = await getDoc(depRef);
+      if (depSnap.exists()) {
+        await updateDoc(depRef, {
+          balance: increment(amt),
+          totalTopup: increment(amt),
+          lastTopupAt: new Date().toISOString(),
+          history: arrayUnion({ type: "topup", amount: amt, date: new Date().toISOString(), baristaid: baristaId }),
+        });
+      } else {
+        await setDoc(depRef, {
+          balance: amt, totalTopup: amt, totalSpent: 0,
+          lastTopupAt: new Date().toISOString(),
+          history: [{ type: "topup", amount: amt, date: new Date().toISOString(), baristaid: baristaId }],
+        });
+      }
+      setSuccess(true);
+      setFoundUser({ ...foundUser, balance: foundUser.balance + amt });
+      setAmount("");
+      setTimeout(() => setSuccess(false), 3000);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+        <h3 className="font-bold text-brand-text text-sm mb-3">Найти клиента</h3>
+        <div className="flex gap-2">
+          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Номер телефона или UID"
+            className="flex-1 px-3 py-2 rounded-xl border border-[#d0f0e0] text-sm outline-none focus:border-brand-mint" />
+          <motion.button whileTap={{ scale: 0.95 }} onClick={searchUser} disabled={searching}
+            className="px-4 py-2 bg-brand-dark text-white rounded-xl text-sm font-bold disabled:opacity-50">
+            {searching ? "..." : "Найти"}
+          </motion.button>
+        </div>
+      </div>
+
+      {foundUser && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl border border-[#d0f0e0] p-5" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+          <div className="flex justify-between mb-3">
+            <div>
+              <p className="font-bold text-brand-text">{foundUser.name}</p>
+              <p className="text-xs text-brand-text/40">{foundUser.uid.slice(0, 20)}...</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-brand-text/50">Баланс</p>
+              <p className="font-bold text-brand-dark text-lg">{foundUser.balance}\u20B8</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Сумма \u20B8"
+              className="flex-1 px-3 py-2 rounded-xl border border-[#d0f0e0] text-sm outline-none focus:border-brand-mint" />
+            <motion.button whileTap={{ scale: 0.95 }} onClick={topUp}
+              className="px-4 py-2 bg-brand-mint text-brand-dark rounded-xl text-sm font-bold">
+              Пополнить
+            </motion.button>
+          </div>
+          {success && <p className="text-sm text-green-600 font-bold mt-2">{"\u2705"} Депозит пополнен!</p>}
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 /* ═══ PAGE ═══ */
 export default function AdminPage() {
   const { user, loading: authLoading } = useRequireBarista();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<"all" | "pending" | "accepted" | "ready">("all");
-  const [tab, setTab] = useState<"orders" | "bonuses" | "stoplist" | "ratings">("orders");
+  const [filter, setFilter] = useState<"all" | "new" | "pending" | "accepted" | "ready" | "paid">("all");
+  const [tab, setTab] = useState<"orders" | "bonuses" | "stoplist" | "ratings" | "deposits">("orders");
   const [cafeOpen, setCafeOpen] = useState(true);
   const [now, setNow] = useState(Date.now());
 
@@ -300,13 +416,14 @@ export default function AdminPage() {
     }, { merge: true }).catch(() => {});
   };
 
-  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
   const counts = {
     all: orders.length,
-    pending: orders.filter((o) => o.status === "pending").length,
+    new: orders.filter((o) => o.status === "new" || o.status === "pending").length,
     accepted: orders.filter((o) => o.status === "accepted").length,
     ready: orders.filter((o) => o.status === "ready").length,
+    paid: orders.filter((o) => o.status === "paid").length,
   };
+  const filtered = filter === "all" ? orders : filter === "new" ? orders.filter((o) => o.status === "new" || o.status === "pending") : orders.filter((o) => o.status === filter);
 
   if (authLoading || !user) {
     return (
@@ -347,6 +464,7 @@ export default function AdminPage() {
           <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide">
             {([
               { key: "orders", label: "Заказы", icon: "\uD83D\uDCE6" },
+              { key: "deposits", label: "Депозиты", icon: "\uD83D\uDCB3" },
               { key: "bonuses", label: "Мои бонусы", icon: "\uD83D\uDCB0" },
               { key: "stoplist", label: "Стоп-лист", icon: "\u26D4" },
               { key: "ratings", label: "Рейтинг", icon: "\u2B50" },
@@ -365,9 +483,10 @@ export default function AdminPage() {
               <div className="flex justify-center gap-2 mb-6" key={now}>
                 {([
                   { key: "all", label: "Все" },
-                  { key: "pending", label: "Новые" },
+                  { key: "new", label: "Новые" },
                   { key: "accepted", label: "Готовятся" },
                   { key: "ready", label: "Готовы" },
+                  { key: "paid", label: "Оплачены" },
                 ] as const).map((f) => (
                   <button key={f.key} onClick={() => setFilter(f.key)}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -395,6 +514,7 @@ export default function AdminPage() {
             </>
           )}
 
+          {tab === "deposits" && <DepositsTab baristaId={user.uid} />}
           {tab === "bonuses" && <BonusesTab baristaId={user.uid} />}
           {tab === "stoplist" && <StopListTab />}
           {tab === "ratings" && <RatingsTab orders={orders} />}

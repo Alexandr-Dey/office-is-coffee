@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [showGeoPrompt, setShowGeoPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isPWA, setIsPWA] = useState(false);
+  const [depositBalance, setDepositBalance] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -23,13 +24,16 @@ export default function ProfilePage() {
       if (snap.exists()) {
         setStreak(snap.data().streak ?? 0);
         setLoyaltyCount(snap.data().loyaltyCount ?? 0);
+        setGeoPermission(snap.data().geolocationAllowed ?? false);
       }
     }, () => {});
-    return () => unsub();
+    const unsubDep = onSnapshot(doc(getFirebaseDb(), "deposits", user.uid), (snap) => {
+      if (snap.exists()) setDepositBalance(snap.data().balance ?? 0);
+    }, () => {});
+    return () => { unsub(); unsubDep(); };
   }, [user]);
 
   useEffect(() => {
-    setGeoPermission(localStorage.getItem("oic_geo_allowed") === "true");
     const ua = navigator.userAgent;
     setIsIOS(/iPad|iPhone|iPod/.test(ua));
     setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
@@ -42,10 +46,14 @@ export default function ProfilePage() {
 
   const requestGeo = useCallback(() => {
     navigator.geolocation.getCurrentPosition(
-      () => { localStorage.setItem("oic_geo_allowed", "true"); setGeoPermission(true); setShowGeoPrompt(false); },
+      () => {
+        setGeoPermission(true);
+        setShowGeoPrompt(false);
+        if (user) updateDoc(doc(getFirebaseDb(), "users", user.uid), { geolocationAllowed: true }).catch(() => {});
+      },
       () => { setShowGeoPrompt(false); },
     );
-  }, []);
+  }, [user]);
 
   return (
     <main className="min-h-screen pb-20 pt-6 px-4 bg-brand-bg">
@@ -76,6 +84,24 @@ export default function ProfilePage() {
             </>
           )}
         </div>
+
+        {/* Deposit balance + QR */}
+        {user && (
+          <div className="bg-white rounded-2xl border border-[#d0f0e0] p-6 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-xs text-brand-text/50">Депозит</p>
+                <p className="text-2xl font-bold text-brand-dark">{depositBalance}\u20B8</p>
+              </div>
+              <div className="bg-brand-bg p-2 rounded-xl">
+                <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center border border-[#d0f0e0]">
+                  <span className="text-[8px] text-brand-text/40 text-center leading-tight">QR<br/>{user.uid.slice(0, 8)}</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-brand-text/40">Покажи QR баристе для пополнения</p>
+          </div>
+        )}
 
         {/* Geo permission */}
         {!geoPermission && !showGeoPrompt && (

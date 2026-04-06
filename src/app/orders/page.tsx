@@ -50,6 +50,7 @@ export default function OrdersPage() {
 
   const repeatOrder = (items: OrderItem[]) => {
     sessionStorage.setItem("oic_cart", JSON.stringify(items));
+    sessionStorage.setItem("oic_is_repeat", "true");
     window.location.href = "/order";
   };
 

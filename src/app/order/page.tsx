@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import confetti from "canvas-confetti";
 
@@ -16,6 +16,8 @@ export default function OrderPage() {
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
   const [isFree, setIsFree] = useState(false);
+  const [payMethod, setPayMethod] = useState<"deposit" | "cash">("cash");
+  const [depositBalance, setDepositBalance] = useState(0);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("oic_cart");
@@ -23,23 +25,27 @@ export default function OrderPage() {
     const userRaw = localStorage.getItem("oic_user");
     if (userRaw) { try { const u = JSON.parse(userRaw); if (u.displayName) setName(u.displayName); } catch { /* ignore */ } }
 
-    /* Check if next coffee is free */
     if (user) {
       getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
-        if (snap.exists() && snap.data().loyaltyCount >= 7) {
-          setIsFree(true);
-        }
+        if (snap.exists() && snap.data().loyaltyCount >= 7) setIsFree(true);
+      }).catch(() => {});
+      getDoc(doc(getFirebaseDb(), "deposits", user.uid)).then((snap) => {
+        if (snap.exists()) setDepositBalance(snap.data().balance ?? 0);
       }).catch(() => {});
     }
   }, [user]);
 
   const total = isFree ? 0 : cart.reduce((s, i) => s + i.price * i.qty, 0);
 
+  /* UTC+5 date helper */
+  const getAlmatyDate = () => new Date().toLocaleString("sv", { timeZone: "Asia/Almaty" }).split(" ")[0];
+
   const handleConfirm = async () => {
     if (cart.length === 0) return;
     setSending(true);
     try {
       const userId = user?.uid || localStorage.getItem("oic_userId") || "anonymous";
+      const isRepeat = sessionStorage.getItem("oic_is_repeat") === "true";
 
       const docRef = await addDoc(collection(getFirebaseDb(), "orders"), {
         name: name || "Гость",
@@ -47,11 +53,16 @@ export default function OrderPage() {
         items: cart.map((i) => ({ name: i.name, size: i.size, price: i.price, qty: i.qty, milk: i.milk })),
         comment: comment.trim(),
         total,
-        status: "pending",
+        status: "new",
+        paymentMethod: payMethod,
         isFreeByLoyalty: isFree,
-        isRepeatOrder: false,
+        isRepeatOrder: isRepeat,
+        baristaBonus: 0,
+        paidAt: null,
         createdAt: serverTimestamp(),
       });
+
+      sessionStorage.removeItem("oic_is_repeat");
 
       /* Update loyalty + streak */
       if (user) {
@@ -59,9 +70,10 @@ export default function OrderPage() {
         const snap = await getDoc(userRef);
         if (snap.exists()) {
           const data = snap.data();
-          const today = new Date().toDateString();
+          const today = getAlmatyDate();
           const lastOrder = data.lastOrderDate;
-          const yesterday = new Date(Date.now() - 86400000).toDateString();
+          const yesterdayDate = new Date(Date.now() - 86400000);
+          const yesterday = yesterdayDate.toLocaleString("sv", { timeZone: "Asia/Almaty" }).split(" ")[0];
 
           let newStreak = 1;
           if (lastOrder === yesterday) newStreak = (data.streak || 0) + 1;
@@ -80,14 +92,25 @@ export default function OrderPage() {
             lastOrderDate: today,
           });
 
-          /* First order of the day at 07:31 */
+          /* Deposit: deduct balance if paying with deposit */
+          if (payMethod === "deposit" && !isFree && total > 0) {
+            const depRef = doc(getFirebaseDb(), "deposits", user.uid);
+            const depSnap = await getDoc(depRef);
+            if (depSnap.exists()) {
+              const depData = depSnap.data();
+              await updateDoc(depRef, {
+                balance: (depData.balance || 0) - total,
+                totalSpent: (depData.totalSpent || 0) + total,
+                history: arrayUnion({ type: "payment", amount: total, date: new Date().toISOString(), orderId: docRef.id }),
+              });
+            }
+          }
+
+          /* 07:31 easter egg */
           const now = new Date();
           if (now.getHours() === 7 && now.getMinutes() === 31) {
             confetti({ particleCount: 60, colors: ["#3ecf82", "#1a7a44"] });
-            /* +50 coins could be tracked separately */
           }
-        } else {
-          await updateDoc(userRef, { loyaltyCount: 1, streak: 1, lastOrderDate: new Date().toDateString() }).catch(() => {});
         }
       }
 
@@ -169,12 +192,38 @@ export default function OrderPage() {
             </div>
           </motion.div>
 
+          {/* Payment method */}
+          {!isFree && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-6" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+              <p className="text-sm font-medium text-brand-text/70 mb-3">Способ оплаты</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setPayMethod("deposit")}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${payMethod === "deposit" ? "border-brand-mint bg-brand-mint/10" : "border-[#d0f0e0]"}`}>
+                  <span className="text-lg block mb-1">{"\uD83D\uDCB3"}</span>
+                  <span className="font-bold text-sm text-brand-text block">С депозита</span>
+                  <span className="text-xs text-brand-text/50">Баланс: {depositBalance}\u20B8</span>
+                  {depositBalance < total && payMethod === "deposit" && (
+                    <span className="text-xs text-red-500 block mt-1">Не хватает {total - depositBalance}\u20B8</span>
+                  )}
+                </button>
+                <button onClick={() => setPayMethod("cash")}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${payMethod === "cash" ? "border-amber-400 bg-amber-50" : "border-[#d0f0e0]"}`}>
+                  <span className="text-lg block mb-1">{"\uD83D\uDCB5"}</span>
+                  <span className="font-bold text-sm text-brand-text block">Наличными</span>
+                  <span className="text-xs text-brand-text/50">Оплата на кассе</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           <motion.button
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            onClick={handleConfirm} disabled={sending}
+            onClick={handleConfirm}
+            disabled={sending || (payMethod === "deposit" && depositBalance < total && !isFree)}
             className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all ${
-              sending ? "bg-brand-mid/50 text-white cursor-wait" : "bg-brand-dark text-white hover:shadow-xl"
+              sending ? "bg-brand-mid/50 text-white cursor-wait" : "bg-brand-dark text-white hover:shadow-xl disabled:opacity-50"
             }`}>
             {sending ? "Отправляем..." : isFree ? "Забрать бесплатно \uD83C\uDF89" : `Подтвердить заказ \u2022 ${total} \u20B8`}
           </motion.button>

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CoffeeScene from "@/components/CoffeeScene";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, where } from "firebase/firestore";
 
 /* ═══ TYPES ═══ */
 type Size = "S" | "M" | "L";
@@ -197,8 +197,16 @@ function DrinkDetail({ item, catIcon, onAdd, onClose }: {
 }
 
 /* ═══ DRINK CARD ═══ */
-function DrinkCard({ item, catIcon, onAdd, onDetail, idx, stopped }: {
-  item: MenuItem; catIcon: string; idx: number; stopped?: boolean;
+const CAT_GRADIENTS: Record<string, string> = {
+  coffee: "bg-gradient-to-br from-amber-50 to-orange-50",
+  author: "bg-gradient-to-br from-rose-50 to-pink-50",
+  ice: "bg-gradient-to-br from-cyan-50 to-blue-50",
+  tea: "bg-gradient-to-br from-green-50 to-emerald-50",
+  other: "bg-gradient-to-br from-purple-50 to-violet-50",
+};
+
+function DrinkCard({ item, catIcon, onAdd, onDetail, idx, stopped, catId }: {
+  item: MenuItem; catIcon: string; idx: number; stopped?: boolean; catId?: string;
   onAdd: (name: string, size: string, price: number, milk?: string) => void;
   onDetail: () => void;
 }) {
@@ -222,7 +230,7 @@ function DrinkCard({ item, catIcon, onAdd, onDetail, idx, stopped }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.04 }}
       onClick={unavailable ? undefined : onDetail}
-      className={`bg-white rounded-2xl border border-[#d0f0e0] p-4 flex flex-col cursor-pointer hover:shadow-md transition-shadow ${unavailable ? "opacity-50 cursor-not-allowed" : ""}`}
+      className={`rounded-2xl border border-[#d0f0e0] p-4 flex flex-col cursor-pointer hover:shadow-md transition-shadow ${unavailable ? "opacity-50 cursor-not-allowed" : ""} ${catId && CAT_GRADIENTS[catId] ? CAT_GRADIENTS[catId] : "bg-white"}`}
       style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
     >
       <div className="text-3xl mb-2">{catIcon}</div>
@@ -307,7 +315,7 @@ function QuickRepeat({ onRepeat }: { onRepeat: (items: CartItem[]) => void }) {
       </div>
       <motion.button
         whileTap={{ scale: 0.9 }}
-        onClick={() => onRepeat(lastOrder.items)}
+        onClick={() => { sessionStorage.setItem("oic_is_repeat", "true"); onRepeat(lastOrder.items); }}
         className="px-4 py-2 bg-brand-dark text-white rounded-full text-sm font-bold"
       >
         Повторить
@@ -327,6 +335,7 @@ export default function MenuPage() {
   const [cafeOpen, setCafeOpen] = useState(true);
   const [stopList, setStopList] = useState<string[]>([]);
   const [geoNearby, setGeoNearby] = useState(false);
+  const [activeOrderStatus, setActiveOrderStatus] = useState<"idle" | "new" | "pending" | "accepted" | "ready">("idle");
   const tabsRef = useRef<HTMLDivElement>(null);
   const current = MENU.find((c) => c.id === cat) ?? MENU[0];
 
@@ -353,16 +362,33 @@ export default function MenuPage() {
     return () => unsub();
   }, [user]);
 
-  /* Geolocation check */
+  /* Geolocation check — read permission from Firestore user doc */
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    const geoAllowed = localStorage.getItem("oic_geo_allowed");
-    if (geoAllowed !== "true") return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const lat = 43.2220, lng = 76.8512;
-      const dist = getDistanceKm(pos.coords.latitude, pos.coords.longitude, lat, lng) * 1000;
-      if (dist <= 300) setGeoNearby(true);
+    if (!navigator.geolocation || !user) return;
+    const unsub2 = onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
+      if (snap.exists() && snap.data().geolocationAllowed) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const lat = 43.2220, lng = 76.8512;
+          const dist = getDistanceKm(pos.coords.latitude, pos.coords.longitude, lat, lng) * 1000;
+          if (dist <= 300) setGeoNearby(true);
+        }, () => {});
+      }
     }, () => {});
+    return () => unsub2();
+  }, [user]);
+
+  /* Listen to active orders for scene state */
+  useEffect(() => {
+    const q = query(collection(getFirebaseDb(), "orders"), where("status", "in", ["new", "pending", "accepted", "ready"]), orderBy("createdAt", "desc"), limit(1));
+    const unsub3 = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const s = snap.docs[0].data().status;
+        setActiveOrderStatus(s === "new" ? "pending" : s);
+      } else {
+        setActiveOrderStatus("idle");
+      }
+    }, () => {});
+    return () => unsub3();
   }, []);
 
   const addToCart = (name: string, size: string, price: number, milk?: string) => {
@@ -397,7 +423,15 @@ export default function MenuPage() {
         </div>
       )}
 
-      <div className="px-3 pt-3"><CoffeeScene /></div>
+      {/* Status dot */}
+      <div className="px-3 pt-2 flex items-center justify-between">
+        <span className="font-display text-lg font-bold text-brand-text">Love is Coffee</span>
+        <div className="flex items-center gap-1.5">
+          <div className={`w-2.5 h-2.5 rounded-full ${cafeOpen ? "bg-green-500" : "bg-red-500"}`} />
+          <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
+        </div>
+      </div>
+      <div className="px-3 pt-1"><CoffeeScene orderStatus={activeOrderStatus as any} /></div>
 
       <div className="px-3 mt-3 space-y-3">
         <LoyaltyBanner count={loyaltyCount} />
@@ -436,7 +470,7 @@ export default function MenuPage() {
       </div>
 
       {/* Tabs */}
-      <div ref={tabsRef} className="px-3 mt-4 overflow-x-auto scrollbar-hide">
+      <div ref={tabsRef} data-menu-tabs className="px-3 mt-4 overflow-x-auto scrollbar-hide">
         <div className="flex gap-2 pb-1">
           {MENU.map((c) => (
             <button key={c.id} onClick={() => setCat(c.id)}
@@ -455,6 +489,7 @@ export default function MenuPage() {
             {current.items.map((item, idx) => (
               <DrinkCard
                 key={item.name} item={item} catIcon={current.icon} idx={idx}
+                catId={current.id}
                 stopped={stopList.includes(item.name)}
                 onAdd={addToCart}
                 onDetail={() => setDetailItem({ item, icon: current.icon })}

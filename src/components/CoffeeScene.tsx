@@ -139,11 +139,54 @@ function drawScene(
 
   /* ---- BARISTAS ---- */
   const sleeping = isNight;
-  const vAngry = vitaliyTaps >= 8;
-  const aFlip = aslanTaps >= 5;
+  const vAngry = vitaliyTaps >= 8 && vitaliyTaps < 99;
+  const vGone = vitaliyTaps >= 99;
+  const aFlip = aslanTaps >= 5 && aslanTaps < 99;
+  const aFalling = aslanTaps >= 99;
 
-  drawBarista(ctx, W / 2 - 80, cy, t, "left", state, sleeping, vAngry, false, orderCount);
-  drawBarista(ctx, W / 2 + 80, cy, t, "right", state, sleeping, false, aFlip, orderCount);
+  /* D1: Vitaliy gone — don't draw him */
+  if (!vGone) {
+    drawBarista(ctx, W / 2 - 80, cy, t, "left", state, sleeping, vAngry, false, orderCount);
+  } else {
+    /* Draw thrown apron on floor */
+    ctx.fillStyle = "#C0392B";
+    ctx.save();
+    ctx.translate(W / 2 - 120, cy + 15);
+    ctx.rotate(0.3);
+    ctx.fillRect(0, 0, 20, 12);
+    ctx.restore();
+  }
+
+  /* D2: Aslan falling */
+  if (aFalling) {
+    ctx.save();
+    const fallPhase = (t * 2) % 5;
+    ctx.translate(W / 2 + 80, cy - 5);
+    if (fallPhase < 2) {
+      ctx.rotate(fallPhase * 1.5); // spinning
+    } else {
+      ctx.rotate(1.2); // lying on side
+      /* red cheeks = embarrassed */
+    }
+    const s2 = 0.7;
+    ctx.fillStyle = "#F5C193";
+    ctx.beginPath();
+    ctx.ellipse(0, -30 * s2, 12 * s2, 13 * s2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#F0F0F0";
+    ctx.fillRect(-10 * s2, -18 * s2, 20 * s2, 24 * s2);
+    ctx.fillStyle = "#C0392B";
+    ctx.fillRect(-8 * s2, -16 * s2, 16 * s2, 20 * s2);
+    /* embarrassed cheeks */
+    if (fallPhase >= 2) {
+      ctx.fillStyle = "rgba(255,100,100,0.4)";
+      ctx.beginPath(); ctx.arc(-6 * s2, -26 * s2, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(6 * s2, -26 * s2, 4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  } else {
+    drawBarista(ctx, W / 2 + 80, cy, t, "right", state, sleeping, false, aFlip, orderCount);
+  }
 
   /* Names */
   ctx.fillStyle = "#FFF";
@@ -167,6 +210,23 @@ function drawScene(
     ctx.fillStyle = "#FFF";
     ctx.textAlign = "center";
     ctx.fillText(txt, bx2, by2 + 8);
+    ctx.textAlign = "start";
+  }
+
+  /* Order label card above counter */
+  if (state !== "idle" && orderCount !== undefined) {
+    /* This is a simplified version - will be enhanced with actual order data */
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 60, 95, 120, 22, 6);
+    ctx.fill();
+    ctx.strokeStyle = "#d0f0e0";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#1a7a44";
+    ctx.font = "bold 9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(state === "pending" ? "\u231B Новый заказ" : state === "accepted" ? "\u2615 Готовится..." : "\uD83C\uDF89 Готов!", W / 2, 109);
     ctx.textAlign = "start";
   }
 
@@ -437,17 +497,63 @@ function drawBarista(
 }
 
 /* ====== COMPONENT ====== */
-export default function CoffeeScene({ orderStatus, orderCount }: { orderStatus?: BaristaState; orderCount?: number }) {
+export default function CoffeeScene({ orderStatus, orderCount, orderLabel }: { orderStatus?: BaristaState; orderCount?: number; orderLabel?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tRef = useRef(0);
   const frameRef = useRef(0);
   const [vTaps, setVTaps] = useState(0);
   const [aTaps, setATaps] = useState(0);
+  const [vGone, setVGone] = useState(false); // Vitaliy left after 8 taps
+  const [aFalling, setAFalling] = useState(false); // Aslan falling after flip
+  const [isDancing, setIsDancing] = useState(false);
+  const [wokeUp, setWokeUp] = useState(false);
+  const [shaking, setShaking] = useState(false);
   const vTapTimer = useRef<ReturnType<typeof setTimeout>>();
   const aTapTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const state = orderStatus ?? "idle";
   const isNight = typeof window !== "undefined" && new Date().getHours() >= 23;
+
+  /* D1: Vitaliy — 8 taps: angry → gone 30s → returns */
+  useEffect(() => {
+    if (vTaps >= 8 && !vGone) {
+      setVGone(true);
+      setTimeout(() => { setVGone(false); setVTaps(0); }, 30000);
+    }
+  }, [vTaps, vGone]);
+
+  /* D2: Aslan — 5 taps: flip → fall → embarrassed */
+  useEffect(() => {
+    if (aTaps >= 5 && !aFalling) {
+      setAFalling(true);
+      setTimeout(() => { setAFalling(false); setATaps(0); }, 5000);
+    }
+  }, [aTaps, aFalling]);
+
+  /* D5: Dance timer — 3 seconds */
+  useEffect(() => {
+    if (orderCount && orderCount > 0 && orderCount % 10 === 0 && !isDancing) {
+      setIsDancing(true);
+      setTimeout(() => setIsDancing(false), 3000);
+    }
+  }, [orderCount, isDancing]);
+
+  /* D3: Shake detection */
+  useEffect(() => {
+    let lastShake = 0;
+    const handleMotion = (e: DeviceMotionEvent) => {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+      const total = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
+      if (total > 25 && Date.now() - lastShake > 3000) {
+        lastShake = Date.now();
+        setShaking(true);
+        setTimeout(() => setShaking(false), 2000);
+      }
+    };
+    window.addEventListener("devicemotion", handleMotion);
+    return () => window.removeEventListener("devicemotion", handleMotion);
+  }, []);
 
   const draw = useCallback(() => {
     const c = canvasRef.current;
@@ -455,9 +561,13 @@ export default function CoffeeScene({ orderStatus, orderCount }: { orderStatus?:
     const ctx = c.getContext("2d");
     if (!ctx) return;
     tRef.current += 0.02;
-    drawScene(ctx, tRef.current, state, vTaps, aTaps, isNight, orderCount ?? 0);
+    drawScene(ctx, tRef.current, state,
+      vGone ? 99 : vTaps, // 99 signals "gone"
+      aFalling ? 99 : aTaps, // 99 signals "falling"
+      isNight && !wokeUp,
+      isDancing ? 10 : 0); // 10 triggers dance in drawScene
     frameRef.current = requestAnimationFrame(draw);
-  }, [state, vTaps, aTaps, isNight, orderCount]);
+  }, [state, vTaps, aTaps, isNight, isDancing, vGone, aFalling, wokeUp, shaking]);
 
   useEffect(() => {
     frameRef.current = requestAnimationFrame(draw);
@@ -469,15 +579,28 @@ export default function CoffeeScene({ orderStatus, orderCount }: { orderStatus?:
     if (!rect) return;
     const cx = (e.clientX - rect.left) / rect.width * W;
 
+    /* D4: Night tap → wake up */
+    if (isNight && !wokeUp) {
+      setWokeUp(true);
+      setTimeout(() => setWokeUp(false), 5000);
+      return;
+    }
+
     if (cx > W / 2 - 120 && cx < W / 2 - 40) {
       setVTaps((p) => p + 1);
       clearTimeout(vTapTimer.current);
-      vTapTimer.current = setTimeout(() => setVTaps(0), 30000);
+      if (vTaps < 7) vTapTimer.current = setTimeout(() => setVTaps(0), 30000);
     }
     if (cx > W / 2 + 40 && cx < W / 2 + 120) {
       setATaps((p) => p + 1);
       clearTimeout(aTapTimer.current);
-      aTapTimer.current = setTimeout(() => setATaps(0), 10000);
+      if (aTaps < 4) aTapTimer.current = setTimeout(() => setATaps(0), 10000);
+    }
+
+    /* Tap on menu boards → scroll to menu */
+    if (cx > W * 0.35 && cx < W) {
+      const el = document.querySelector("[data-menu-tabs]");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
     }
   };
 

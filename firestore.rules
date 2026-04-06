@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users — read own, write sensitive fields only via Cloud Functions
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      // Allow client to update non-sensitive fields
+      allow update: if request.auth != null && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['loyaltyCount', 'streak', 'role']);
+    }
+
+    // Orders — create if authenticated, read own or barista/ceo, update status only barista/ceo
+    match /orders/{orderId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo']
+      );
+      allow update: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo'];
+    }
+
+    // Deposits — read own + barista/ceo, write only Cloud Functions (admin SDK bypasses rules)
+    match /deposits/{uid} {
+      allow read: if request.auth != null && (
+        request.auth.uid == uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo']
+      );
+      allow write: if false; // Only Cloud Functions
+    }
+
+    // Barista bonuses — read own barista + ceo, write only Cloud Functions
+    match /barista_bonuses/{uid} {
+      allow read: if request.auth != null && (
+        request.auth.uid == uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ceo'
+      );
+      allow write: if false; // Only Cloud Functions
+    }
+
+    // Cafe status — read all authenticated, write barista/ceo
+    match /cafe_status/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo'];
+    }
+
+    // Push tokens — read/write own
+    match /push_tokens/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

@@ -24,7 +24,18 @@ export default function Home() {
       if (user.role === "barista" || user.role === "ceo") {
         router.replace("/admin");
       } else {
-        router.replace("/menu");
+        /* Check onboarding */
+        import("@/lib/firebase").then(({ getFirebaseDb }) => {
+          import("firebase/firestore").then(({ doc, getDoc }) => {
+            getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
+              if (snap.exists() && snap.data().onboardingDone) {
+                router.replace("/menu");
+              } else {
+                router.replace("/onboarding");
+              }
+            }).catch(() => router.replace("/menu"));
+          });
+        });
       }
     }
   }, [user, loading, router]);

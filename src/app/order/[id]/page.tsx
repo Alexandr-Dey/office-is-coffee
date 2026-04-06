@@ -12,7 +12,7 @@ interface OrderData {
   name: string;
   items: { name: string; size: string; price: number; qty: number }[];
   total: number;
-  status: "pending" | "accepted" | "ready";
+  status: "new" | "pending" | "accepted" | "ready" | "paid";
   comment?: string;
   estimatedMinutes?: number;
   acceptedAt?: number;
@@ -20,9 +20,11 @@ interface OrderData {
 }
 
 const STATUS_TEXT: Record<string, { title: string; sub: string; emoji: string }> = {
+  new: { title: "Заказ отправлен", sub: "Бариста скоро увидит...", emoji: "\uD83D\uDCE8" },
   pending: { title: "Заказ принят", sub: "Ожидаем подтверждения баристы...", emoji: "\u231B" },
   accepted: { title: "Виталий готовит твой кофе", sub: "Немного терпения...", emoji: "\u2615" },
   ready: { title: "Твой кофе готов!", sub: "Забери у стойки", emoji: "\uD83C\uDF89" },
+  paid: { title: "Приятного!", sub: "До встречи снова", emoji: "\u2705" },
 };
 
 /* ═══ COUNTDOWN TIMER ═══ */
@@ -197,17 +199,18 @@ export default function OrderWaitPage() {
           )}
 
           {/* Progress steps */}
-          <div className="flex justify-center gap-3 mb-8">
-            {(["pending", "accepted", "ready"] as const).map((s, i) => {
-              const steps = ["pending", "accepted", "ready"];
+          <div className="flex justify-center gap-2 mb-8">
+            {(["new", "pending", "accepted", "ready", "paid"] as const).map((s, i) => {
+              const steps = ["new", "pending", "accepted", "ready", "paid"];
               const current = steps.indexOf(order.status);
               const active = i <= current;
+              const labels = ["\uD83D\uDCE8", "\u231B", "\u2615", "\uD83C\uDF89", "\u2705"];
               return (
-                <div key={s} className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                <div key={s} className="flex items-center gap-1.5">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs transition-colors ${
                     active ? "bg-brand-dark text-white" : "bg-[#d0f0e0] text-brand-text/40"
-                  }`}>{i + 1}</div>
-                  {i < 2 && <div className={`w-8 h-0.5 ${active && i < current ? "bg-brand-dark" : "bg-[#d0f0e0]"}`} />}
+                  }`}>{labels[i]}</div>
+                  {i < 4 && <div className={`w-4 h-0.5 ${active && i < current ? "bg-brand-dark" : "bg-[#d0f0e0]"}`} />}
                 </div>
               );
             })}
@@ -229,7 +232,7 @@ export default function OrderWaitPage() {
             </div>
           </motion.div>
 
-          {order.status === "ready" && (
+          {(order.status === "ready" || order.status === "paid") && (
             <motion.a href="/menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
               className="inline-block mt-6 px-8 py-3 bg-brand-dark text-white font-bold rounded-2xl shadow-lg">
               Вернуться в меню

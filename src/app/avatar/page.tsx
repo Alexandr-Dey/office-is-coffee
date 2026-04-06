@@ -707,7 +707,7 @@ export default function AvatarPage() {
     try {
       localStorage.setItem("oic_avatar", JSON.stringify(config));
       localStorage.setItem("oic_userId", user.uid);
-      router.push("/office");
+      router.push("/menu");
     } catch (err) {
       setError("\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.");
       setSaving(false);
