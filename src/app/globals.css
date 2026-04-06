@@ -5,23 +5,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
 
 :root {
-  --foreground-rgb: 58, 26, 13;
-  --background-start-rgb: 254, 252, 247;
-  --background-end-rgb: 253, 246, 234;
+  --foreground-rgb: 15, 58, 32;
+  --background-start-rgb: 242, 253, 246;
+  --background-end-rgb: 234, 252, 240;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-    to bottom,
-    rgb(var(--background-start-rgb)),
-    rgb(var(--background-end-rgb))
-  );
+  background: rgb(var(--background-start-rgb));
   min-height: 100vh;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

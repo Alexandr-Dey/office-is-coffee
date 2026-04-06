@@ -9,12 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
-/**
- * Temporary name-based auth (localStorage + Firestore for role).
- * TODO: return Firebase Auth + Google Sign-In when keys are fixed.
- */
-
-export type Role = "client" | "barista";
+export type Role = "client" | "barista" | "ceo";
 
 export interface SimpleUser {
   uid: string;
@@ -25,7 +20,6 @@ export interface SimpleUser {
 interface AuthContextValue {
   user: SimpleUser | null;
   loading: boolean;
-  hasAvatar: boolean;
   authError: string | null;
   signInWithName: (name: string, role: Role) => void;
   signOut: () => void;
@@ -34,7 +28,6 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
-  hasAvatar: false,
   authError: null,
   signInWithName: () => {},
   signOut: () => {},
@@ -47,19 +40,16 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SimpleUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasAvatar, setHasAvatar] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("oic_user");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // migrate old users without role
         if (!parsed.role) parsed.role = "client";
         setUser(parsed);
       } catch { /* ignore */ }
     }
-    setHasAvatar(!!localStorage.getItem("oic_avatar"));
     setLoading(false);
   }, []);
 
@@ -73,13 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("oic_role", role);
     setUser(u);
 
-    // Save role to Firestore (fire-and-forget)
     try {
       import("@/lib/firebase").then(({ getFirebaseDb }) => {
         import("firebase/firestore").then(({ doc, setDoc }) => {
           setDoc(doc(getFirebaseDb(), "users", u.uid), {
             displayName: name,
             role,
+            loyaltyCount: 0,
+            streak: 0,
+            lastOrderDate: null,
+            pushToken: null,
+            geolocationAllowed: false,
+            favoriteItem: null,
             createdAt: new Date().toISOString(),
           }).catch(() => {});
         });
@@ -93,12 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("oic_userId");
     localStorage.removeItem("oic_role");
     setUser(null);
-    setHasAvatar(false);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, hasAvatar, authError: null, signInWithName, signOut }}
+      value={{ user, loading, authError: null, signInWithName, signOut }}
     >
       {children}
     </AuthContext.Provider>
@@ -126,8 +120,25 @@ export function useRequireBarista() {
     if (!loading) {
       if (!user) {
         router.replace("/");
-      } else if (user.role !== "barista") {
-        router.replace("/office");
+      } else if (user.role !== "barista" && user.role !== "ceo") {
+        router.replace("/menu");
+      }
+    }
+  }, [user, loading, router]);
+
+  return { user, loading };
+}
+
+export function useRequireCEO() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.replace("/");
+      } else if (user.role !== "ceo") {
+        router.replace("/menu");
       }
     }
   }, [user, loading, router]);

@@ -1,13 +1,21 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { ToastProvider } from "@/components/Toast";
+import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
-  title: "Office is Coffee — Социальная кофе-платформа для команд",
-  description:
-    "OiC объединяет офисных сотрудников через любовь к кофе. Заказывайте вместе, открывайте новые бленды и стройте кофе-культуру команды.",
-  keywords: ["кофе", "офис", "социальная", "команда", "заказ", "coffee", "office"],
+  title: "Love is Coffee — Кофейня для команд",
+  description: "Заказывай кофе, копи монеты, получай каждый 8-й бесплатно.",
+  keywords: ["кофе", "кофейня", "love is coffee", "заказ"],
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1a7a44",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -17,8 +25,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className="font-sans antialiased">
-        <AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider>
+      <body className="font-sans antialiased bg-brand-bg text-brand-text">
+        <AuthProvider>
+          <ToastProvider>
+            {children}
+            <BottomNav />
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

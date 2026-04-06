@@ -1,421 +1,499 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import CoffeeScene from "@/components/CoffeeScene";
+import { useAuth } from "@/lib/auth";
+import { getFirebaseDb } from "@/lib/firebase";
+import { doc, onSnapshot, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 
-/* ═══════════════════════════════════════════
-   ДАННЫЕ МЕНЮ LOVE IS COFFEE
-   ═══════════════════════════════════════════ */
+/* ═══ TYPES ═══ */
 type Size = "S" | "M" | "L";
-
 interface MenuItem {
   name: string;
   prices: Record<string, number>;
   tag?: string;
+  milk?: boolean;
+  seasonal?: boolean;
+  activeFrom?: number;
+  activeTo?: number;
+  profile?: { acidity: number; sweetness: number; bitterness: number; body: number; aroma: number };
 }
+interface MenuCategory { id: string; shortTitle: string; icon: string; items: MenuItem[] }
+interface CartItem { name: string; size: string; price: number; qty: number; milk?: string }
 
-interface MenuCategory {
-  id: string;
-  title: string;
-  icon: string;
-  items: MenuItem[];
-}
+/* ═══ DATA ═══ */
+const MILKS = ["Стандарт", "Овсяное", "Кокосовое", "Без молока"];
+const currentMonth = new Date().getMonth() + 1;
 
-interface CartItem {
-  name: string;
-  size: string;
-  price: number;
-  qty: number;
-}
-
-const MENU_DATA: MenuCategory[] = [
-  {
-    id: "coffee",
-    title: "Кофейная классика",
-    icon: "\u2615",
-    items: [
-      { name: "Капучино", prices: { S: 850, M: 1050, L: 1150 } },
-      { name: "Латте", prices: { M: 900, L: 1050 } },
-      { name: "Флэт уайт", prices: { S: 1000, M: 1150, L: 1250 } },
-      { name: "Американо", prices: { S: 750, M: 850, L: 950 } },
-      { name: "Эспрессо", prices: { S: 450, M: 550 } },
-    ],
-  },
-  {
-    id: "author",
-    title: "Авторский кофе",
-    icon: "\u2728",
-    items: [
-      { name: "Раф классика", prices: { M: 1250, L: 1350 }, tag: "Хит" },
-      { name: "Раф медовый", prices: { M: 1250, L: 1350 }, tag: "Хит" },
-      { name: "Раф банан-карамель", prices: { M: 1350, L: 1450 }, tag: "Хит" },
-      { name: "Мокко", prices: { M: 1250, L: 1350 } },
-      { name: "Айриш кофе", prices: { M: 950, L: 1050 } },
-      { name: "Латте халва", prices: { M: 950, L: 1050 } },
-    ],
-  },
-  {
-    id: "ice",
-    title: "Айс кофе",
-    icon: "\u2744\uFE0F",
-    items: [
-      { name: "Айс американо", prices: { M: 950, L: 1050 } },
-      { name: "Айс капучино", prices: { M: 1250, L: 1350 } },
-      { name: "Фраппучино", prices: { M: 1350, L: 1450 }, tag: "Хит" },
-      { name: "Банановый кофе", prices: { M: 1350, L: 1450 }, tag: "Хит" },
-      { name: "Эспрессо тоник", prices: { M: 1150, L: 1250 } },
-    ],
-  },
-  {
-    id: "tea",
-    title: "Домашний чай",
-    icon: "\uD83C\uDF75",
-    items: [
-      { name: "Нарядный", prices: { one: 950 }, tag: "Хит" },
-      { name: "Имбирный", prices: { one: 950 } },
-      { name: "Облепиховый", prices: { one: 1050 }, tag: "Хит" },
-      { name: "Малиновый", prices: { one: 1150 } },
-      { name: "Глинтвейн", prices: { one: 1150 }, tag: "Хит" },
-    ],
-  },
-  {
-    id: "matcha",
-    title: "Матча",
-    icon: "\uD83C\uDF35",
-    items: [
-      { name: "Зелёная матча", prices: { one: 1250 } },
-      { name: "Голубая матча", prices: { one: 1250 } },
-    ],
-  },
-  {
-    id: "cocoa",
-    title: "Какао",
-    icon: "\uD83E\uDD5B",
-    items: [
-      { name: "Какао", prices: { one: 1150 } },
-      { name: "Горячий шоколад", prices: { one: 1250 } },
-    ],
-  },
-  {
-    id: "cocktail",
-    title: "Молочные коктейли",
-    icon: "\uD83E\uDD64",
-    items: [
-      { name: "Банановый коктейль", prices: { one: 1450 } },
-      { name: "Клубничный коктейль", prices: { one: 1350 } },
-      { name: "Шоколадный коктейль", prices: { one: 1350 } },
-    ],
-  },
-  {
-    id: "lemonade",
-    title: "Лимонады",
-    icon: "\uD83C\uDF4B",
-    items: [
-      { name: "Домашний лимонад", prices: { one: 950 } },
-      { name: "Мохито", prices: { one: 1050 } },
-      { name: "Арбуз-киви", prices: { one: 1050 } },
-      { name: "Яблоко-маракуйя", prices: { one: 1150 }, tag: "Хит" },
-    ],
-  },
+const MENU: MenuCategory[] = [
+  { id: "coffee", shortTitle: "Кофе", icon: "\u2615", items: [
+    { name: "Капучино", prices: { S: 850, M: 1050, L: 1150 }, milk: true, profile: { acidity: 2, sweetness: 3, bitterness: 3, body: 4, aroma: 4 } },
+    { name: "Латте", prices: { M: 900, L: 1050 }, milk: true, profile: { acidity: 1, sweetness: 4, bitterness: 2, body: 3, aroma: 3 } },
+    { name: "Флэт уайт", prices: { S: 1000, M: 1150, L: 1250 }, milk: true, profile: { acidity: 2, sweetness: 2, bitterness: 4, body: 5, aroma: 4 } },
+    { name: "Американо", prices: { S: 750, M: 850, L: 950 }, profile: { acidity: 3, sweetness: 1, bitterness: 4, body: 2, aroma: 3 } },
+    { name: "Эспрессо", prices: { S: 450, M: 550 }, profile: { acidity: 3, sweetness: 1, bitterness: 5, body: 5, aroma: 5 } },
+  ]},
+  { id: "author", shortTitle: "Авторский", icon: "\u2728", items: [
+    { name: "Раф классика", prices: { M: 1250, L: 1350 }, tag: "Хит", milk: true, profile: { acidity: 1, sweetness: 5, bitterness: 1, body: 5, aroma: 4 } },
+    { name: "Раф медовый", prices: { M: 1250, L: 1350 }, tag: "Хит", milk: true, profile: { acidity: 1, sweetness: 5, bitterness: 1, body: 4, aroma: 5 } },
+    { name: "Раф банан-карамель", prices: { M: 1350, L: 1450 }, tag: "Хит", milk: true, profile: { acidity: 1, sweetness: 5, bitterness: 1, body: 4, aroma: 4 } },
+    { name: "Мокко", prices: { M: 1250, L: 1350 }, milk: true, profile: { acidity: 1, sweetness: 4, bitterness: 3, body: 4, aroma: 4 } },
+    { name: "Латте халва", prices: { M: 950, L: 1050 }, milk: true, profile: { acidity: 1, sweetness: 5, bitterness: 1, body: 3, aroma: 5 } },
+  ]},
+  { id: "ice", shortTitle: "Айс", icon: "\u2744\uFE0F", items: [
+    { name: "Айс американо", prices: { M: 950, L: 1050 }, profile: { acidity: 3, sweetness: 1, bitterness: 3, body: 2, aroma: 2 } },
+    { name: "Фраппучино", prices: { M: 1350, L: 1450 }, tag: "Хит", milk: true, profile: { acidity: 1, sweetness: 5, bitterness: 1, body: 3, aroma: 3 } },
+    { name: "Банановый кофе", prices: { M: 1350, L: 1450 }, tag: "Хит", milk: true, profile: { acidity: 1, sweetness: 5, bitterness: 1, body: 4, aroma: 3 } },
+    { name: "Эспрессо тоник", prices: { M: 1150, L: 1250 }, profile: { acidity: 4, sweetness: 2, bitterness: 3, body: 2, aroma: 3 } },
+  ]},
+  { id: "tea", shortTitle: "Чай", icon: "\uD83C\uDF75", items: [
+    { name: "Нарядный", prices: { one: 950 }, tag: "Хит" },
+    { name: "Имбирный", prices: { one: 950 } },
+    { name: "Облепиховый", prices: { one: 1050 }, tag: "Хит" },
+    { name: "Глинтвейн", prices: { one: 1150 }, tag: "Хит", seasonal: true, activeFrom: 11, activeTo: 3 },
+  ]},
+  { id: "other", shortTitle: "Другое", icon: "\uD83E\uDD5B", items: [
+    { name: "Матча", prices: { one: 1250 }, tag: "NEW" },
+    { name: "Какао", prices: { one: 1150 } },
+    { name: "Горячий шоколад", prices: { one: 1250 } },
+    { name: "Лимонад", prices: { one: 950 } },
+    { name: "Тыквенно-пряный латте", prices: { M: 1350, L: 1450 }, tag: "СЕЗОН", milk: true, seasonal: true, activeFrom: 9, activeTo: 11, profile: { acidity: 1, sweetness: 5, bitterness: 1, body: 5, aroma: 5 } },
+  ]},
 ];
 
-/* helpers */
+function isSeasonActive(from?: number, to?: number): boolean {
+  if (!from || !to) return true;
+  if (from <= to) return currentMonth >= from && currentMonth <= to;
+  return currentMonth >= from || currentMonth <= to;
+}
+
 function getSizes(item: MenuItem): Size[] | null {
-  const keys = Object.keys(item.prices);
-  if (keys.length === 1 && keys[0] === "one") return null;
-  return keys as Size[];
+  const k = Object.keys(item.prices);
+  return k.length === 1 && k[0] === "one" ? null : (k as Size[]);
 }
-function getDefaultSize(item: MenuItem): Size | null {
-  const sizes = getSizes(item);
-  if (!sizes) return null;
-  if (sizes.includes("M")) return "M";
-  return sizes[0];
+function getDefault(item: MenuItem): Size | null {
+  const s = getSizes(item);
+  if (!s) return null;
+  return s.includes("M" as Size) ? "M" : s[0];
 }
-function getPrice(item: MenuItem, size: Size | null): number {
-  if (size === null) return item.prices["one"];
-  return item.prices[size];
+function getPrice(item: MenuItem, sz: Size | null): number {
+  return sz === null ? item.prices["one"] : item.prices[sz];
 }
 
-/* category icon mapping for drink cards */
-const CATEGORY_CARD_ICON: Record<string, string> = {
-  coffee: "\u2615",
-  author: "\u2728",
-  ice: "\uD83E\uDDCA",
-  tea: "\uD83C\uDF75",
-  matcha: "\uD83C\uDF75",
-  cocoa: "\uD83E\uDD5B",
-  cocktail: "\uD83E\uDD64",
-  lemonade: "\uD83C\uDF4B",
-};
+/* ═══ RADAR CHART ═══ */
+function RadarChart({ profile }: { profile: { acidity: number; sweetness: number; bitterness: number; body: number; aroma: number } }) {
+  const labels = ["Кислотность", "Сладость", "Горечь", "Тело", "Аромат"];
+  const values = [profile.acidity, profile.sweetness, profile.bitterness, profile.body, profile.aroma];
+  const cx = 60, cy = 55, r = 40;
+  const angles = values.map((_, i) => (Math.PI * 2 * i) / 5 - Math.PI / 2);
 
-/* short tab labels for Drinkit-style tabs */
-const SHORT_TITLES: Record<string, string> = {
-  coffee: "\u041A\u043E\u0444\u0435",
-  author: "\u0410\u0432\u0442\u043E\u0440\u0441\u043A\u0438\u0439",
-  ice: "\u0410\u0439\u0441",
-  tea: "\u0427\u0430\u0439",
-  matcha: "\u041C\u0430\u0442\u0447\u0430",
-  cocoa: "\u041A\u0430\u043A\u0430\u043E",
-  cocktail: "\u041A\u043E\u043A\u0442\u0435\u0439\u043B\u0438",
-  lemonade: "\u041B\u0438\u043C\u043E\u043D\u0430\u0434\u044B",
-};
+  const points = values.map((v, i) => ({
+    x: cx + (r * v / 5) * Math.cos(angles[i]),
+    y: cy + (r * v / 5) * Math.sin(angles[i]),
+  }));
+  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") + "Z";
 
-/* ═══════════════════════════════════════════
-   КАРТОЧКА НАПИТКА (Drinkit style)
-   ═══════════════════════════════════════════ */
-function DrinkCard({
-  item,
-  categoryId,
-  idx,
-  onAdd,
-}: {
-  item: MenuItem;
-  categoryId: string;
-  idx: number;
-  onAdd: (name: string, size: string, price: number) => void;
+  return (
+    <svg width="120" height="110" viewBox="0 0 120 110" className="flex-shrink-0">
+      {[1, 2, 3, 4, 5].map((level) => (
+        <polygon
+          key={level}
+          points={angles.map((a) => `${cx + (r * level / 5) * Math.cos(a)},${cy + (r * level / 5) * Math.sin(a)}`).join(" ")}
+          fill="none" stroke="#d0f0e0" strokeWidth="0.5"
+        />
+      ))}
+      {angles.map((a, i) => (
+        <g key={i}>
+          <line x1={cx} y1={cy} x2={cx + r * Math.cos(a)} y2={cy + r * Math.sin(a)} stroke="#d0f0e0" strokeWidth="0.5" />
+          <text x={cx + (r + 12) * Math.cos(a)} y={cy + (r + 12) * Math.sin(a)} textAnchor="middle" dominantBaseline="central" fontSize="5" fill="#0f3a20" opacity="0.5">{labels[i]}</text>
+        </g>
+      ))}
+      <polygon points={path.replace(/[MLZ]/g, (m) => m === "Z" ? "" : "").split(/[ML]/).filter(Boolean).join(" ")} fill="rgba(62,207,130,0.25)" stroke="#3ecf82" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+/* ═══ DRINK DETAIL SHEET ═══ */
+function DrinkDetail({ item, catIcon, onAdd, onClose }: {
+  item: MenuItem; catIcon: string;
+  onAdd: (name: string, size: string, price: number, milk?: string) => void;
+  onClose: () => void;
 }) {
   const sizes = getSizes(item);
-  const [selectedSize, setSelectedSize] = useState<Size | null>(getDefaultSize(item));
-  const [added, setAdded] = useState(false);
-  const price = getPrice(item, selectedSize);
-  const icon = CATEGORY_CARD_ICON[categoryId] ?? "\u2615";
+  const [sz, setSz] = useState<Size | null>(getDefault(item));
+  const [milk, setMilk] = useState(0);
+  const price = getPrice(item, sz);
 
-  const handleAdd = () => {
-    onAdd(item.name, selectedSize ?? "\u2014", price);
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }}
+        transition={{ type: "spring", damping: 25 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-8"
+      >
+        <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+        <div className="flex items-start gap-4">
+          <span className="text-5xl">{catIcon}</span>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-display text-xl font-bold text-brand-text">{item.name}</h2>
+              {item.tag && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                  item.tag === "NEW" ? "bg-brand-mint/20 text-brand-dark" :
+                  item.tag === "СЕЗОН" ? "bg-orange-100 text-orange-600" :
+                  "bg-brand-pink/10 text-brand-pink"
+                }`}>{item.tag}</span>
+              )}
+            </div>
+            {item.seasonal && <p className="text-xs text-orange-500 mt-0.5">Сезонный напиток</p>}
+          </div>
+          {item.profile && <RadarChart profile={item.profile} />}
+        </div>
+
+        {sizes && (
+          <div className="mt-4">
+            <p className="text-xs text-brand-text/50 mb-2">Размер</p>
+            <div className="flex gap-2">
+              {sizes.map((s) => (
+                <button key={s} onClick={() => setSz(s)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                    sz === s ? "bg-brand-dark text-white shadow-md" : "bg-gray-100 text-brand-text/50"
+                  }`}>{s} — {item.prices[s]} \u20B8</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {item.milk && (
+          <div className="mt-4">
+            <p className="text-xs text-brand-text/50 mb-2">Молоко</p>
+            <div className="flex gap-2 flex-wrap">
+              {MILKS.map((m, i) => (
+                <button key={m} onClick={() => setMilk(i)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    milk === i ? "bg-brand-mint/20 text-brand-dark border border-brand-mint" : "bg-gray-100 text-gray-500"
+                  }`}>{m}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => { onAdd(item.name, sz ?? "\u2014", price, item.milk ? MILKS[milk] : undefined); onClose(); }}
+          className="w-full mt-6 py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-lg"
+        >
+          Добавить — {price} \u20B8
+        </motion.button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ═══ DRINK CARD ═══ */
+function DrinkCard({ item, catIcon, onAdd, onDetail, idx, stopped }: {
+  item: MenuItem; catIcon: string; idx: number; stopped?: boolean;
+  onAdd: (name: string, size: string, price: number, milk?: string) => void;
+  onDetail: () => void;
+}) {
+  const sizes = getSizes(item);
+  const [sz] = useState<Size | null>(getDefault(item));
+  const [added, setAdded] = useState(false);
+  const price = getPrice(item, sz);
+  const unavailable = stopped || (item.seasonal && !isSeasonActive(item.activeFrom, item.activeTo));
+
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (unavailable) return;
+    onAdd(item.name, sz ?? "\u2014", price, item.milk ? "Стандарт" : undefined);
     setAdded(true);
-    setTimeout(() => setAdded(false), 800);
+    setTimeout(() => setAdded(false), 700);
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: idx * 0.05, duration: 0.3 }}
-      className="bg-white rounded-2xl border border-coffee-100 shadow-sm p-4 flex flex-col items-center text-center relative"
+      transition={{ delay: idx * 0.04 }}
+      onClick={unavailable ? undefined : onDetail}
+      className={`bg-white rounded-2xl border border-[#d0f0e0] p-4 flex flex-col cursor-pointer hover:shadow-md transition-shadow ${unavailable ? "opacity-50 cursor-not-allowed" : ""}`}
+      style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
     >
-      {/* emoji icon */}
-      <span className="text-4xl mb-2 block">{icon}</span>
-
-      {/* name */}
-      <h3 className="font-bold text-coffee-900 text-sm leading-tight mb-1">{item.name}</h3>
-
-      {/* hit tag */}
-      {item.tag && (
-        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-coffee-100 text-coffee-700 mb-2">
-          {item.tag}
-        </span>
-      )}
-
-      {/* size pills */}
-      {sizes && (
-        <div className="flex gap-1.5 mb-3 mt-1">
-          {sizes.map((sz) => (
-            <button
-              key={sz}
-              onClick={() => setSelectedSize(sz)}
-              className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${
-                selectedSize === sz
-                  ? "bg-coffee-600 text-white shadow-sm"
-                  : "bg-coffee-50 text-coffee-500 hover:bg-coffee-100"
-              }`}
-            >
-              {sz}
-            </button>
+      <div className="text-3xl mb-2">{catIcon}</div>
+      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+        <span className="font-semibold text-sm text-brand-text">{item.name}</span>
+        {item.tag && (
+          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+            item.tag === "NEW" ? "bg-brand-mint/20 text-brand-dark" :
+            item.tag === "СЕЗОН" ? "bg-orange-100 text-orange-600" :
+            "bg-brand-pink/10 text-brand-pink"
+          }`}>{item.tag}</span>
+        )}
+      </div>
+      {unavailable && <span className="text-[10px] text-red-400 font-medium">Закончился</span>}
+      {sizes && !unavailable && (
+        <div className="flex gap-1 mb-1 mt-1">
+          {sizes.map((s) => (
+            <span key={s} className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-gray-100 text-brand-text/40">{s}</span>
           ))}
         </div>
       )}
+      <div className="mt-auto flex items-center justify-between pt-2">
+        <span className="font-bold text-brand-dark">{price} \u20B8</span>
+        {!unavailable && (
+          <motion.button whileTap={{ scale: 0.85 }} onClick={handleQuickAdd}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold transition-colors ${
+              added ? "bg-green-500" : "bg-brand-dark hover:bg-brand-mid"
+            }`}>{added ? "\u2713" : "+"}</motion.button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
-      {!sizes && <div className="mb-3" />}
+/* ═══ LOYALTY ═══ */
+function LoyaltyBanner({ count }: { count: number }) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      <div className="flex gap-1">
+        {Array.from({ length: 8 }, (_, i) => (
+          <span key={i} className={`text-lg ${i < count ? "" : "opacity-20"}`}>{i < count ? "\u2615" : "\u25CB"}</span>
+        ))}
+      </div>
+      <span className="text-[11px] text-brand-text/50">каждый 8-й бесплатный</span>
+    </div>
+  );
+}
 
-      {/* price */}
-      <span className="text-lg font-bold text-coffee-800 mb-3">
-        {price} {"\u20B8"}
-      </span>
+/* ═══ QUICK REPEAT ═══ */
+function QuickRepeat({ onRepeat }: { onRepeat: (items: CartItem[]) => void }) {
+  const [lastOrder, setLastOrder] = useState<{ items: CartItem[]; name: string } | null>(null);
+  const { user } = useAuth();
 
-      {/* add button */}
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(getFirebaseDb(), "orders"),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
+    getDocs(q).then((snap) => {
+      if (!snap.empty) {
+        const d = snap.docs[0].data();
+        if (d.userId === user.uid || d.name === user.displayName) {
+          setLastOrder({ items: d.items, name: d.items.map((i: CartItem) => i.name).join(", ") });
+        }
+      }
+    }).catch(() => {});
+  }, [user]);
+
+  if (!lastOrder) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3 flex items-center justify-between"
+      style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
+    >
+      <div>
+        <p className="text-xs text-brand-text/50">Обычный?</p>
+        <p className="text-sm font-medium text-brand-text truncate max-w-[200px]">{lastOrder.name}</p>
+      </div>
       <motion.button
         whileTap={{ scale: 0.9 }}
-        onClick={handleAdd}
-        className={`w-10 h-10 rounded-full text-lg font-bold transition-all flex items-center justify-center ${
-          added
-            ? "bg-green-500 text-white"
-            : "bg-coffee-600 text-white hover:bg-coffee-700"
-        }`}
+        onClick={() => onRepeat(lastOrder.items)}
+        className="px-4 py-2 bg-brand-dark text-white rounded-full text-sm font-bold"
       >
-        {added ? "\u2713" : "+"}
+        Повторить
       </motion.button>
     </motion.div>
   );
 }
 
-/* ═══════════════════════════════════════════
-   СТРАНИЦА МЕНЮ (Drinkit style)
-   ═══════════════════════════════════════════ */
+/* ═══ PAGE ═══ */
 export default function MenuPage() {
-  const [activeCategory, setActiveCategory] = useState("coffee");
+  const { user } = useAuth();
+  const [cat, setCat] = useState("coffee");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [detailItem, setDetailItem] = useState<{ item: MenuItem; icon: string } | null>(null);
+  const [loyaltyCount, setLoyaltyCount] = useState(0);
+  const [cafeOpen, setCafeOpen] = useState(true);
+  const [stopList, setStopList] = useState<string[]>([]);
+  const [geoNearby, setGeoNearby] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const current = MENU.find((c) => c.id === cat) ?? MENU[0];
 
-  const currentCategory = MENU_DATA.find((c) => c.id === activeCategory) ?? MENU_DATA[0];
-
-  const addToCart = (name: string, size: string, price: number) => {
-    setCart((prev) => {
-      const key = `${name}_${size}`;
-      const existing = prev.find((i) => `${i.name}_${i.size}` === key);
-      if (existing) {
-        return prev.map((i) =>
-          `${i.name}_${i.size}` === key ? { ...i, qty: i.qty + 1 } : i
-        );
+  /* Listen to cafe status */
+  useEffect(() => {
+    const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setCafeOpen(data.isOpen ?? true);
+        setStopList(data.stopList ?? []);
       }
-      return [...prev, { name, size, price, qty: 1 }];
+    }, () => {});
+    return () => unsub();
+  }, []);
+
+  /* Loyalty from Firestore */
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
+      if (snap.exists()) {
+        setLoyaltyCount(snap.data().loyaltyCount ?? 0);
+      }
+    }, () => {});
+    return () => unsub();
+  }, [user]);
+
+  /* Geolocation check */
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const geoAllowed = localStorage.getItem("oic_geo_allowed");
+    if (geoAllowed !== "true") return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = 43.2220, lng = 76.8512;
+      const dist = getDistanceKm(pos.coords.latitude, pos.coords.longitude, lat, lng) * 1000;
+      if (dist <= 300) setGeoNearby(true);
+    }, () => {});
+  }, []);
+
+  const addToCart = (name: string, size: string, price: number, milk?: string) => {
+    setCart((prev) => {
+      const key = `${name}_${size}_${milk ?? ""}`;
+      const ex = prev.find((i) => `${i.name}_${i.size}_${i.milk ?? ""}` === key);
+      if (ex) return prev.map((i) => `${i.name}_${i.size}_${i.milk ?? ""}` === key ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { name, size, price, qty: 1, milk }];
     });
   };
 
-  const removeFromCart = (name: string, size: string) => {
-    setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size)));
+  const repeatOrder = (items: CartItem[]) => {
+    setCart(items);
+  };
+
+  const removeFromCart = (name: string, size: string, milk?: string) => {
+    setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size && (i.milk ?? "") === (milk ?? ""))));
   };
 
   const totalItems = cart.reduce((s, i) => s + i.qty, 0);
   const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-  /* сохраняем корзину в sessionStorage для /order */
-  useEffect(() => {
-    if (cart.length > 0) {
-      sessionStorage.setItem("oic_cart", JSON.stringify(cart));
-    }
-  }, [cart]);
-
-  const goToOrder = () => {
-    sessionStorage.setItem("oic_cart", JSON.stringify(cart));
-    window.location.href = "/order";
-  };
-
-  /* scroll active tab into view */
-  useEffect(() => {
-    if (tabsRef.current) {
-      const activeBtn = tabsRef.current.querySelector("[data-active='true']") as HTMLElement | null;
-      if (activeBtn) {
-        activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-      }
-    }
-  }, [activeCategory]);
+  useEffect(() => { if (cart.length > 0) sessionStorage.setItem("oic_cart", JSON.stringify(cart)); }, [cart]);
+  const goToOrder = () => { sessionStorage.setItem("oic_cart", JSON.stringify(cart)); window.location.href = "/order"; };
 
   return (
-    <main className="min-h-screen bg-cream-50">
-      <style jsx global>{`.scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}`}</style>
-
-      {/* ── Header ── */}
-      <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-coffee-100">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <span className="text-2xl">{"\u2615"}</span>
-            <span className="font-display text-xl font-bold text-coffee-900">OiC</span>
-          </a>
-          <a
-            href="/office"
-            className="text-sm text-coffee-500 hover:text-coffee-700 transition-colors"
-          >
-            {"\u2190 \u0412 \u043E\u0444\u0438\u0441"}
-          </a>
+    <main className="min-h-screen bg-brand-bg pb-32">
+      {/* Cafe status bar */}
+      {!cafeOpen && (
+        <div className="bg-red-50 text-red-600 text-center py-2 text-sm font-medium">
+          Кофейня закрыта \u00B7 Открывается в 07:30
         </div>
-      </nav>
+      )}
 
-      {/* ── Sticky category tabs ── */}
-      <div className="fixed top-[53px] w-full z-40 bg-cream-50/95 backdrop-blur-sm border-b border-coffee-100">
-        <div
-          ref={tabsRef}
-          className="max-w-2xl mx-auto px-3 py-2.5 flex gap-2 overflow-x-auto scrollbar-hide"
+      <div className="px-3 pt-3"><CoffeeScene /></div>
+
+      <div className="px-3 mt-3 space-y-3">
+        <LoyaltyBanner count={loyaltyCount} />
+        <QuickRepeat onRepeat={repeatOrder} />
+      </div>
+
+      {/* Geo nearby banner */}
+      {geoNearby && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="mx-3 mt-3 bg-brand-dark text-white rounded-2xl px-4 py-3 flex items-center justify-between"
         >
-          {MENU_DATA.map((cat) => {
-            const isActive = activeCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                data-active={isActive}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                  isActive
-                    ? "bg-coffee-600 text-white shadow-sm"
-                    : "bg-white text-coffee-600 border border-coffee-200 hover:border-coffee-400"
-                }`}
-              >
-                <span className="text-base">{cat.icon}</span>
-                {SHORT_TITLES[cat.id] ?? cat.title}
-              </button>
-            );
-          })}
+          <span className="text-sm">\uD83D\uDCCD Кофейня рядом!</span>
+          <button onClick={() => window.scrollTo({ top: 600, behavior: "smooth" })} className="text-sm font-bold bg-white/20 px-3 py-1 rounded-full">Быстрый заказ</button>
+        </motion.div>
+      )}
+
+      {/* Hero hit */}
+      <div className="px-3 mt-3">
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-br from-brand-dark to-brand-mid rounded-2xl p-5 text-white relative overflow-hidden">
+          <div className="absolute -right-8 -top-8 w-32 h-32 bg-brand-mint/20 rounded-full" />
+          <div className="absolute right-10 bottom-2 w-16 h-16 bg-brand-mint/15 rounded-full" />
+          <div className="absolute left-1/2 top-0 w-24 h-24 bg-brand-mint/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <p className="text-[10px] uppercase tracking-wider text-brand-mint font-bold mb-1">Хит сезона</p>
+          <p className="font-display text-xl font-bold mb-1">Раф классика</p>
+          <p className="text-sm text-white/70 mb-3">Нежный сливочный кофе с ванилью</p>
+          <div className="flex items-center gap-3">
+            <span className="font-bold text-lg">1250 \u20B8</span>
+            <motion.button whileTap={{ scale: 0.9 }}
+              onClick={() => { if (cafeOpen) addToCart("Раф классика", "M", 1250, "Стандарт"); }}
+              disabled={!cafeOpen}
+              className="bg-white text-brand-dark px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-50">В корзину</motion.button>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Tabs */}
+      <div ref={tabsRef} className="px-3 mt-4 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 pb-1">
+          {MENU.map((c) => (
+            <button key={c.id} onClick={() => setCat(c.id)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                cat === c.id ? "bg-brand-dark text-white shadow-md" : "bg-white text-brand-text border border-[#d0f0e0]"
+              }`}><span className="mr-1">{c.icon}</span>{c.shortTitle}</button>
+          ))}
         </div>
       </div>
 
-      {/* ── Drink cards grid ── */}
-      <div className="pt-[120px] pb-32 px-4">
-        <div className="max-w-2xl mx-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeCategory}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.2 }}
-              className="grid grid-cols-2 gap-3 sm:gap-4"
-              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}
-            >
-              {currentCategory.items.map((item, idx) => (
-                <DrinkCard
-                  key={item.name}
-                  item={item}
-                  categoryId={currentCategory.id}
-                  idx={idx}
-                  onAdd={addToCart}
-                />
-              ))}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+      {/* Grid */}
+      <div className="px-3 mt-3">
+        <AnimatePresence mode="wait">
+          <motion.div key={cat} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {current.items.map((item, idx) => (
+              <DrinkCard
+                key={item.name} item={item} catIcon={current.icon} idx={idx}
+                stopped={stopList.includes(item.name)}
+                onAdd={addToCart}
+                onDetail={() => setDetailItem({ item, icon: current.icon })}
+              />
+            ))}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* ── Cart preview (expandable) ── */}
+      {/* Detail sheet */}
+      <AnimatePresence>
+        {detailItem && (
+          <DrinkDetail
+            item={detailItem.item}
+            catIcon={detailItem.icon}
+            onAdd={addToCart}
+            onClose={() => setDetailItem(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Cart popup */}
       <AnimatePresence>
         {showCart && cart.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 80 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 80 }}
-            transition={{ type: "spring", damping: 24, stiffness: 300 }}
-            className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md bg-white rounded-2xl shadow-2xl border border-coffee-100 p-4 z-50"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-display text-base font-bold text-coffee-900">
-                {"\u0422\u0432\u043E\u0439 \u0437\u0430\u043A\u0430\u0437"}
-              </h3>
-              <button
-                onClick={() => setShowCart(false)}
-                className="text-coffee-400 hover:text-coffee-600 text-sm"
-              >
-                {"\u2715"}
-              </button>
-            </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {cart.map((item) => (
-                <div key={`${item.name}_${item.size}`} className="flex items-center justify-between text-sm">
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-coffee-900">{item.name}</span>
-                    {item.size !== "\u2014" && (
-                      <span className="ml-1 text-coffee-400 text-xs">({item.size})</span>
-                    )}
-                    {item.qty > 1 && (
-                      <span className="ml-1 text-coffee-600 font-bold text-xs">{"\u00D7"}{item.qty}</span>
-                    )}
+          <motion.div initial={{ opacity: 0, y: 80 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 80 }}
+            className="fixed bottom-20 left-3 right-3 max-w-lg mx-auto bg-white rounded-2xl shadow-2xl border border-[#d0f0e0] p-4 z-50">
+            <h3 className="font-bold text-brand-dark mb-2">Твой заказ</h3>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {cart.map((i) => (
+                <div key={`${i.name}_${i.size}_${i.milk}`} className="flex items-center justify-between text-sm">
+                  <div className="flex-1">
+                    <span className="font-medium text-brand-text">{i.name}</span>
+                    {i.size !== "\u2014" && <span className="text-brand-text/40 text-xs ml-1">({i.size})</span>}
+                    {i.milk && <span className="text-brand-mint text-xs ml-1">{i.milk}</span>}
+                    {i.qty > 1 && <span className="text-brand-pink text-xs font-bold ml-1">\u00D7{i.qty}</span>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-coffee-800">{item.price * item.qty} {"\u20B8"}</span>
-                    <button
-                      onClick={() => removeFromCart(item.name, item.size)}
-                      className="text-coffee-400 hover:text-coffee-600 text-xs font-bold"
-                    >
-                      {"\u2715"}
-                    </button>
+                    <span className="font-bold text-brand-dark">{i.price * i.qty} \u20B8</span>
+                    <button onClick={() => removeFromCart(i.name, i.size, i.milk)} className="text-brand-pink/50 hover:text-brand-pink text-xs">\u2715</button>
                   </div>
                 </div>
               ))}
@@ -424,37 +502,21 @@ export default function MenuPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Sticky bottom cart bar ── */}
+      {/* Bottom cart bar */}
       <AnimatePresence>
         {totalItems > 0 && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md rounded-t-2xl border-t border-coffee-100 shadow-lg z-40"
-          >
-            <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-              <button
-                onClick={() => setShowCart(!showCart)}
-                className="flex items-center gap-2 text-coffee-700"
-              >
-                <span className="relative">
-                  <span className="text-2xl">{"\uD83D\uDED2"}</span>
-                  <span className="absolute -top-1.5 -right-2 bg-coffee-600 text-white min-w-[20px] h-5 rounded-full flex items-center justify-center text-[11px] font-bold px-1">
-                    {totalItems}
-                  </span>
-                </span>
-                <span className="text-sm font-medium ml-1">
-                  {showCart ? "\u0421\u043A\u0440\u044B\u0442\u044C" : "\u0417\u0430\u043A\u0430\u0437"}
-                </span>
+          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+            className="fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
+            <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
+              <button onClick={() => setShowCart(!showCart)} className="flex items-center gap-2">
+                <span className="bg-brand-dark text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">{totalItems}</span>
+                <span className="text-sm font-medium text-brand-text">{showCart ? "Скрыть" : "Показать"}</span>
               </button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={goToOrder}
-                className="flex-1 max-w-xs py-3 bg-coffee-600 hover:bg-coffee-700 text-white font-bold rounded-xl shadow-md text-sm text-center transition-colors"
-              >
-                {"\u041E\u0444\u043E\u0440\u043C\u0438\u0442\u044C \u2022 "}{totalPrice} {"\u20B8"}
+              <motion.button whileTap={{ scale: 0.95 }} onClick={goToOrder}
+                disabled={!cafeOpen}
+                className="flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white font-bold rounded-full text-sm shadow-lg disabled:opacity-50">
+                <span>Оформить</span>
+                <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs">{totalPrice} \u20B8</span>
               </motion.button>
             </div>
           </motion.div>
@@ -462,4 +524,14 @@ export default function MenuPage() {
       </AnimatePresence>
     </main>
   );
+}
+
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

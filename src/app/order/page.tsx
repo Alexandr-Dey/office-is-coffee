@@ -3,183 +3,180 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from "firebase/firestore";
+import { useAuth } from "@/lib/auth";
+import confetti from "canvas-confetti";
 
-interface CartItem {
-  name: string;
-  size: string;
-  price: number;
-  qty: number;
-}
+interface CartItem { name: string; size: string; price: number; qty: number; milk?: string }
 
 export default function OrderPage() {
+  const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
+  const [isFree, setIsFree] = useState(false);
 
   useEffect(() => {
-    /* загружаем корзину */
     const raw = sessionStorage.getItem("oic_cart");
-    if (raw) {
-      try { setCart(JSON.parse(raw)); } catch { /* ignore */ }
-    }
-    /* имя: из профиля → из guest_name → из nickname */
+    if (raw) { try { setCart(JSON.parse(raw)); } catch { /* ignore */ } }
     const userRaw = localStorage.getItem("oic_user");
-    if (userRaw) {
-      try { const u = JSON.parse(userRaw); if (u.displayName) setName(u.displayName); } catch { /* ignore */ }
-    }
-    if (!name) {
-      const saved = localStorage.getItem("oic_guest_name");
-      if (saved) setName(saved);
-      else {
-        const nick = localStorage.getItem("oic_nickname");
-        if (nick) setName(nick);
-      }
-    }
-  }, []);
+    if (userRaw) { try { const u = JSON.parse(userRaw); if (u.displayName) setName(u.displayName); } catch { /* ignore */ } }
 
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    /* Check if next coffee is free */
+    if (user) {
+      getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
+        if (snap.exists() && snap.data().loyaltyCount >= 7) {
+          setIsFree(true);
+        }
+      }).catch(() => {});
+    }
+  }, [user]);
+
+  const total = isFree ? 0 : cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   const handleConfirm = async () => {
     if (cart.length === 0) return;
     setSending(true);
     try {
-      const userId = localStorage.getItem("oic_userId") || "anonymous";
-      const avatarSkin = parseInt(localStorage.getItem("oic_skin") ?? "0", 10);
-      const avatarCloth = parseInt(localStorage.getItem("oic_cloth") ?? "0", 10);
+      const userId = user?.uid || localStorage.getItem("oic_userId") || "anonymous";
+
       const docRef = await addDoc(collection(getFirebaseDb(), "orders"), {
-        name: name || "\u0413\u043E\u0441\u0442\u044C",
+        name: name || "Гость",
         userId,
-        items: cart.map((i) => ({ name: i.name, size: i.size, price: i.price, qty: i.qty })),
+        items: cart.map((i) => ({ name: i.name, size: i.size, price: i.price, qty: i.qty, milk: i.milk })),
         comment: comment.trim(),
         total,
         status: "pending",
-        avatarSkin,
-        avatarCloth,
+        isFreeByLoyalty: isFree,
+        isRepeatOrder: false,
         createdAt: serverTimestamp(),
       });
-      /* сохраняем имя */
+
+      /* Update loyalty + streak */
+      if (user) {
+        const userRef = doc(getFirebaseDb(), "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          const today = new Date().toDateString();
+          const lastOrder = data.lastOrderDate;
+          const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+          let newStreak = 1;
+          if (lastOrder === yesterday) newStreak = (data.streak || 0) + 1;
+          else if (lastOrder === today) newStreak = data.streak || 1;
+
+          let newLoyalty = (data.loyaltyCount || 0) + 1;
+          if (isFree) {
+            newLoyalty = 0;
+            confetti({ particleCount: 100, spread: 70, colors: ["#1a7a44", "#3ecf82", "#d42b4f"] });
+          }
+          if (newLoyalty >= 8) newLoyalty = 8;
+
+          await updateDoc(userRef, {
+            loyaltyCount: newLoyalty,
+            streak: newStreak,
+            lastOrderDate: today,
+          });
+
+          /* First order of the day at 07:31 */
+          const now = new Date();
+          if (now.getHours() === 7 && now.getMinutes() === 31) {
+            confetti({ particleCount: 60, colors: ["#3ecf82", "#1a7a44"] });
+            /* +50 coins could be tracked separately */
+          }
+        } else {
+          await updateDoc(userRef, { loyaltyCount: 1, streak: 1, lastOrderDate: new Date().toDateString() }).catch(() => {});
+        }
+      }
+
       if (name) localStorage.setItem("oic_guest_name", name);
       sessionStorage.removeItem("oic_cart");
       window.location.href = `/order/${docRef.id}`;
     } catch (err) {
+      console.error(err);
       setSending(false);
     }
   };
 
   if (cart.length === 0) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100 flex items-center justify-center">
+      <main className="min-h-screen bg-brand-bg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-6xl mb-4">{"\u2615"}</p>
-          <p className="text-coffee-500 text-lg mb-4">{"\u041A\u043E\u0440\u0437\u0438\u043D\u0430 \u043F\u0443\u0441\u0442\u0430"}</p>
-          <a href="/menu" className="text-coffee-600 font-semibold hover:underline">
-            {"\u2190 \u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0432 \u043C\u0435\u043D\u044E"}
-          </a>
+          <p className="text-6xl mb-4">\u2615</p>
+          <p className="text-brand-text/50 text-lg mb-4">Корзина пуста</p>
+          <a href="/menu" className="text-brand-dark font-semibold hover:underline">\u2190 Вернуться в меню</a>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-cream-50 to-cream-100">
-      {/* навбар */}
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-cream-50/80 border-b border-coffee-100">
+    <main className="min-h-screen bg-brand-bg">
+      <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/menu" className="flex items-center gap-2 text-coffee-500 hover:text-coffee-700 text-sm">
-            {"\u2190 \u041D\u0430\u0437\u0430\u0434 \u0432 \u043C\u0435\u043D\u044E"}
-          </a>
-          <span className="font-display text-xl font-bold text-coffee-900">
-            {"☕ \u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435"}
-          </span>
+          <a href="/menu" className="flex items-center gap-2 text-brand-text/50 hover:text-brand-dark text-sm">\u2190 Назад в меню</a>
+          <span className="font-display text-xl font-bold text-brand-text">\u2615 Оформление</span>
           <div className="w-20" />
         </div>
       </nav>
 
       <div className="pt-20 pb-12 px-4">
         <div className="max-w-lg mx-auto">
-          {/* Состав заказа */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-coffee-100 shadow-sm p-5 mb-6"
-          >
-            <h2 className="font-display text-lg font-bold text-coffee-900 mb-3">
-              {"\u0422\u0432\u043E\u0439 \u0437\u0430\u043A\u0430\u0437"}
-            </h2>
-            <div className="space-y-2 divide-y divide-coffee-50">
+          {isFree && (
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+              className="bg-gradient-to-r from-brand-dark to-brand-mid text-white rounded-2xl p-4 mb-6 text-center">
+              <p className="text-2xl mb-1">\uD83C\uDF89</p>
+              <p className="font-bold text-lg">Твой кофе бесплатный!</p>
+              <p className="text-sm text-white/70">8-й кофе по программе лояльности</p>
+            </motion.div>
+          )}
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-6" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+            <h2 className="font-display text-lg font-bold text-brand-text mb-3">Твой заказ</h2>
+            <div className="space-y-2 divide-y divide-[#d0f0e0]">
               {cart.map((item) => (
-                <div key={`${item.name}_${item.size}`} className="flex justify-between py-2 text-sm">
+                <div key={`${item.name}_${item.size}_${item.milk}`} className="flex justify-between py-2 text-sm">
                   <div>
-                    <span className="font-medium text-coffee-900">{item.name}</span>
-                    {item.size !== "\u2014" && (
-                      <span className="ml-1 text-coffee-400 text-xs">({item.size})</span>
-                    )}
-                    {item.qty > 1 && (
-                      <span className="ml-1 text-coffee-500 font-bold text-xs">{"\u00D7"}{item.qty}</span>
-                    )}
+                    <span className="font-medium text-brand-text">{item.name}</span>
+                    {item.size !== "\u2014" && <span className="ml-1 text-brand-text/40 text-xs">({item.size})</span>}
+                    {item.milk && <span className="ml-1 text-brand-mint text-xs">{item.milk}</span>}
+                    {item.qty > 1 && <span className="ml-1 text-brand-pink font-bold text-xs">\u00D7{item.qty}</span>}
                   </div>
-                  <span className="font-bold text-coffee-800">{item.price * item.qty} {"\u20B8"}</span>
+                  <span className="font-bold text-brand-text">{isFree ? "0" : item.price * item.qty} \u20B8</span>
                 </div>
               ))}
             </div>
-            <div className="border-t border-coffee-100 mt-3 pt-3 flex justify-between">
-              <span className="font-bold text-coffee-900">{"\u0418\u0442\u043E\u0433\u043E"}</span>
-              <span className="font-bold text-coffee-600 text-lg">{total} {"\u20B8"}</span>
+            <div className="border-t border-[#d0f0e0] mt-3 pt-3 flex justify-between">
+              <span className="font-bold text-brand-text">Итого</span>
+              <span className="font-bold text-brand-dark text-lg">{total} \u20B8</span>
             </div>
           </motion.div>
 
-          {/* Форма */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl border border-coffee-100 shadow-sm p-5 mb-6"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-6" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-coffee-700 mb-1">
-                {"\u0418\u043C\u044F"}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={"\u041A\u0430\u043A \u0442\u0435\u0431\u044F \u0437\u043E\u0432\u0443\u0442?"}
-                className="w-full px-4 py-3 rounded-xl border border-coffee-200 focus:border-coffee-500 focus:ring-1 focus:ring-coffee-500 outline-none text-sm text-coffee-900 bg-cream-50"
-              />
+              <label className="block text-sm font-medium text-brand-text/70 mb-1">Имя</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Как тебя зовут?"
+                className="w-full px-4 py-3 rounded-xl border border-[#d0f0e0] focus:border-brand-mint focus:ring-1 focus:ring-brand-mint outline-none text-sm text-brand-text bg-brand-bg" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-coffee-700 mb-1">
-                {"\u041A\u043E\u043C\u043C\u0435\u043D\u0442\u0430\u0440\u0438\u0439 \u043A \u0437\u0430\u043A\u0430\u0437\u0443"}
-                <span className="text-coffee-300 ml-1">{"\u043D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E"}</span>
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder={"\u0411\u0435\u0437 \u0441\u0430\u0445\u0430\u0440\u0430, \u0434\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0439 \u0441\u0438\u0440\u043E\u043F..."}
-                rows={2}
-                className="w-full px-4 py-3 rounded-xl border border-coffee-200 focus:border-coffee-500 focus:ring-1 focus:ring-coffee-500 outline-none text-sm text-coffee-900 bg-cream-50 resize-none"
-              />
+              <label className="block text-sm font-medium text-brand-text/70 mb-1">Комментарий <span className="text-brand-text/30">необязательно</span></label>
+              <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Без сахара, дополнительный сироп..." rows={2}
+                className="w-full px-4 py-3 rounded-xl border border-[#d0f0e0] focus:border-brand-mint focus:ring-1 focus:ring-brand-mint outline-none text-sm text-brand-text bg-brand-bg resize-none" />
             </div>
           </motion.div>
 
-          {/* Кнопка подтверждения */}
           <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleConfirm}
-            disabled={sending}
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            onClick={handleConfirm} disabled={sending}
             className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all ${
-              sending
-                ? "bg-coffee-300 text-white cursor-wait"
-                : "bg-gradient-to-r from-coffee-600 to-coffee-500 text-white hover:shadow-xl"
-            }`}
-          >
-            {sending ? "\u041e\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0435\u043C..." : `\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0437\u0430\u043A\u0430\u0437 \u2022 ${total} \u20B8`}
+              sending ? "bg-brand-mid/50 text-white cursor-wait" : "bg-brand-dark text-white hover:shadow-xl"
+            }`}>
+            {sending ? "Отправляем..." : isFree ? "Забрать бесплатно \uD83C\uDF89" : `Подтвердить заказ \u2022 ${total} \u20B8`}
           </motion.button>
         </div>
       </div>

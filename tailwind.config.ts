@@ -9,12 +9,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        coffee: {
-          50: "#fdf8f0", 100: "#f9eddb", 200: "#f2d7b0", 300: "#e9bb7c",
-          400: "#df9a48", 500: "#d4802a", 600: "#c06520", 700: "#9f4c1d",
-          800: "#803e1f", 900: "#6a351d", 950: "#3a1a0d",
+        brand: {
+          bg: "#f2fdf6",
+          dark: "#1a7a44",
+          mint: "#3ecf82",
+          mid: "#2d9e5a",
+          pink: "#d42b4f",
+          text: "#0f3a20",
         },
-        cream: { 50: "#fefcf7", 100: "#fdf6ea", 200: "#faecd0", 300: "#f5dcab" },
+        coffee: {
+          50: "#f2fdf6", 100: "#d1f5e0", 200: "#a3ebc1", 300: "#6ddb9a",
+          400: "#3ecf82", 500: "#2d9e5a", 600: "#1a7a44", 700: "#156335",
+          800: "#104d29", 900: "#0f3a20", 950: "#072113",
+        },
+        cream: { 50: "#f7fef9", 100: "#eafcf0", 200: "#d5f7e2", 300: "#b8f0cc" },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
