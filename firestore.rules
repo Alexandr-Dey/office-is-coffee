@@ -2,55 +2,74 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users — read own, write sensitive fields only via Cloud Functions
+    // Helper: get caller's role from Custom Claims
+    function getRole() {
+      return request.auth.token.role;
+    }
+
+    function isBarista() {
+      return getRole() in ['barista', 'ceo'];
+    }
+
+    function isCEO() {
+      return getRole() == 'ceo';
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Users — read own only. Client can update non-sensitive fields.
+    // loyaltyCount, streak, role — write ONLY via Cloud Functions (admin SDK bypasses rules).
     match /users/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow create: if request.auth != null && request.auth.uid == uid;
-      // Allow client to update non-sensitive fields
-      allow update: if request.auth != null && request.auth.uid == uid
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid)
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['loyaltyCount', 'streak', 'role']);
     }
 
-    // Orders — create if authenticated, read own or barista/ceo, update status only barista/ceo
+    // Orders — client reads only own. Barista/CEO read all. Create if authenticated.
+    // Only barista/ceo can update (status transitions).
     match /orders/{orderId} {
       allow create: if request.auth != null;
       allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo']
+        resource.data.userId == request.auth.uid || isBarista()
       );
-      allow update: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo'];
+      allow update: if request.auth != null && isBarista();
     }
 
-    // Deposits — read own + barista/ceo, write only Cloud Functions (admin SDK bypasses rules)
+    // Deposits — read own + barista/ceo. Write ONLY via Cloud Functions.
     match /deposits/{uid} {
       allow read: if request.auth != null && (
-        request.auth.uid == uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo']
+        isOwner(uid) || isBarista()
       );
-      allow write: if false; // Only Cloud Functions
+      allow write: if false;
     }
 
-    // Barista bonuses — read own barista + ceo, write only Cloud Functions
+    // Barista bonuses — read own barista + CEO only. Write ONLY via Cloud Functions.
     match /barista_bonuses/{uid} {
       allow read: if request.auth != null && (
-        request.auth.uid == uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ceo'
+        isOwner(uid) || isCEO()
       );
-      allow write: if false; // Only Cloud Functions
+      allow write: if false;
     }
 
-    // Cafe status — read all authenticated, write barista/ceo
+    // Cafe status — read all (even unauthenticated for landing). Write only barista/ceo.
     match /cafe_status/{docId} {
       allow read: if true;
-      allow write: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['barista', 'ceo'];
+      allow write: if request.auth != null && isBarista();
     }
 
-    // Push tokens — read/write own
+    // Menu items — read all. Write only CEO.
+    match /menu_items/{itemId} {
+      allow read: if true;
+      allow write: if request.auth != null && isCEO();
+    }
+
+    // Push tokens — read/write only owner.
     match /push_tokens/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isOwner(uid);
     }
   }
 }

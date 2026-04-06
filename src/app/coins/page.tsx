@@ -7,28 +7,52 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 
 export default function CoinsPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loyaltyCount, setLoyaltyCount] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) { setDataLoading(false); return; }
     const unsub = onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
       if (snap.exists()) {
         setLoyaltyCount(snap.data().loyaltyCount ?? 0);
         setStreak(snap.data().streak ?? 0);
       }
-    }, () => {});
+      setDataLoading(false);
+    }, () => { setDataLoading(false); });
     return () => unsub();
   }, [user]);
 
   const cups = Array.from({ length: 8 }, (_, i) => i < loyaltyCount);
   const nextFree = 8 - loyaltyCount;
 
+  if (authLoading || dataLoading) {
+    return (
+      <main className="min-h-screen pb-20 pt-6 px-4 bg-brand-bg">
+        <div className="max-w-lg mx-auto space-y-4">
+          <div className="h-8 bg-[#d0f0e0] rounded-lg w-1/3 animate-pulse" />
+          <div className="bg-white rounded-2xl border border-[#d0f0e0] p-6 animate-pulse">
+            <div className="h-4 bg-[#d0f0e0] rounded w-2/3 mb-4" />
+            <div className="flex gap-2 justify-center">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className="w-6 h-6 rounded-full bg-[#d0f0e0]" />
+              ))}
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-[#d0f0e0] p-6 animate-pulse">
+            <div className="h-10 bg-[#d0f0e0] rounded w-1/2 mb-2" />
+            <div className="h-4 bg-[#d0f0e0]/50 rounded w-1/3" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen pb-20 pt-6 px-4 bg-brand-bg">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg mx-auto">
-        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">\u2B50 Монеты</h1>
+        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">{"\u2B50"} Монеты</h1>
 
         {/* Loyalty card */}
         <div className="bg-white rounded-2xl border border-[#d0f0e0] p-6 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>

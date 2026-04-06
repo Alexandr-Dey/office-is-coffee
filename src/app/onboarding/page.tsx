@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 import confetti from "canvas-confetti";
+import { requestPushPermission } from "@/lib/push";
 
 const STEPS = ["welcome", "auth", "geo", "push", "pwa", "done"] as const;
 type Step = (typeof STEPS)[number];
@@ -24,10 +25,25 @@ export default function OnboardingPage() {
     setIsIOS(/iPad|iPhone|iPod/.test(ua));
     setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
 
+    /* Barista/CEO skip onboarding entirely */
+    if (user && (user.role === "barista" || user.role === "ceo")) {
+      router.replace("/admin");
+      return;
+    }
+
+    /* If onboarding already done, go to menu */
+    if (user) {
+      getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
+        if (snap.exists() && snap.data().onboardingDone) {
+          router.replace("/menu");
+        }
+      }).catch(() => {});
+    }
+
     /* If already logged in with a name, skip auth steps */
     if (user && user.displayName && step === "welcome") setStep("geo");
     if (user && user.displayName && step === "auth") setStep("geo");
-  }, [user, step]);
+  }, [user, step, router]);
 
   const next = () => {
     const idx = STEPS.indexOf(step);
@@ -59,15 +75,11 @@ export default function OnboardingPage() {
     }
   };
 
-  const handlePush = (allow: boolean) => {
-    if (allow && "Notification" in window) {
-      Notification.requestPermission().then((perm) => {
-        /* Token saving would go here with FCM */
-        next();
-      });
-    } else {
-      next();
+  const handlePush = async (allow: boolean) => {
+    if (allow && user) {
+      await requestPushPermission(user.uid).catch(() => {});
     }
+    next();
   };
 
   const handleDone = async () => {

@@ -208,12 +208,13 @@ function DrinkDetail({ item, catIcon, onAdd, onClose }: {
 }
 
 /* ═══ DRINK CARD ═══ */
+/* DrinkIt-style gradient backgrounds per DESIGN-SYSTEM.md */
 const CAT_GRADIENTS: Record<string, string> = {
-  coffee: "bg-gradient-to-br from-amber-50 to-orange-50",
-  author: "bg-gradient-to-br from-rose-50 to-pink-50",
-  ice: "bg-gradient-to-br from-cyan-50 to-blue-50",
-  tea: "bg-gradient-to-br from-green-50 to-emerald-50",
-  other: "bg-gradient-to-br from-purple-50 to-violet-50",
+  coffee: "from-[#1a7a44] to-[#2d9e5a]",
+  author: "from-[#d42b4f] to-[#e85d7a]",
+  ice: "from-[#3b82f6] to-[#60a5fa]",
+  tea: "from-[#3b82f6] to-[#60a5fa]",
+  other: "from-[#f59e0b] to-[#fbbf24]",
 };
 
 function DrinkCard({ item, catIcon, onAdd, onDetail, idx, stopped, catId }: {
@@ -241,34 +242,34 @@ function DrinkCard({ item, catIcon, onAdd, onDetail, idx, stopped, catId }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.04 }}
       onClick={unavailable ? undefined : onDetail}
-      className={`rounded-2xl border border-[#d0f0e0] p-4 flex flex-col cursor-pointer hover:shadow-md transition-shadow ${unavailable ? "opacity-50 cursor-not-allowed" : ""} ${catId && CAT_GRADIENTS[catId] ? CAT_GRADIENTS[catId] : "bg-white"}`}
-      style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
+      className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow ${unavailable ? "opacity-50 cursor-not-allowed" : ""} bg-gradient-to-br ${catId && CAT_GRADIENTS[catId] ? CAT_GRADIENTS[catId] : "from-[#1a7a44] to-[#2d9e5a]"} text-white`}
+      style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
     >
       <div className="text-3xl mb-2">{catIcon}</div>
       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-        <span className="font-semibold text-sm text-brand-text">{item.name}</span>
+        <span className="font-semibold text-sm">{item.name}</span>
         {item.tag && (
           <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-            item.tag === "NEW" ? "bg-brand-mint/20 text-brand-dark" :
-            item.tag === "СЕЗОН" ? "bg-orange-100 text-orange-600" :
-            "bg-brand-pink/10 text-brand-pink"
+            item.tag === "NEW" ? "bg-white/20 text-white" :
+            item.tag === "СЕЗОН" ? "bg-white/20 text-white" :
+            "bg-white/25 text-white"
           }`}>{item.tag}</span>
         )}
       </div>
-      {unavailable && <span className="text-[10px] text-red-400 font-medium">Закончился</span>}
+      {unavailable && <span className="text-[10px] text-white/70 font-medium">Закончился</span>}
       {sizes && !unavailable && (
         <div className="flex gap-1 mb-1 mt-1">
           {sizes.map((s) => (
-            <span key={s} className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-gray-100 text-brand-text/40">{s}</span>
+            <span key={s} className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-white/15 text-white/80">{s}</span>
           ))}
         </div>
       )}
       <div className="mt-auto flex items-center justify-between pt-2">
-        <span className="font-bold text-brand-dark">{price} \u20B8</span>
+        <span className="font-bold text-white">{price} {"\u20B8"}</span>
         {!unavailable && (
           <motion.button whileTap={{ scale: 0.85 }} onClick={handleQuickAdd}
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold transition-colors ${
-              added ? "bg-green-500" : "bg-brand-dark hover:bg-brand-mid"
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+              added ? "bg-white text-green-600" : "bg-white/25 text-white hover:bg-white/40"
             }`}>{added ? "\u2713" : "+"}</motion.button>
         )}
       </div>
@@ -348,6 +349,8 @@ export default function MenuPage() {
   const [stopList, setStopList] = useState<string[]>([]);
   const [geoNearby, setGeoNearby] = useState(false);
   const [activeOrderStatus, setActiveOrderStatus] = useState<"idle" | "new" | "pending" | "accepted" | "ready">("idle");
+  const [streakDays, setStreakDays] = useState(0);
+  const [lastOrderDate, setLastOrderDate] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const current = MENU.find((c) => c.id === cat) ?? MENU[0];
 
@@ -369,6 +372,8 @@ export default function MenuPage() {
     const unsub = onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
       if (snap.exists()) {
         setLoyaltyCount(snap.data().loyaltyCount ?? 0);
+        setStreakDays(snap.data().streak ?? 0);
+        setLastOrderDate(snap.data().lastOrderDate ?? null);
       }
     }, () => {});
     return () => unsub();
@@ -388,9 +393,16 @@ export default function MenuPage() {
     return () => unsub2();
   }, [user]);
 
-  /* Listen to active orders for scene state */
+  /* Listen to CURRENT USER's active orders for scene state */
   useEffect(() => {
-    const q = query(collection(getFirebaseDb(), "orders"), where("status", "in", ["new", "pending", "accepted", "ready"]), orderBy("createdAt", "desc"), limit(1));
+    if (!user) return;
+    const q = query(
+      collection(getFirebaseDb(), "orders"),
+      where("userId", "==", user.uid),
+      where("status", "in", ["new", "pending", "accepted", "ready"]),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
     const unsub3 = onSnapshot(q, (snap) => {
       if (!snap.empty) {
         const s = snap.docs[0].data().status;
@@ -400,7 +412,7 @@ export default function MenuPage() {
       }
     }, () => {});
     return () => unsub3();
-  }, []);
+  }, [user]);
 
   const addToCart = (name: string, size: string, price: number, milk?: string) => {
     setCart((prev) => {
@@ -442,7 +454,7 @@ export default function MenuPage() {
           <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
         </div>
       </div>
-      <div className="px-3 pt-1"><CoffeeScene orderStatus={activeOrderStatus === "new" ? "pending" : activeOrderStatus as BaristaState} /></div>
+      <div className="px-3 pt-1"><CoffeeScene orderStatus={activeOrderStatus === "new" ? "pending" : activeOrderStatus as BaristaState} streakDays={streakDays} lastOrderDate={lastOrderDate} /></div>
 
       <div className="px-3 mt-3 space-y-3">
         <LoyaltyBanner count={loyaltyCount} />
@@ -485,8 +497,8 @@ export default function MenuPage() {
         <div className="flex gap-2 pb-1">
           {MENU.map((c) => (
             <button key={c.id} onClick={() => setCat(c.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                cat === c.id ? "bg-brand-dark text-white shadow-md" : "bg-white text-brand-text border border-[#d0f0e0]"
+              className={`px-4 py-1.5 rounded-[20px] text-sm font-medium whitespace-nowrap transition-all ${
+                cat === c.id ? "bg-[#1a7a44] text-white shadow-md" : "bg-[#f0fdf4] text-[#2d9e5a]"
               }`}><span className="mr-1">{c.icon}</span>{c.shortTitle}</button>
           ))}
         </div>

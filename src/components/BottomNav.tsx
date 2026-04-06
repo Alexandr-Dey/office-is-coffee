@@ -18,19 +18,20 @@ export default function BottomNav() {
   if (hideOn.some((p) => pathname === p || pathname.startsWith("/admin") || pathname.startsWith("/ceo"))) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#d0f0e0]">
-      <div className="flex items-center justify-around max-w-lg mx-auto h-16">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white" style={{ boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
+      <div className="flex items-center justify-around max-w-lg mx-auto h-16 pb-[env(safe-area-inset-bottom)]">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
             <Link key={tab.href} href={tab.href} className="flex flex-col items-center gap-0.5 relative">
               <motion.span
                 whileTap={{ scale: 0.85 }}
-                className={`text-xl transition-colors ${active ? "grayscale-0" : "grayscale opacity-50"}`}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className={`text-xl transition-colors ${active ? "" : "opacity-40"}`}
               >
                 {tab.icon}
               </motion.span>
-              <span className={`text-[10px] font-semibold transition-colors ${active ? "text-brand-dark" : "text-gray-400"}`}>
+              <span className={`text-[10px] font-semibold transition-colors ${active ? "text-[#1a7a44]" : "text-[#9ca3af]"}`}>
                 {tab.label}
               </span>
               {active && (

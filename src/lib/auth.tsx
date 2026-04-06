@@ -75,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             pushToken: null,
             geolocationAllowed: false,
             favoriteItem: null,
+            onboardingDone: role !== "client",
             createdAt: new Date().toISOString(),
           }).catch(() => {});
         });

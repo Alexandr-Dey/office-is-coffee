@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, arrayUnion, runTransaction, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import confetti from "canvas-confetti";
-import { getAlmatyDate } from "@/lib/constants";
 
 interface CartItem { name: string; size: string; price: number; qty: number; milk?: string }
 
@@ -69,56 +68,9 @@ export default function OrderPage() {
 
       sessionStorage.removeItem("oic_is_repeat");
 
-      /* Update loyalty + streak */
-      if (user) {
-        const userRef = doc(getFirebaseDb(), "users", user.uid);
-        const snap = await getDoc(userRef);
-        if (snap.exists()) {
-          const data = snap.data();
-          const today = getAlmatyDate();
-          const lastOrder = data.lastOrderDate;
-          const yesterdayDate = new Date(Date.now() - 86400000);
-          const yesterday = yesterdayDate.toLocaleString("sv", { timeZone: "Asia/Almaty" }).split(" ")[0];
-
-          let newStreak = 1;
-          if (lastOrder === yesterday) newStreak = (data.streak || 0) + 1;
-          else if (lastOrder === today) newStreak = data.streak || 1;
-
-          let newLoyalty = (data.loyaltyCount || 0) + 1;
-          if (isFree) {
-            newLoyalty = 0;
-            confetti({ particleCount: 100, spread: 70, colors: ["#1a7a44", "#3ecf82", "#d42b4f"] });
-          }
-          if (newLoyalty >= 8) newLoyalty = 8;
-
-          await updateDoc(userRef, {
-            loyaltyCount: newLoyalty,
-            streak: newStreak,
-            lastOrderDate: today,
-          });
-
-          /* Deposit: deduct balance atomically via transaction */
-          if (payMethod === "deposit" && !isFree && total > 0) {
-            const depRef = doc(getFirebaseDb(), "deposits", user.uid);
-            await runTransaction(getFirebaseDb(), async (tx) => {
-              const depSnap = await tx.get(depRef);
-              if (!depSnap.exists()) throw new Error("No deposit");
-              const bal = depSnap.data().balance || 0;
-              if (bal < total) throw new Error("Insufficient balance");
-              tx.update(depRef, {
-                balance: bal - total,
-                totalSpent: (depSnap.data().totalSpent || 0) + total,
-                history: arrayUnion({ type: "payment", amount: total, date: new Date().toISOString(), orderId: docRef.id }),
-              });
-            });
-          }
-
-          /* 07:31 easter egg */
-          const now = new Date();
-          if (now.getHours() === 7 && now.getMinutes() === 31) {
-            confetti({ particleCount: 60, colors: ["#3ecf82", "#1a7a44"] });
-          }
-        }
+      /* Loyalty, streak, deposit — all handled by Cloud Function onOrderCreate */
+      if (isFree) {
+        confetti({ particleCount: 100, spread: 70, colors: ["#1a7a44", "#3ecf82", "#d42b4f"] });
       }
 
       if (name) localStorage.setItem("oic_guest_name", name);

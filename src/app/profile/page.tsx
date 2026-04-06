@@ -6,6 +6,14 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+
+interface DepositHistoryEntry {
+  type: "topup" | "payment" | "refund";
+  amount: number;
+  date: string;
+  orderId?: string;
+  baristaid?: string;
+}
 import { QRCodeSVG } from "qrcode.react";
 import { CAFE_ADDRESS } from "@/lib/constants";
 
@@ -19,6 +27,7 @@ export default function ProfilePage() {
   const [isIOS, setIsIOS] = useState(false);
   const [isPWA, setIsPWA] = useState(false);
   const [depositBalance, setDepositBalance] = useState(0);
+  const [depositHistory, setDepositHistory] = useState<DepositHistoryEntry[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -30,7 +39,10 @@ export default function ProfilePage() {
       }
     }, () => {});
     const unsubDep = onSnapshot(doc(getFirebaseDb(), "deposits", user.uid), (snap) => {
-      if (snap.exists()) setDepositBalance(snap.data().balance ?? 0);
+      if (snap.exists()) {
+        setDepositBalance(snap.data().balance ?? 0);
+        setDepositHistory((snap.data().history ?? []) as DepositHistoryEntry[]);
+      }
     }, () => {});
     return () => { unsub(); unsubDep(); };
   }, [user]);
@@ -100,6 +112,24 @@ export default function ProfilePage() {
               </div>
             </div>
             <p className="text-xs text-brand-text/40">Покажи QR баристе для пополнения</p>
+            {depositHistory.length > 0 && (
+              <div className="mt-4 border-t border-[#d0f0e0] pt-3">
+                <p className="text-xs text-brand-text/50 mb-2">История</p>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {depositHistory.slice().reverse().slice(0, 10).map((h, i) => (
+                    <div key={i} className="flex justify-between text-xs">
+                      <span className="text-brand-text/60">
+                        {h.type === "topup" ? "Пополнение" : h.type === "payment" ? "Оплата" : "Возврат"}
+                        <span className="text-brand-text/30 ml-1">{new Date(h.date).toLocaleDateString("ru")}</span>
+                      </span>
+                      <span className={`font-bold ${h.type === "topup" || h.type === "refund" ? "text-green-600" : "text-brand-pink"}`}>
+                        {h.type === "topup" || h.type === "refund" ? "+" : "−"}{h.amount}₸
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

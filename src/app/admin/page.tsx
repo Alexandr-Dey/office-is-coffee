@@ -108,7 +108,7 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
         await updateDoc(orderRef, { baristaBonus: 5 });
       }
     } catch (err) {
-      console.error("Status change failed:", err);
+      /* status change failed */
     }
     setUpdating(false);
     setShowTimePicker(false);

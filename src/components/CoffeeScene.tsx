@@ -1,530 +1,666 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
-
-const BASE_W = 400;
-const BASE_H = 220;
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export type BaristaState = "idle" | "pending" | "accepted" | "ready";
 
-/* ====== DRAW SCENE ====== */
-function drawScene(
-  ctx: CanvasRenderingContext2D,
-  w: number, h: number,
-  t: number,
-  state: BaristaState,
-  vitaliyTaps: number,
-  aslanTaps: number,
-  isNight: boolean,
-  orderCount: number,
-  isWokeUp?: boolean,
-) {
-  const sx = w / BASE_W;
-  const sy = h / BASE_H;
-  ctx.clearRect(0, 0, w, h);
-  ctx.save();
-  ctx.scale(sx, sy);
-  const W = BASE_W, H = BASE_H;
-
-  /* ---- RED WALL (left third) ---- */
-  ctx.fillStyle = "#d42b4f";
-  ctx.fillRect(0, 0, W * 0.33, H);
-
-  /* Logo */
-  const lx = W * 0.165, ly = 45;
-  ctx.save();
-  ctx.translate(lx, ly);
-  ctx.fillStyle = "#FFF";
-  ctx.beginPath();
-  ctx.moveTo(0, 6);
-  ctx.bezierCurveTo(-16, -12, -30, 4, -16, 18);
-  ctx.lineTo(0, 30);
-  ctx.lineTo(16, 18);
-  ctx.bezierCurveTo(30, 4, 16, -12, 0, 6);
-  ctx.fill();
-  ctx.fillStyle = "#5C2E0E";
-  for (const [bx, by] of [[-4, 12], [4, 12], [0, 20]] as [number, number][]) {
-    ctx.beginPath(); ctx.ellipse(bx, by, 2.5, 4, 0.3, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.fillStyle = "#FFF";
-  ctx.font = "bold 11px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("LOVE IS", 0, 44);
-  ctx.fillText("COFFEE", 0, 56);
-  ctx.restore();
-
-  /* ---- WHITE WALL ---- */
-  ctx.fillStyle = "#F5F0EB";
-  ctx.fillRect(W * 0.33, 0, W * 0.67, H);
-
-  /* Menu boards */
-  for (let i = 0; i < 3; i++) {
-    const bx = W * 0.33 + 15 + i * (W * 0.67 - 30) / 3;
-    const bw = (W * 0.67 - 50) / 3;
-    ctx.strokeStyle = "#B0B0B0"; ctx.lineWidth = 1.5;
-    ctx.strokeRect(bx, 12, bw, 55);
-    ctx.fillStyle = "#FFFDF8";
-    ctx.fillRect(bx + 1.5, 13.5, bw - 3, 52);
-    ctx.fillStyle = "#888"; ctx.font = "6px sans-serif";
-    for (let l = 0; l < 4; l++) {
-      ctx.fillRect(bx + 8, 22 + l * 11, 25 + Math.sin(i + l) * 10, 3);
-      ctx.fillStyle = "#aaa"; ctx.fillRect(bx + 8 + 30 + Math.sin(i + l) * 10, 22 + l * 11, 15, 3); ctx.fillStyle = "#888";
-    }
-  }
-
-  /* ---- GREEN COUNTER (foreground — hides barista legs) ---- */
-  const counterY = H - 55;
-  const counterH = 55;
-  /* Counter body */
-  ctx.fillStyle = "#1a7a44";
-  ctx.fillRect(0, counterY, W, counterH);
-  /* Counter top edge */
-  ctx.fillStyle = "#2d9e5a";
-  ctx.fillRect(0, counterY, W, 6);
-  /* "center coffee" text */
-  ctx.fillStyle = "rgba(255,255,255,0.2)";
-  ctx.font = "italic 9px sans-serif";
-  ctx.textAlign = "center";
-  for (let i = 0; i < 4; i++) ctx.fillText("\u2615 center coffee", 55 + i * 105, counterY + 30);
-  ctx.textAlign = "start";
-
-  /* ---- COUNTER ITEMS (on top of counter) ---- */
-  /* Microwave */
-  const mwX = 30;
-  ctx.fillStyle = "#E0E0E0";
-  ctx.fillRect(mwX, counterY - 22, 32, 22);
-  ctx.fillStyle = "#444";
-  ctx.fillRect(mwX + 3, counterY - 18, 18, 14);
-  ctx.fillStyle = "#3ecf82";
-  ctx.beginPath(); ctx.arc(mwX + 26, counterY - 11, 2.5, 0, Math.PI * 2); ctx.fill();
-
-  /* Coffee machine */
-  const cmX = W / 2 - 18;
-  ctx.fillStyle = "#2a2a2a";
-  ctx.beginPath(); ctx.roundRect(cmX, counterY - 42, 36, 42, 3); ctx.fill();
-  ctx.fillStyle = "#444";
-  ctx.fillRect(cmX + 4, counterY - 37, 28, 16);
-  /* Buttons */
-  ctx.fillStyle = "#C0392B"; ctx.beginPath(); ctx.arc(cmX + 10, counterY - 14, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#3ecf82"; ctx.beginPath(); ctx.arc(cmX + 20, counterY - 14, 3, 0, Math.PI * 2); ctx.fill();
-  /* Drip nozzle */
-  ctx.fillStyle = "#555";
-  ctx.fillRect(cmX + 14, counterY - 6, 8, 6);
-  /* Steam */
-  const steamN = state === "accepted" ? 6 : (state === "ready" ? 4 : 2);
-  for (let si = 0; si < steamN; si++) {
-    const sp = ((t * 1.5 + si * 0.7) % 3);
-    const a = Math.max(0, 0.5 - sp / 3);
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.beginPath();
-    ctx.ellipse(cmX + 18 + Math.sin(t * 2 + si) * 4, counterY - 42 - sp * 14, 3, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /* Red cups stack */
-  for (let ci = 0; ci < 3; ci++) {
-    ctx.fillStyle = "#C0392B";
-    const cx2 = W - 65 + ci * 7;
-    ctx.fillRect(cx2, counterY - 14 - ci * 2, 10, 14 + ci * 2);
-    ctx.fillStyle = "#FFF";
-    ctx.fillRect(cx2 + 2, counterY - 11 - ci * 2, 6, 1.5);
-  }
-
-  /* ---- BARISTAS (behind counter — draw BEFORE counter for z-order) ---- */
-  /* Actually we draw counter first, then baristas upper body ABOVE counter line */
-  const sleeping = isNight && !isWokeUp;
-  const scared = isNight && !!isWokeUp;
-  const vAngry = vitaliyTaps >= 8 && vitaliyTaps < 99;
-  const vGone = vitaliyTaps >= 99;
-  const aFlip = aslanTaps >= 5 && aslanTaps < 99;
-  const aFalling = aslanTaps >= 99;
-
-  if (!vGone) {
-    drawBarista(ctx, W / 2 - 55, counterY, t, "left", state, sleeping, vAngry, false, scared);
-  } else {
-    /* Thrown apron */
-    ctx.fillStyle = "#C0392B";
-    ctx.save(); ctx.translate(W / 2 - 90, counterY - 5); ctx.rotate(0.3);
-    ctx.fillRect(0, 0, 16, 10); ctx.restore();
-  }
-
-  if (aFalling) {
-    ctx.save();
-    const fp = (t * 2) % 5;
-    ctx.translate(W / 2 + 55, counterY - 20);
-    ctx.rotate(fp < 2 ? fp * 1.2 : 1.0);
-    drawBaristaHead(ctx, t, "right", false, false, fp >= 2);
-    ctx.restore();
-  } else {
-    drawBarista(ctx, W / 2 + 55, counterY, t, "right", state, sleeping, false, aFlip, scared);
-  }
-
-  /* Names below counter */
-  ctx.fillStyle = "rgba(255,255,255,0.8)";
-  ctx.font = "bold 9px sans-serif";
-  ctx.textAlign = "center";
-  if (!vGone) ctx.fillText("Виталий", W / 2 - 55, counterY + 14);
-  ctx.fillText("Аслан", W / 2 + 55, counterY + 14);
-  ctx.textAlign = "start";
-
-  /* Ready bubble */
-  if (state === "ready") {
-    const bx2 = W / 2 + 55, by2 = counterY - 75;
-    ctx.fillStyle = "rgba(0,0,0,0.75)";
-    const txt = "Готово! Забирай \u2615";
-    ctx.font = "bold 10px sans-serif";
-    const tw = ctx.measureText(txt).width;
-    ctx.beginPath(); ctx.roundRect(bx2 - tw / 2 - 8, by2 - 6, tw + 16, 20, 10); ctx.fill();
-    ctx.fillStyle = "#FFF"; ctx.textAlign = "center";
-    ctx.fillText(txt, bx2, by2 + 7); ctx.textAlign = "start";
-  }
-
-  /* Order card above counter */
-  if (state !== "idle" && orderCount !== undefined) {
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.beginPath(); ctx.roundRect(W / 2 - 45, 78, 90, 18, 5); ctx.fill();
-    ctx.strokeStyle = "#d0f0e0"; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = "#1a7a44"; ctx.font = "bold 8px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(state === "pending" ? "\u231B Новый заказ" : state === "accepted" ? "\u2615 Готовится..." : "\uD83C\uDF89 Готов!", W / 2, 90);
-    ctx.textAlign = "start";
-  }
-
-  /* 10th order dance text */
-  if (orderCount > 0 && orderCount % 10 === 0) {
-    ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText("Легенда кофейни! \uD83C\uDFC6", W / 2, 75 + Math.sin(t * 3) * 2);
-    ctx.textAlign = "start";
-  }
-
-  /* Yawn in idle */
-  if (state === "idle" && !sleeping && !scared) {
-    const yp = (t % 12);
-    if (yp > 11) {
-      const yx = Math.floor(t / 12) % 2 === 0 ? W / 2 - 40 : W / 2 + 70;
-      ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.font = "9px sans-serif";
-      ctx.fillText("*зевает*", yx, counterY - 60);
-    }
-  }
-
-  /* Floor */
-  ctx.fillStyle = "#DDD5C8";
-  ctx.fillRect(0, H - 10, W, 10);
-
-  ctx.restore(); // undo scale
+interface CoffeeSceneProps {
+  orderStatus?: BaristaState;
+  streakDays?: number;
+  lastOrderDate?: string | null;
+  orderCount?: number;
 }
 
-/* ====== DRAW BARISTA HEAD (for falling Aslan) ====== */
-function drawBaristaHead(ctx: CanvasRenderingContext2D, t: number, side: "left" | "right", angry: boolean, scared: boolean, embarrassed: boolean) {
-  const s = 0.75;
-  /* Head */
-  ctx.fillStyle = "#F5C193";
-  ctx.beginPath(); ctx.ellipse(0, 0, 12 * s, 13 * s, 0, 0, Math.PI * 2); ctx.fill();
-  /* Hair */
-  ctx.fillStyle = side === "left" ? "#3B2410" : "#1A0E06";
-  ctx.beginPath(); ctx.ellipse(0, -8 * s, 11 * s, 7 * s, 0, Math.PI, 0, true); ctx.fill();
-  /* Embarrassed cheeks */
-  if (embarrassed) {
-    ctx.fillStyle = "rgba(255,80,80,0.4)";
-    ctx.beginPath(); ctx.arc(-7 * s, 3, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(7 * s, 3, 4, 0, Math.PI * 2); ctx.fill();
-  }
-  /* Simple face */
-  ctx.fillStyle = "#2A1810";
-  ctx.beginPath(); ctx.arc(-4 * s, -1, 1.5 * s, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(4 * s, -1, 1.5 * s, 0, Math.PI * 2); ctx.fill();
-  if (embarrassed) {
-    ctx.strokeStyle = "#6B3E26"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(0, 5, 3 * s, Math.PI + 0.3, -0.3); ctx.stroke();
-  }
+/* ═══ HELPERS ═══ */
+function daysSinceOrder(lastDate: string | null): number {
+  if (!lastDate) return 999;
+  const now = new Date();
+  const last = new Date(lastDate + "T00:00:00+05:00");
+  return Math.floor((now.getTime() - last.getTime()) / 86400000);
 }
 
-/* ====== DRAW BARISTA (upper body only — behind counter) ====== */
-function drawBarista(
-  ctx: CanvasRenderingContext2D,
-  x: number, counterY: number, t: number,
-  side: "left" | "right", state: BaristaState,
-  sleeping: boolean, angry?: boolean, flipping?: boolean, scared?: boolean,
-) {
-  ctx.save();
-  ctx.translate(x, counterY);
-  const s = 0.8;
-  const bob = Math.sin(t * 1.5 + (side === "left" ? 0 : 1.5)) * 1;
+/* ═══ PIXEL RECT HELPER ═══ */
+function P({ x, y, w = 1, h = 1, c, s = 4 }: { x: number; y: number; w?: number; h?: number; c: string; s?: number }) {
+  return <rect x={x * s} y={y * s} width={w * s} height={h * s} fill={c} />;
+}
+
+/* ═══ BACKGROUND ═══ */
+function Background() {
+  return (
+    <g id="background">
+      {/* Red wall - left third */}
+      <rect x="0" y="0" width="130" height="220" fill="#c0392b" />
+      {/* Shadow on red wall */}
+      <rect x="120" y="0" width="10" height="220" fill="#a93226" />
+      {/* Light wall - right two thirds */}
+      <rect x="130" y="0" width="260" height="220" fill="#f5f0e8" />
+      {/* Subtle shadow on light wall */}
+      <rect x="130" y="0" width="6" height="220" fill="#e8e0d0" />
+      {/* Floor */}
+      <rect x="0" y="210" width="390" height="10" fill="#DDD5C8" />
+    </g>
+  );
+}
+
+/* ═══ LOGO ON RED WALL ═══ */
+function Logo() {
+  return (
+    <g id="logo" transform="translate(65, 30)">
+      {/* Heart shape with pixels */}
+      {/* Top row */}
+      <P x={-2} y={0} c="#fff" /><P x={-1} y={0} c="#fff" />
+      <P x={1} y={0} c="#fff" /><P x={2} y={0} c="#fff" />
+      {/* Second row */}
+      <P x={-3} y={1} c="#fff" /><P x={-2} y={1} c="#fff" /><P x={-1} y={1} c="#fff" />
+      <P x={0} y={1} c="#fff" />
+      <P x={1} y={1} c="#fff" /><P x={2} y={1} c="#fff" /><P x={3} y={1} c="#fff" />
+      {/* Third row */}
+      <P x={-3} y={2} c="#fff" /><P x={-2} y={2} c="#fff" /><P x={-1} y={2} c="#fff" />
+      <P x={0} y={2} c="#fff" />
+      <P x={1} y={2} c="#fff" /><P x={2} y={2} c="#fff" /><P x={3} y={2} c="#fff" />
+      {/* Fourth row */}
+      <P x={-2} y={3} c="#fff" /><P x={-1} y={3} c="#fff" /><P x={0} y={3} c="#fff" />
+      <P x={1} y={3} c="#fff" /><P x={2} y={3} c="#fff" />
+      {/* Fifth row */}
+      <P x={-1} y={4} c="#fff" /><P x={0} y={4} c="#fff" /><P x={1} y={4} c="#fff" />
+      {/* Bottom */}
+      <P x={0} y={5} c="#fff" />
+      {/* Coffee beans inside heart */}
+      <P x={-1} y={2} c="#5C2E0E" s={2} /><P x={1} y={2} c="#5C2E0E" s={2} />
+      <P x={0} y={3} c="#5C2E0E" s={2} />
+      {/* Text LOVE IS */}
+      <text x="0" y="38" textAnchor="middle" fill="#fff" fontSize="9" fontWeight="bold" fontFamily="sans-serif">LOVE IS</text>
+      <text x="0" y="48" textAnchor="middle" fill="#fff" fontSize="9" fontWeight="bold" fontFamily="sans-serif">COFFEE</text>
+    </g>
+  );
+}
+
+/* ═══ MENU BOARDS ═══ */
+function MenuBoards() {
+  const boards = [
+    { x: 145, lines: [40, 35, 45, 30] },
+    { x: 225, lines: [35, 45, 30, 40] },
+    { x: 305, lines: [45, 30, 35, 45] },
+  ];
+  return (
+    <g id="menu-boards">
+      {boards.map((b, bi) => (
+        <g key={bi}>
+          {/* Frame */}
+          <rect x={b.x} y="12" width="65" height="55" fill="none" stroke="#2d2d2d" strokeWidth="2" />
+          {/* Screen bg */}
+          <rect x={b.x + 2} y="14" width="61" height="51" fill="#1a1a1a" />
+          {/* Menu lines */}
+          {b.lines.map((lw, li) => (
+            <g key={li}>
+              <rect x={b.x + 8} y={22 + li * 11} width={lw} height="3" fill="#666" />
+              <rect x={b.x + 10 + lw} y={22 + li * 11} width="12" height="3" fill="#888" />
+            </g>
+          ))}
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/* ═══ COUNTER ═══ */
+function Counter() {
+  return (
+    <g id="counter">
+      {/* Main counter body */}
+      <rect x="0" y="165" width="390" height="45" fill="#1a7a44" />
+      {/* Counter top edge (highlight) */}
+      <rect x="0" y="165" width="390" height="5" fill="#2d9e5a" />
+      {/* Shadow under counter top */}
+      <rect x="0" y="170" width="390" height="2" fill="#145a32" />
+      {/* Decorative text */}
+      <text x="100" y="192" fill="rgba(255,255,255,0.15)" fontSize="7" fontFamily="sans-serif" fontStyle="italic">☕ center coffee</text>
+      <text x="250" y="192" fill="rgba(255,255,255,0.15)" fontSize="7" fontFamily="sans-serif" fontStyle="italic">☕ center coffee</text>
+    </g>
+  );
+}
+
+/* ═══ MICROWAVE ═══ */
+function Microwave() {
+  return (
+    <g id="microwave" transform="translate(30, 143)">
+      {/* Body */}
+      <rect x="0" y="0" width="32" height="22" fill="#d0d0d0" rx="1" />
+      {/* Window */}
+      <rect x="3" y="4" width="18" height="14" fill="#111" rx="1" />
+      {/* Button panel */}
+      <rect x="24" y="4" width="5" height="14" fill="#aaa" />
+      {/* Green light */}
+      <circle cx="26" cy="11" r="2" fill="#3ecf82" />
+      {/* Handle */}
+      <rect x="22" y="8" width="1" height="6" fill="#888" />
+    </g>
+  );
+}
+
+/* ═══ COFFEE MACHINE ═══ */
+function CoffeeMachine({ steamIntensity }: { steamIntensity: "low" | "high" }) {
+  return (
+    <g id="coffee-machine" transform="translate(177, 123)">
+      {/* Body */}
+      <rect x="0" y="0" width="36" height="42" fill="#2a2a2a" rx="2" />
+      {/* Display */}
+      <rect x="4" y="5" width="28" height="16" fill="#444" rx="1" />
+      {/* Buttons */}
+      <circle cx="10" cy="28" r="3" fill="#C0392B" />
+      <circle cx="20" cy="28" r="3" fill="#3ecf82" />
+      {/* Drip nozzle */}
+      <rect x="14" y="36" width="8" height="6" fill="#555" />
+      {/* Steam */}
+      {[0, 1, 2].map((i) => (
+        <motion.ellipse
+          key={i}
+          cx={18 + i * 3 - 3}
+          cy={-5 - i * 8}
+          rx="3"
+          ry="5"
+          fill="white"
+          initial={{ opacity: 0.15, y: 0 }}
+          animate={{
+            opacity: [steamIntensity === "high" ? 0.5 : 0.2, 0],
+            y: [-2, -14],
+            x: [0, (i - 1) * 3],
+          }}
+          transition={{
+            duration: steamIntensity === "high" ? 1.2 : 2,
+            repeat: Infinity,
+            delay: i * 0.4,
+            ease: "easeOut",
+          }}
+        />
+      ))}
+    </g>
+  );
+}
+
+/* ═══ CUP STACKS ═══ */
+function CupStacks({ fallen }: { fallen?: boolean }) {
+  if (fallen) {
+    return (
+      <g id="cups-fallen">
+        {[0, 1, 2].map((i) => (
+          <motion.g
+            key={i}
+            initial={{ rotate: 0, y: 0 }}
+            animate={{ rotate: 20 + i * 30, y: 10, x: i * 8 - 8 }}
+            transition={{ type: "spring", damping: 8 }}
+          >
+            <rect x={320 + i * 7} y="151" width="10" height="14" fill="#d42b4f" rx="1" />
+            <rect x={322 + i * 7} y="153" width="6" height="1.5" fill="#fff" />
+          </motion.g>
+        ))}
+      </g>
+    );
+  }
+  return (
+    <g id="cups">
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x={320 + i * 7} y={151 - i * 2} width="10" height={14 + i * 2} fill="#d42b4f" rx="1" />
+          <rect x={322 + i * 7} y={153 - i * 2} width="6" height="1.5" fill="#fff" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/* ═══ BARISTA PIXEL ART ═══ */
+function BaristaPixel({
+  x, side, state, idleAction, isSad, sleeping, angry, flipping, scared, waving,
+}: {
+  x: number; side: "left" | "right"; state: BaristaState; idleAction: string;
+  isSad?: boolean; sleeping?: boolean; angry?: boolean; flipping?: boolean;
+  scared?: boolean; waving?: boolean;
+}) {
+  const isLeft = side === "left";
+  const skinColor = isLeft ? "#e8b88a" : "#d4a574";
+  const skinShadow = isLeft ? "#d4a574" : "#b8956a";
+  const hairColor = isLeft ? "#2c1810" : "#1a1a1a";
+  const apronColor = isLeft ? "#2980b9" : "#27ae60";
+  const name = isLeft ? "Виталий" : "Аслан";
+
+  const bob = 0; // will be animated
 
   if (sleeping) {
-    /* Head resting on arms */
-    ctx.fillStyle = "#F5C193";
-    ctx.beginPath(); ctx.ellipse(0, -8 + bob, 11 * s, 11 * s, 0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = side === "left" ? "#3B2410" : "#1A0E06";
-    ctx.beginPath(); ctx.ellipse(0, -16 + bob, 10 * s, 6 * s, 0.2, Math.PI, 0, true); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "bold 8px sans-serif";
-    ctx.fillText("z", 10, -18 + Math.sin(t * 2) * 2);
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillText("Z", 17, -26 + Math.sin(t * 2 + 0.5) * 2);
-    ctx.restore(); return;
+    return (
+      <motion.g transform={`translate(${x}, 140)`}>
+        {/* Head resting on counter */}
+        <motion.g animate={{ y: [0, -1, 0] }} transition={{ duration: 2, repeat: Infinity }}>
+          <ellipse cx="0" cy="-5" rx="10" ry="9" fill={skinColor} />
+          <ellipse cx="0" cy="-12" rx="9" ry="5" fill={hairColor} />
+          {/* Closed eyes */}
+          <line x1="-5" y1="-5" x2="-2" y2="-5" stroke="#2A1810" strokeWidth="1.5" />
+          <line x1="2" y1="-5" x2="5" y2="-5" stroke="#2A1810" strokeWidth="1.5" />
+        </motion.g>
+        {/* Zzz */}
+        <motion.text
+          x="12" y="-20" fill="rgba(255,255,255,0.6)" fontSize="8" fontWeight="bold"
+          animate={{ y: [-20, -26], opacity: [0.6, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >Z</motion.text>
+        <motion.text
+          x="18" y="-30" fill="rgba(255,255,255,0.4)" fontSize="11" fontWeight="bold"
+          animate={{ y: [-30, -38], opacity: [0.4, 0] }}
+          transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+        >Z</motion.text>
+        <text x="0" y="20" textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize="8" fontWeight="bold">{name}</text>
+      </motion.g>
+    );
   }
 
-  if (flipping) ctx.rotate(Math.sin(t * 4) * 0.25);
+  const flipAnim = flipping ? { rotate: [0, 360], y: [0, -30, 0] } : {};
+  const flipTransition = flipping ? { duration: 1.5, ease: "easeInOut" } : {};
 
-  /* ---- TORSO (white shirt) ---- */
-  ctx.fillStyle = "#F0F0F0";
-  ctx.beginPath();
-  ctx.ellipse(0, -18 * s + bob, 14 * s, 16 * s, 0, 0, Math.PI * 2);
-  ctx.fill();
+  return (
+    <motion.g
+      transform={`translate(${x}, 105)`}
+      animate={flipAnim}
+      transition={flipTransition}
+    >
+      {/* Body / Shirt */}
+      <ellipse cx="0" cy="42" rx="12" ry="14" fill="#F0F0F0" />
 
-  /* ---- APRON ---- */
-  ctx.fillStyle = "#C0392B";
-  ctx.beginPath();
-  ctx.moveTo(-10 * s, -28 * s + bob);
-  ctx.lineTo(-11 * s, 2 * s + bob);
-  ctx.lineTo(11 * s, 2 * s + bob);
-  ctx.lineTo(10 * s, -28 * s + bob);
-  ctx.closePath(); ctx.fill();
-  /* Straps */
-  ctx.fillStyle = "#A02018";
-  ctx.fillRect(-10 * s, -30 * s + bob, 3 * s, 5 * s);
-  ctx.fillRect(7 * s, -30 * s + bob, 3 * s, 5 * s);
-  /* LiC logo */
-  ctx.fillStyle = "#FFD700"; ctx.font = `bold ${8 * s}px sans-serif`; ctx.textAlign = "center";
-  ctx.fillText("LiC", 0, -10 * s + bob); ctx.textAlign = "start";
+      {/* Apron */}
+      <rect x="-9" y="30" width="18" height="25" fill={apronColor} rx="1" />
+      {/* Apron straps */}
+      <rect x="-9" y="28" width="3" height="4" fill={apronColor} opacity="0.7" />
+      <rect x="6" y="28" width="3" height="4" fill={apronColor} opacity="0.7" />
+      {/* LiC text on apron */}
+      <text x="0" y="45" textAnchor="middle" fill="#FFD700" fontSize="6" fontWeight="bold">LiC</text>
 
-  /* ---- ARMS ---- */
-  ctx.fillStyle = "#F5C193";
-  if (state === "idle" && side === "left" && !angry) {
-    /* Wiping counter */
-    const wipe = Math.sin(t * 2) * 6;
-    ctx.save(); ctx.translate(-13 * s, -8 * s + bob); ctx.rotate(-0.3);
-    ctx.fillRect(-3 * s, 0, 5 * s, 14 * s); ctx.restore();
-    ctx.fillStyle = "#bbb"; ctx.fillRect(-16 * s + wipe, 0 + bob, 8 * s, 3 * s);
-    ctx.fillStyle = "#F5C193"; ctx.fillRect(11 * s, -10 * s + bob, 5 * s, 14 * s);
-  } else if (state === "idle" && side === "right") {
-    /* Arranging cups */
-    const cm = Math.sin(t * 1.5) * 4;
-    ctx.fillRect(-14 * s, -10 * s + bob, 5 * s, 14 * s);
-    ctx.fillRect(10 * s + cm, -6 * s + bob, 5 * s, 14 * s);
-  } else if (state === "accepted" && side === "left") {
-    /* Working machine */
-    ctx.save(); ctx.translate(-12 * s, -12 * s + bob); ctx.rotate(-0.4);
-    ctx.fillRect(-3 * s, 0, 5 * s, 16 * s); ctx.restore();
-    ctx.fillRect(10 * s, -12 * s + bob, 5 * s, 16 * s);
-  } else if (state === "accepted" && side === "right") {
-    /* Writing on cup */
-    ctx.fillRect(-14 * s, -10 * s + bob, 5 * s, 14 * s);
-    ctx.save(); ctx.translate(12 * s, -6 * s + bob); ctx.rotate(Math.sin(t * 4) * 0.12);
-    ctx.fillRect(-2 * s, 0, 5 * s, 12 * s);
-    ctx.fillStyle = "#333"; ctx.fillRect(0, 10 * s, 2 * s, 5 * s);
-    ctx.restore();
-  } else if (state === "ready" && side === "right") {
-    /* Holding cup, waving */
-    ctx.fillRect(-16 * s, -10 * s + bob, 5 * s, 14 * s);
-    ctx.save(); ctx.translate(13 * s, -16 * s + bob); ctx.rotate(-0.7 + Math.sin(t * 5) * 0.25);
-    ctx.fillRect(-2 * s, -12 * s, 5 * s, 12 * s); ctx.restore();
-    ctx.fillStyle = "#C0392B"; ctx.fillRect(-18 * s, -4 * s + bob, 7 * s, 10 * s);
-    ctx.fillStyle = "#FFF"; ctx.fillRect(-17 * s, -3 * s + bob, 5 * s, 1.5 * s);
-  } else if (scared) {
-    /* Raised arms — scared */
-    ctx.save(); ctx.translate(-13 * s, -20 * s + bob); ctx.rotate(-0.5);
-    ctx.fillRect(-2 * s, -10 * s, 5 * s, 10 * s); ctx.restore();
-    ctx.save(); ctx.translate(13 * s, -20 * s + bob); ctx.rotate(0.5);
-    ctx.fillRect(-2 * s, -10 * s, 5 * s, 10 * s); ctx.restore();
-  } else {
-    ctx.fillRect(-14 * s, -10 * s + bob, 5 * s, 14 * s);
-    ctx.fillRect(10 * s, -10 * s + bob, 5 * s, 14 * s);
-  }
+      {/* Arms */}
+      {state === "idle" && isLeft && !angry && (
+        <g>
+          {/* Wiping arm */}
+          <motion.g animate={idleAction === "wipe" ? { x: [-3, 3, -3] } : {}} transition={{ duration: 1, repeat: Infinity }}>
+            <rect x="-16" y="38" width="5" height="12" fill={skinColor} rx="2" />
+            {/* Rag */}
+            <rect x="-18" y="50" width="8" height="3" fill="#bbb" rx="1" />
+          </motion.g>
+          <rect x="11" y="36" width="5" height="12" fill={skinColor} rx="2" />
+        </g>
+      )}
+      {state === "idle" && !isLeft && (
+        <g>
+          <rect x="-16" y="36" width="5" height="12" fill={skinColor} rx="2" />
+          <motion.g animate={idleAction === "arrange" ? { x: [0, 4, 0] } : {}} transition={{ duration: 1.5, repeat: Infinity }}>
+            <rect x="11" y="38" width="5" height="12" fill={skinColor} rx="2" />
+          </motion.g>
+        </g>
+      )}
+      {state === "accepted" && isLeft && (
+        <g>
+          {/* Working coffee machine */}
+          <motion.rect x="-16" y="32" width="5" height="14" fill={skinColor} rx="2"
+            animate={{ rotate: [-5, 5, -5] }} transition={{ duration: 0.8, repeat: Infinity }} />
+          <rect x="11" y="34" width="5" height="14" fill={skinColor} rx="2" />
+        </g>
+      )}
+      {state === "accepted" && !isLeft && (
+        <g>
+          <rect x="-16" y="36" width="5" height="12" fill={skinColor} rx="2" />
+          {/* Writing on cup */}
+          <motion.g animate={{ rotate: [-3, 3, -3] }} transition={{ duration: 0.5, repeat: Infinity }}>
+            <rect x="11" y="36" width="5" height="12" fill={skinColor} rx="2" />
+            <rect x="13" y="48" width="2" height="5" fill="#333" />
+          </motion.g>
+        </g>
+      )}
+      {state === "ready" && !isLeft && (
+        <g>
+          {/* Holding cup */}
+          <rect x="-18" y="38" width="7" height="10" fill="#d42b4f" rx="1" />
+          <rect x="-17" y="40" width="5" height="1.5" fill="#fff" />
+          {/* Waving arm */}
+          <motion.rect x="11" y="26" width="5" height="12" fill={skinColor} rx="2"
+            animate={{ rotate: [-15, 15, -15] }} transition={{ duration: 0.5, repeat: Infinity }}
+            style={{ transformOrigin: "13px 38px" }} />
+        </g>
+      )}
+      {state === "ready" && isLeft && (
+        <g>
+          <rect x="-16" y="36" width="5" height="12" fill={skinColor} rx="2" />
+          <rect x="11" y="36" width="5" height="12" fill={skinColor} rx="2" />
+        </g>
+      )}
+      {state === "pending" && (
+        <g>
+          <rect x="-16" y="36" width="5" height="12" fill={skinColor} rx="2" />
+          <rect x="11" y="36" width="5" height="12" fill={skinColor} rx="2" />
+        </g>
+      )}
+      {scared && (
+        <g>
+          <motion.rect x="-14" y="22" width="5" height="10" fill={skinColor} rx="2"
+            animate={{ y: [22, 18, 22] }} transition={{ duration: 0.3, repeat: 3 }} />
+          <motion.rect x="9" y="22" width="5" height="10" fill={skinColor} rx="2"
+            animate={{ y: [22, 18, 22] }} transition={{ duration: 0.3, repeat: 3 }} />
+        </g>
+      )}
 
-  /* ---- NECK ---- */
-  ctx.fillStyle = "#F5C193";
-  ctx.fillRect(-3 * s, -33 * s + bob, 6 * s, 6 * s);
+      {/* Neck */}
+      <rect x="-3" y="18" width="6" height="6" fill={skinColor} />
 
-  /* ---- HEAD ---- */
-  ctx.fillStyle = "#F5C193";
-  ctx.beginPath(); ctx.ellipse(0, -42 * s + bob, 12 * s, 13 * s, 0, 0, Math.PI * 2); ctx.fill();
+      {/* Head */}
+      <motion.g animate={{ y: [0, -1, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
+        <ellipse cx="0" cy="10" rx="11" ry="12" fill={skinColor} />
+        {/* Shadow on face */}
+        <ellipse cx="2" cy="12" rx="8" ry="6" fill={skinShadow} opacity="0.15" />
 
-  /* ---- HAIR ---- */
-  ctx.fillStyle = side === "left" ? "#3B2410" : "#1A0E06";
-  ctx.beginPath(); ctx.ellipse(0, -50 * s + bob, 11 * s, 7 * s, 0, Math.PI, 0, true); ctx.fill();
-  if (side === "right") {
-    ctx.beginPath(); ctx.ellipse(-6 * s, -49 * s + bob, 5 * s, 3 * s, -0.3, Math.PI, 0, true); ctx.fill();
-  }
-  if (side === "left") {
-    /* Side-part for Vitaliy */
-    ctx.beginPath(); ctx.ellipse(7 * s, -48 * s + bob, 4 * s, 3 * s, 0.2, Math.PI, 0, true); ctx.fill();
-  }
+        {/* Hair */}
+        <ellipse cx="0" cy="1" rx="10" ry="6" fill={hairColor} />
+        {isLeft && <ellipse cx="6" cy="3" rx="4" ry="3" fill={hairColor} />}
+        {!isLeft && <ellipse cx="-5" cy="2" rx="5" ry="3" fill={hairColor} />}
 
-  /* ---- EARS ---- */
-  ctx.fillStyle = "#F0BA8A";
-  ctx.beginPath(); ctx.ellipse(-11 * s, -40 * s + bob, 2.5 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(11 * s, -40 * s + bob, 2.5 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
+        {/* Ears */}
+        <ellipse cx="-10" cy="10" rx="2.5" ry="3.5" fill={skinShadow} />
+        <ellipse cx="10" cy="10" rx="2.5" ry="3.5" fill={skinShadow} />
 
-  /* ---- FACE ---- */
-  const fy = -42 * s + bob;
+        {/* Face */}
+        {angry ? (
+          <g>
+            {/* Angry eyebrows */}
+            <line x1="-6" y1="4" x2="-2" y2="6" stroke="#222" strokeWidth="1.5" />
+            <line x1="6" y1="4" x2="2" y2="6" stroke="#222" strokeWidth="1.5" />
+            {/* Squinting eyes */}
+            <rect x="-5" y="8" width="4" height="2" fill="#222" rx="1" />
+            <rect x="1" y="8" width="4" height="2" fill="#222" rx="1" />
+            {/* Frown */}
+            <path d="M-3,16 Q0,13 3,16" stroke="#6B3E26" strokeWidth="1.2" fill="none" />
+            {/* Red face tint */}
+            <ellipse cx="0" cy="10" rx="9" ry="10" fill="rgba(255,0,0,0.1)" />
+          </g>
+        ) : isSad ? (
+          <g>
+            {/* Sad eyes looking at door */}
+            <circle cx="-4" cy="8" r="2" fill="#FFF" />
+            <circle cx="4" cy="8" r="2" fill="#FFF" />
+            <circle cx="-5" cy="8" r="1.2" fill="#2A1810" />
+            <circle cx="3" cy="8" r="1.2" fill="#2A1810" />
+            {/* Sad eyebrows */}
+            <line x1="-6" y1="4" x2="-2" y2="5" stroke={hairColor} strokeWidth="1" />
+            <line x1="2" y1="5" x2="6" y2="4" stroke={hairColor} strokeWidth="1" />
+            {/* Frown */}
+            <path d="M-3,16 Q0,13 3,16" stroke="#6B3E26" strokeWidth="1.2" fill="none" />
+            {/* Thought bubble */}
+            <circle cx="-16" cy="-8" r="2" fill="rgba(255,255,255,0.5)" />
+            <circle cx="-20" cy="-14" r="3" fill="rgba(255,255,255,0.5)" />
+            <circle cx="-24" cy="-22" r="5" fill="rgba(255,255,255,0.6)" />
+            <text x="-24" y="-20" textAnchor="middle" fill="#666" fontSize="7">?</text>
+          </g>
+        ) : scared ? (
+          <g>
+            {/* Wide scared eyes */}
+            <circle cx="-4" cy="8" r="3.5" fill="#FFF" />
+            <circle cx="4" cy="8" r="3.5" fill="#FFF" />
+            <circle cx="-4" cy="8" r="2" fill="#2A1810" />
+            <circle cx="4" cy="8" r="2" fill="#2A1810" />
+            {/* Open mouth */}
+            <ellipse cx="0" cy="15" rx="3" ry="3.5" fill="#6B3E26" />
+            {/* ! above */}
+            <text x="0" y="-8" textAnchor="middle" fill="rgba(255,50,50,0.8)" fontSize="12" fontWeight="bold">!</text>
+          </g>
+        ) : (
+          <g>
+            {/* Normal eyes */}
+            <circle cx="-4" cy="8" r="2.5" fill="#FFF" />
+            <circle cx="4" cy="8" r="2.5" fill="#FFF" />
+            <circle cx="-4" cy="8.5" r="1.5" fill="#2A1810" />
+            <circle cx="4" cy="8.5" r="1.5" fill="#2A1810" />
+            {/* Highlights */}
+            <circle cx="-3.3" cy="7.5" r="0.6" fill="#FFF" />
+            <circle cx="4.7" cy="7.5" r="0.6" fill="#FFF" />
+            {/* Eyebrows */}
+            <path d={`M-6,4 Q-3,2 -1,4`} stroke={hairColor} strokeWidth="1" fill="none" />
+            <path d={`M1,4 Q3,2 6,4`} stroke={hairColor} strokeWidth="1" fill="none" />
+            {/* Nose */}
+            <path d="M0,10 Q1.5,12 0,12.5" stroke="rgba(150,100,70,0.3)" strokeWidth="0.8" fill="none" />
+            {/* Smile */}
+            <path d="M-3,15 Q0,18 3,15" stroke="#6B3E26" strokeWidth="1.2" fill="none" />
 
-  if (scared) {
-    /* Wide eyes + open mouth */
-    for (const ex of [-4, 4]) {
-      ctx.fillStyle = "#FFF";
-      ctx.beginPath(); ctx.ellipse(ex * s, fy - 1, 4 * s, 4.5 * s, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#2A1810";
-      ctx.beginPath(); ctx.arc(ex * s, fy, 2.5 * s, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.fillStyle = "#6B3E26";
-    ctx.beginPath(); ctx.ellipse(0, fy + 7, 2.5 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "rgba(255,50,50,0.7)"; ctx.font = `bold ${14 * s}px sans-serif`; ctx.textAlign = "center";
-    ctx.fillText("!", 0, fy - 18 * s); ctx.textAlign = "start";
-  } else if (angry) {
-    ctx.fillStyle = "#222";
-    ctx.fillRect(-5 * s, fy - 2, 3.5 * s, 2); ctx.fillRect(1.5 * s, fy - 2, 3.5 * s, 2);
-    ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(-6 * s, fy - 7); ctx.lineTo(-1.5 * s, fy - 4); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(6 * s, fy - 7); ctx.lineTo(1.5 * s, fy - 4); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, fy + 6, 3 * s, Math.PI + 0.3, -0.3); ctx.stroke();
-  } else {
-    /* Normal face */
-    for (const ex of [-4, 4]) {
-      ctx.fillStyle = "#FFF";
-      ctx.beginPath(); ctx.ellipse(ex * s, fy - 1, 3 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#2A1810";
-      ctx.beginPath(); ctx.arc(ex * s, fy, 1.8 * s, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#FFF";
-      ctx.beginPath(); ctx.arc(ex * s + 0.8, fy - 1.5, 0.7 * s, 0, Math.PI * 2); ctx.fill();
-    }
-    /* Eyebrows */
-    ctx.strokeStyle = side === "left" ? "#3B2410" : "#1A0E06"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(-6 * s, fy - 6); ctx.quadraticCurveTo(-3 * s, fy - 8, -1.5 * s, fy - 6); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(1.5 * s, fy - 6); ctx.quadraticCurveTo(3 * s, fy - 8, 6 * s, fy - 6); ctx.stroke();
-    /* Nose */
-    ctx.strokeStyle = "rgba(150,100,70,0.4)"; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(0, fy + 1); ctx.quadraticCurveTo(1.5 * s, fy + 4, 0, fy + 4.5); ctx.stroke();
-    /* Smile */
-    ctx.strokeStyle = "#6B3E26"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.arc(0, fy + 3.5, 3 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
-  }
+            {/* Yawn overlay */}
+            {idleAction === "yawn" && !isLeft && (
+              <motion.ellipse cx="0" cy="15" rx="3" ry="4" fill="#6B3E26"
+                initial={{ ry: 1 }} animate={{ ry: [1, 4, 1] }}
+                transition={{ duration: 2, repeat: 1 }} />
+            )}
+          </g>
+        )}
+      </motion.g>
 
-  ctx.restore();
+      {/* Name */}
+      <text x="0" y="72" textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize="8" fontWeight="bold">{name}</text>
+    </motion.g>
+  );
 }
 
-/* ====== COMPONENT ====== */
-export default function CoffeeScene({ orderStatus, orderCount }: { orderStatus?: BaristaState; orderCount?: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const tRef = useRef(0);
-  const frameRef = useRef(0);
-  const [vTaps, setVTaps] = useState(0);
-  const [aTaps, setATaps] = useState(0);
+/* ═══ ORDER CARD OVERLAY ═══ */
+function OrderCardOverlay({ state }: { state: BaristaState }) {
+  const labels: Record<string, string> = {
+    pending: "⏳ Новый заказ",
+    accepted: "☕ Готовится...",
+    ready: "🎉 Готов!",
+  };
+  return (
+    <motion.g
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ type: "spring", damping: 20 }}
+    >
+      <rect x="150" y="78" width="90" height="20" rx="5" fill="rgba(255,255,255,0.92)" stroke="#d0f0e0" strokeWidth="1" />
+      <text x="195" y="92" textAnchor="middle" fill="#1a7a44" fontSize="8" fontWeight="bold">{labels[state] ?? ""}</text>
+    </motion.g>
+  );
+}
+
+/* ═══ READY BUBBLE ═══ */
+function ReadyBubble() {
+  return (
+    <motion.g
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+    >
+      <rect x="225" y="68" width="100" height="22" rx="11" fill="rgba(0,0,0,0.75)" />
+      <text x="275" y="83" textAnchor="middle" fill="#fff" fontSize="9" fontWeight="bold">Готово! Забирай ☕</text>
+      {/* Triangle pointer */}
+      <polygon points="265,90 275,96 270,90" fill="rgba(0,0,0,0.75)" />
+    </motion.g>
+  );
+}
+
+/* ═══ MAIN COMPONENT ═══ */
+export default function CoffeeScene({ orderStatus, streakDays, lastOrderDate, orderCount }: CoffeeSceneProps) {
+  const state: BaristaState = orderStatus ?? "idle";
+  const [vitaliyTaps, setVitaliyTaps] = useState(0);
+  const [aslanTaps, setAslanTaps] = useState(0);
+  const [idleAction, setIdleAction] = useState("default");
+  const [vAngry, setVAngry] = useState(false);
   const [vGone, setVGone] = useState(false);
-  const [vAngryPhase, setVAngryPhase] = useState(false);
-  const [aFalling, setAFalling] = useState(false);
-  const [isDancing, setIsDancing] = useState(false);
+  const [aFlipping, setAFlipping] = useState(false);
+  const [cupsFallen, setCupsFallen] = useState(false);
   const [wokeUp, setWokeUp] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ w: BASE_W, h: BASE_H });
-  const vTapTimer = useRef<ReturnType<typeof setTimeout>>();
-  const aTapTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [isDancing, setIsDancing] = useState(false);
 
-  const state = orderStatus ?? "idle";
-  const isNight = typeof window !== "undefined" && new Date().getHours() >= 23;
+  const hour = typeof window !== "undefined" ? new Date().getHours() : 12;
+  const isNight = hour >= 23 || hour < 7;
+  const isSleeping = isNight && !wokeUp;
+  const isSad = (streakDays ?? 1) === 0 && daysSinceOrder(lastOrderDate ?? null) >= 2;
 
-  /* Responsive canvas size */
+  // Random idle actions every 10 seconds
   useEffect(() => {
-    const resize = () => {
-      const c = canvasRef.current;
-      if (!c) return;
-      const parentW = c.parentElement?.clientWidth ?? BASE_W;
-      const dpr = window.devicePixelRatio || 1;
-      const w = parentW;
-      const h = Math.round(w * BASE_H / BASE_W);
-      c.width = w * dpr;
-      c.height = h * dpr;
-      c.style.width = `${w}px`;
-      c.style.height = `${h}px`;
-      setCanvasSize({ w: w * dpr, h: h * dpr });
-    };
-    resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
-  }, []);
+    if (state !== "idle" || isSleeping) return;
+    const interval = setInterval(() => {
+      const actions = ["wipe", "yawn", "arrange", "look_phone", "stretch", "default"];
+      setIdleAction(actions[Math.floor(Math.random() * actions.length)]);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [state, isSleeping]);
 
-  /* Easter egg states */
+  // Vitaliy easter egg: 8 taps
   useEffect(() => {
-    if (vTaps >= 8 && !vGone && !vAngryPhase) {
-      setVAngryPhase(true);
-      setTimeout(() => { setVAngryPhase(false); setVGone(true); setTimeout(() => { setVGone(false); setVTaps(0); }, 30000); }, 2000);
+    if (vitaliyTaps >= 8 && !vAngry && !vGone) {
+      setVAngry(true);
+      const t1 = setTimeout(() => {
+        setVAngry(false);
+        setVGone(true);
+        const t2 = setTimeout(() => {
+          setVGone(false);
+          setVitaliyTaps(0);
+        }, 30000);
+        return () => clearTimeout(t2);
+      }, 2000);
+      return () => clearTimeout(t1);
     }
-  }, [vTaps, vGone, vAngryPhase]);
+  }, [vitaliyTaps, vAngry, vGone]);
 
+  // Aslan easter egg: 5 taps
   useEffect(() => {
-    if (aTaps >= 5 && !aFalling) {
-      setAFalling(true);
-      setTimeout(() => { setAFalling(false); setATaps(0); }, 5000);
+    if (aslanTaps >= 5 && !aFlipping) {
+      setAFlipping(true);
+      const t = setTimeout(() => {
+        setAFlipping(false);
+        setAslanTaps(0);
+      }, 3000);
+      return () => clearTimeout(t);
     }
-  }, [aTaps, aFalling]);
+  }, [aslanTaps, aFlipping]);
 
-  useEffect(() => {
-    if (orderCount && orderCount > 0 && orderCount % 10 === 0 && !isDancing) {
-      setIsDancing(true);
-      setTimeout(() => setIsDancing(false), 3000);
-    }
-  }, [orderCount, isDancing]);
-
-  /* Shake detection */
+  // Shake detection
   useEffect(() => {
     let lastShake = 0;
     const handle = (e: DeviceMotionEvent) => {
       const a = e.accelerationIncludingGravity;
       if (!a) return;
-      const tot = Math.sqrt((a.x || 0) ** 2 + (a.y || 0) ** 2 + (a.z || 0) ** 2);
-      if (tot > 25 && Date.now() - lastShake > 3000) { lastShake = Date.now(); }
+      const tot = Math.abs(a.x || 0) + Math.abs(a.y || 0);
+      if (tot > 25 && Date.now() - lastShake > 3000) {
+        lastShake = Date.now();
+        setCupsFallen(true);
+        setTimeout(() => setCupsFallen(false), 3000);
+      }
     };
     window.addEventListener("devicemotion", handle);
     return () => window.removeEventListener("devicemotion", handle);
   }, []);
 
-  const draw = useCallback(() => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    tRef.current += 0.02;
-    drawScene(ctx, canvasSize.w, canvasSize.h, tRef.current, state,
-      vGone ? 99 : (vAngryPhase ? 8 : vTaps),
-      aFalling ? 99 : aTaps,
-      isNight, isDancing ? 10 : 0, wokeUp);
-    frameRef.current = requestAnimationFrame(draw);
-  }, [state, vTaps, aTaps, isNight, isDancing, vGone, aFalling, wokeUp, vAngryPhase, canvasSize]);
+  // 10th order dance
+  useEffect(() => {
+    if (orderCount && orderCount > 0 && orderCount % 10 === 0 && !isDancing) {
+      setIsDancing(true);
+      const t = setTimeout(() => setIsDancing(false), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [orderCount, isDancing]);
+
+  // Tap reset timers
+  useEffect(() => {
+    if (vitaliyTaps > 0 && vitaliyTaps < 8) {
+      const t = setTimeout(() => setVitaliyTaps(0), 30000);
+      return () => clearTimeout(t);
+    }
+  }, [vitaliyTaps]);
 
   useEffect(() => {
-    frameRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frameRef.current);
-  }, [draw]);
+    if (aslanTaps > 0 && aslanTaps < 5) {
+      const t = setTimeout(() => setAslanTaps(0), 10000);
+      return () => clearTimeout(t);
+    }
+  }, [aslanTaps]);
 
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const cx = (e.clientX - rect.left) / rect.width * BASE_W;
+  const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 390;
 
-    if (isNight && !wokeUp) {
+    if (isSleeping) {
       setWokeUp(true);
       setTimeout(() => setWokeUp(false), 5000);
       return;
     }
-    if (cx > BASE_W / 2 - 90 && cx < BASE_W / 2 - 20) {
-      setVTaps((p) => p + 1);
-      clearTimeout(vTapTimer.current);
-      if (vTaps < 7) vTapTimer.current = setTimeout(() => setVTaps(0), 30000);
+
+    // Vitaliy area (left of center)
+    if (x > 110 && x < 200) {
+      setVitaliyTaps((p) => p + 1);
     }
-    if (cx > BASE_W / 2 + 20 && cx < BASE_W / 2 + 90) {
-      setATaps((p) => p + 1);
-      clearTimeout(aTapTimer.current);
-      if (aTaps < 4) aTapTimer.current = setTimeout(() => setATaps(0), 10000);
+    // Aslan area (right of center)
+    if (x > 220 && x < 310) {
+      setAslanTaps((p) => p + 1);
     }
-    if (cx > BASE_W * 0.33) {
-      const el = document.querySelector("[data-menu-tabs]");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+  }, [isSleeping]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      onClick={handleClick}
+    <svg
+      viewBox="0 0 390 220"
+      shapeRendering="crispEdges"
       className="w-full rounded-2xl cursor-pointer"
-    />
+      onClick={handleClick}
+    >
+      <Background />
+      <Logo />
+      <MenuBoards />
+      <Microwave />
+      <CoffeeMachine steamIntensity={state === "accepted" ? "high" : "low"} />
+      <CupStacks fallen={cupsFallen} />
+      <Counter />
+
+      {/* Baristas */}
+      {!vGone && (
+        <BaristaPixel
+          x={155} side="left" state={state} idleAction={idleAction}
+          isSad={isSad} sleeping={isSleeping} angry={vAngry}
+          scared={isNight && wokeUp}
+        />
+      )}
+      {vGone && (
+        <g>
+          {/* Thrown apron on counter */}
+          <motion.rect
+            x="110" y="160" width="16" height="10" fill="#2980b9" rx="1"
+            initial={{ rotate: 0, y: 130 }}
+            animate={{ rotate: 20, y: 160 }}
+            transition={{ type: "spring" }}
+          />
+        </g>
+      )}
+
+      <BaristaPixel
+        x={265} side="right" state={state} idleAction={idleAction}
+        sleeping={isSleeping} flipping={aFlipping}
+        scared={isNight && wokeUp}
+        waving={state === "ready"}
+      />
+
+      {/* Order card overlay */}
+      <AnimatePresence>
+        {state !== "idle" && <OrderCardOverlay state={state} />}
+      </AnimatePresence>
+
+      {/* Ready bubble */}
+      <AnimatePresence>
+        {state === "ready" && <ReadyBubble />}
+      </AnimatePresence>
+
+      {/* 10th order dance celebration */}
+      {isDancing && (
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.text
+            x="195" y="75" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="11" fontWeight="bold"
+            animate={{ y: [75, 72, 75], scale: [1, 1.05, 1] }}
+            transition={{ duration: 0.5, repeat: Infinity }}
+          >Легенда кофейни! 🏆</motion.text>
+        </motion.g>
+      )}
+    </svg>
   );
 }
