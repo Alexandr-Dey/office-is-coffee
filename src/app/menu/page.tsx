@@ -464,7 +464,8 @@ export default function MenuPage() {
           <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
         </div>
       </div>
-      <div className="px-3 pt-1">
+      {/* Scene: 60vh */}
+      <div className="h-[60vh] relative overflow-hidden">
         <CoffeeScene
           orderStatus={activeOrderStatus === "new" ? "pending" : activeOrderStatus as BaristaState}
           streakDays={streakDays}
@@ -472,7 +473,8 @@ export default function MenuPage() {
         />
       </div>
 
-      <div className="px-3 mt-3 space-y-3">
+      {/* Content overlaps bottom of scene */}
+      <div className="relative z-10 -mt-12 px-3 space-y-3">
         <LoyaltyBanner count={loyaltyCount} />
         <QuickRepeat onRepeat={repeatOrder} />
       </div>
