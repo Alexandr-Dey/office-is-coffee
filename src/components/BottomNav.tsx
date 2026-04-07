@@ -14,8 +14,8 @@ const tabs = [
 export default function BottomNav() {
   const pathname = usePathname();
 
-  const hideOn = ["/", "/avatar", "/admin", "/ceo"];
-  if (hideOn.some((p) => pathname === p || pathname.startsWith("/admin") || pathname.startsWith("/ceo"))) return null;
+  const hideOn = ["/", "/avatar", "/onboarding"];
+  if (hideOn.includes(pathname) || pathname.startsWith("/admin") || pathname.startsWith("/ceo")) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white" style={{ boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>

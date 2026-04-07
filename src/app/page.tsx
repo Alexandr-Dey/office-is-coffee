@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useAuth, type Role } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -14,68 +14,56 @@ const fadeUp = {
 const stagger = { animate: { transition: { staggerChildren: 0.15 } } };
 
 export default function Home() {
-  const { user, loading, signInWithName } = useAuth();
+  const { user, loading, signInWithGoogle } = useAuth();
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [step, setStep] = useState<"name" | "role">("name");
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     if (loading || !user) return;
-    if (user.role === "barista" || user.role === "ceo") {
+    // Redirect based on role
+    if (user.role === "barista") {
       router.replace("/admin");
-      return;
+    } else if (user.role === "ceo") {
+      router.replace("/ceo");
+    } else if (!user.onboardingDone) {
+      router.replace("/onboarding");
+    } else {
+      router.replace("/menu");
     }
-    /* Check onboarding — use direct imports */
-    const checkOnboarding = async () => {
-      try {
-        const { getFirebaseDb } = await import("@/lib/firebase");
-        const { doc, getDoc } = await import("firebase/firestore");
-        const snap = await getDoc(doc(getFirebaseDb(), "users", user.uid));
-        if (snap.exists() && snap.data().onboardingDone) {
-          router.replace("/menu");
-        } else {
-          router.replace("/onboarding");
-        }
-      } catch {
-        /* Firestore unavailable — send to onboarding as safe default */
-        router.replace("/onboarding");
-      }
-    };
-    checkOnboarding();
   }, [user, loading, router]);
 
-  const handleNameNext = () => { if (!name.trim()) return; setStep("role"); };
-  const handleRole = (role: Role) => { signInWithName(name.trim(), role); };
+  const handleGoogleSignIn = async () => {
+    setSigningIn(true);
+    try {
+      await signInWithGoogle();
+    } catch {
+      setSigningIn(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" />
+      </main>
+    );
+  }
+
+  if (user) {
+    return (
+      <main className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-brand-bg">
       <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
-            <span className="text-3xl">\u2615</span>
+            <span className="text-3xl">{"\u2615"}</span>
             <span className="font-display text-2xl font-bold text-brand-text">Love is Coffee</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
-            {step === "name" ? (
-              <>
-                <input type="text" placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleNameNext()}
-                  className="px-4 py-2 rounded-full border border-[#d0f0e0] text-sm text-brand-text w-36 focus:border-brand-mint focus:ring-1 focus:ring-brand-mint outline-none" />
-                <motion.button onClick={handleNameNext} disabled={!name.trim()} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  className="bg-brand-dark text-white px-5 py-2 rounded-full font-medium text-sm hover:bg-brand-mid transition-colors disabled:opacity-50">
-                  Далее
-                </motion.button>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <motion.button onClick={() => handleRole("client")} whileTap={{ scale: 0.95 }}
-                  className="bg-brand-dark text-white px-4 py-2 rounded-full font-medium text-sm">\u2615 Клиент</motion.button>
-                <motion.button onClick={() => handleRole("barista")} whileTap={{ scale: 0.95 }}
-                  className="bg-brand-mid text-white px-4 py-2 rounded-full font-medium text-sm">\uD83E\uDDD1\u200D\uD83C\uDF73 Бариста</motion.button>
-                <motion.button onClick={() => handleRole("ceo")} whileTap={{ scale: 0.95 }}
-                  className="bg-brand-pink text-white px-4 py-2 rounded-full font-medium text-sm">\uD83D\uDC51 CEO</motion.button>
-              </div>
-            )}
           </motion.div>
         </div>
       </nav>
@@ -86,46 +74,27 @@ export default function Home() {
             <span className="inline-block bg-brand-mint/20 text-brand-dark text-sm font-medium px-4 py-1.5 rounded-full">v3.0</span>
           </motion.div>
           <motion.h1 variants={fadeUp} className="font-display text-3xl sm:text-5xl md:text-7xl font-bold text-brand-text mb-6 text-balance">
-            Твой офис работает на <span className="text-brand-dark">кофе</span>
+            {"Твой офис работает на "}<span className="text-brand-dark">кофе</span>
           </motion.h1>
           <motion.p variants={fadeUp} className="text-lg md:text-xl text-brand-text/70 max-w-2xl mx-auto mb-10 text-balance">
             Love is Coffee — заказывай кофе, копи монеты, получай каждый 8-й бесплатный. Стрики, бонусы баристам и живая сцена кофейни.
           </motion.p>
           <motion.div variants={fadeUp}>
-            {step === "name" ? (
-              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-md mx-auto">
-                <input type="text" placeholder="Введите имя" value={name} onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleNameNext()}
-                  className="flex-1 px-6 py-3.5 rounded-full border-2 border-[#d0f0e0] text-brand-text font-medium text-lg focus:border-brand-mint focus:ring-2 focus:ring-brand-mint/30 outline-none" />
-                <motion.button onClick={handleNameNext} disabled={!name.trim()} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  className="bg-brand-dark text-white px-8 py-3.5 rounded-full font-semibold text-lg shadow-lg disabled:opacity-50 whitespace-nowrap">
-                  Далее \u2192
-                </motion.button>
-              </div>
-            ) : (
-              <div className="max-w-lg mx-auto">
-                <p className="text-brand-dark mb-6">Привет, <span className="font-bold text-brand-text">{name}</span>! Кто ты?</p>
-                <div className="flex gap-4 justify-center flex-wrap">
-                  {([
-                    { role: "client" as Role, icon: "\u2615", title: "Я клиент", sub: "Заказываю кофе", color: "bg-brand-dark" },
-                    { role: "barista" as Role, icon: "\uD83E\uDDD1\u200D\uD83C\uDF73", title: "Я бариста", sub: "Готовлю кофе", color: "bg-brand-mid" },
-                    { role: "ceo" as Role, icon: "\uD83D\uDC51", title: "CEO", sub: "Управляю кофейней", color: "bg-brand-pink" },
-                  ]).map((r) => (
-                    <motion.div key={r.role} onClick={() => handleRole(r.role)}
-                      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                      whileHover={{ scale: 1.05, y: -4 }} whileTap={{ scale: 0.97 }}
-                      className={`${r.color} text-white rounded-2xl p-6 min-w-[140px] cursor-pointer hover:shadow-lg transition-shadow`}>
-                      <span className="text-4xl block mb-2">{r.icon}</span>
-                      <h3 className="font-display text-lg font-bold mb-0.5">{r.title}</h3>
-                      <p className="text-white/70 text-xs">{r.sub}</p>
-                    </motion.div>
-                  ))}
-                </div>
-                <button onClick={() => setStep("name")} className="text-brand-text/40 text-sm mt-5 hover:text-brand-dark transition-colors">
-                  \u2190 Назад
-                </button>
-              </div>
-            )}
+            <motion.button
+              onClick={handleGoogleSignIn}
+              disabled={signingIn}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center gap-3 bg-white text-brand-text px-8 py-4 rounded-2xl font-semibold text-lg shadow-lg border border-[#d0f0e0] hover:shadow-xl transition-shadow disabled:opacity-50"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              {signingIn ? "Входим..." : "Войти через Google"}
+            </motion.button>
           </motion.div>
         </motion.div>
       </section>
@@ -133,7 +102,7 @@ export default function Home() {
       <footer className="py-10 px-6 border-t border-[#d0f0e0]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-xl">\u2615</span>
+            <span className="text-xl">{"\u2615"}</span>
             <span className="font-display font-bold text-brand-text">Love is Coffee</span>
           </div>
           <p className="text-brand-text/40 text-sm">&copy; {new Date().getFullYear()} LiC. Аксай, ул. Момышулы 14</p>

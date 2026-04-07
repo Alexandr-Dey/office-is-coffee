@@ -1,5 +1,5 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
@@ -31,3 +31,5 @@ export function getFirebaseDb() {
 export function getFirebaseRtdb() {
   return getDatabase(getApp());
 }
+
+export const googleProvider = new GoogleAuthProvider();

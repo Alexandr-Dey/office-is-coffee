@@ -24,8 +24,7 @@ export default function OrderPage() {
   useEffect(() => {
     const raw = sessionStorage.getItem("oic_cart");
     if (raw) { try { setCart(JSON.parse(raw)); } catch { /* ignore */ } }
-    const userRaw = localStorage.getItem("oic_user");
-    if (userRaw) { try { const u = JSON.parse(userRaw); if (u.displayName) setName(u.displayName); } catch { /* ignore */ } }
+    if (user?.displayName) setName(user.displayName);
 
     if (user) {
       getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
@@ -48,7 +47,7 @@ export default function OrderPage() {
     if (cart.length === 0) return;
     setSending(true);
     try {
-      const userId = user?.uid || localStorage.getItem("oic_userId") || "anonymous";
+      const userId = user?.uid ?? "anonymous";
       const isRepeat = sessionStorage.getItem("oic_is_repeat") === "true";
 
       const docRef = await addDoc(collection(getFirebaseDb(), "orders"), {
@@ -73,7 +72,6 @@ export default function OrderPage() {
         confetti({ particleCount: 100, spread: 70, colors: ["#1a7a44", "#3ecf82", "#d42b4f"] });
       }
 
-      if (name) localStorage.setItem("oic_guest_name", name);
       sessionStorage.removeItem("oic_cart");
       window.location.href = `/order/${docRef.id}`;
     } catch (err) {

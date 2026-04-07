@@ -38,3 +38,6 @@ next-env.d.ts
 
 # sentry
 .sentryclirc
+
+# firebase service account
+service-account.json

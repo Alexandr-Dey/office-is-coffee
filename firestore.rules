@@ -2,74 +2,94 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: get caller's role from Custom Claims
-    function getRole() {
-      return request.auth.token.role;
-    }
-
-    function isBarista() {
-      return getRole() in ['barista', 'ceo'];
-    }
-
-    function isCEO() {
-      return getRole() == 'ceo';
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
     function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // Users — read own only. Client can update non-sensitive fields.
-    // loyaltyCount, streak, role — write ONLY via Cloud Functions (admin SDK bypasses rules).
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token.role == role;
+    }
+
+    function isBaristaOrCEO() {
+      return hasRole('barista') || hasRole('ceo');
+    }
+
+    function isCEO() {
+      return hasRole('ceo');
+    }
+
+    // users
     match /users/{uid} {
-      allow read: if isOwner(uid);
+      allow read: if isOwner(uid) || isBaristaOrCEO();
       allow create: if isOwner(uid);
       allow update: if isOwner(uid)
         && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['loyaltyCount', 'streak', 'role']);
+            .hasAny(['role', 'loyaltyCount', 'streak']);
+      allow update: if isCEO();
+      allow delete: if false;
     }
 
-    // Orders — client reads only own. Barista/CEO read all. Create if authenticated.
-    // Only barista/ceo can update (status transitions).
+    // orders
     match /orders/{orderId} {
-      allow create: if request.auth != null;
-      allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid || isBarista()
-      );
-      allow update: if request.auth != null && isBarista();
+      allow read: if (resource.data.userId == request.auth.uid) || isBaristaOrCEO();
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'new';
+      allow update: if isBaristaOrCEO();
+      allow delete: if false;
     }
 
-    // Deposits — read own + barista/ceo. Write ONLY via Cloud Functions.
+    // deposits — read owner + barista/CEO. Write ONLY via Cloud Functions.
     match /deposits/{uid} {
-      allow read: if request.auth != null && (
-        isOwner(uid) || isBarista()
-      );
+      allow read: if isOwner(uid) || isBaristaOrCEO();
       allow write: if false;
     }
 
-    // Barista bonuses — read own barista + CEO only. Write ONLY via Cloud Functions.
+    // barista_bonuses — read own barista + CEO. Write ONLY via Cloud Functions.
     match /barista_bonuses/{uid} {
-      allow read: if request.auth != null && (
-        isOwner(uid) || isCEO()
-      );
+      allow read: if isOwner(uid) || isCEO();
       allow write: if false;
     }
 
-    // Cafe status — read all (even unauthenticated for landing). Write only barista/ceo.
-    match /cafe_status/{docId} {
+    // cafe_status
+    match /cafe_status/{cafeId} {
       allow read: if true;
-      allow write: if request.auth != null && isBarista();
+      allow write: if isBaristaOrCEO();
     }
 
-    // Menu items — read all. Write only CEO.
+    // push_tokens
+    match /push_tokens/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid);
+    }
+
+    // menu_items
     match /menu_items/{itemId} {
       allow read: if true;
-      allow write: if request.auth != null && isCEO();
+      allow write: if isCEO();
     }
 
-    // Push tokens — read/write only owner.
-    match /push_tokens/{uid} {
-      allow read, write: if isOwner(uid);
+    // cache (weather, etc.)
+    match /cache/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // scene_ambient (NPC state)
+    match /scene_ambient/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // promo_codes (future)
+    match /promo_codes/{code} {
+      allow read: if isAuthenticated();
+      allow write: if isCEO();
     }
   }
 }

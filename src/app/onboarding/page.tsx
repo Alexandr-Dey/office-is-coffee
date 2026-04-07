@@ -5,18 +5,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import confetti from "canvas-confetti";
 import { requestPushPermission } from "@/lib/push";
 
-const STEPS = ["welcome", "auth", "geo", "push", "pwa", "done"] as const;
+/* With Google OAuth, user is already authenticated when they reach onboarding.
+   We skip the "auth" (name input) step entirely — name comes from Google account. */
+const STEPS = ["welcome", "geo", "push", "pwa", "done"] as const;
 type Step = (typeof STEPS)[number];
 
 export default function OnboardingPage() {
-  const { user, signInWithName } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("welcome");
-  const [name, setName] = useState("");
   const [isIOS, setIsIOS] = useState(false);
   const [isPWA, setIsPWA] = useState(false);
 
@@ -32,18 +33,10 @@ export default function OnboardingPage() {
     }
 
     /* If onboarding already done, go to menu */
-    if (user) {
-      getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
-        if (snap.exists() && snap.data().onboardingDone) {
-          router.replace("/menu");
-        }
-      }).catch(() => {});
+    if (user && user.onboardingDone) {
+      router.replace("/menu");
     }
-
-    /* If already logged in with a name, skip auth steps */
-    if (user && user.displayName && step === "welcome") setStep("geo");
-    if (user && user.displayName && step === "auth") setStep("geo");
-  }, [user, step, router]);
+  }, [user, router]);
 
   const next = () => {
     const idx = STEPS.indexOf(step);
@@ -53,12 +46,6 @@ export default function OnboardingPage() {
       if (nextStep === "pwa" && (!isIOS || isPWA)) nextStep = "done";
       setStep(nextStep);
     }
-  };
-
-  const handleAuth = () => {
-    if (!name.trim()) return;
-    signInWithName(name.trim(), "client");
-    next();
   };
 
   const handleGeo = (allow: boolean) => {
@@ -109,27 +96,13 @@ export default function OnboardingPage() {
               <div className="text-6xl mb-4">{"\u2615"}</div>
               <h1 className="font-display text-3xl font-bold text-brand-text mb-2">Love is Coffee</h1>
               <p className="text-brand-text/50 mb-2">Виталий и Аслан ждут тебя</p>
-              <p className="text-brand-text/70 mb-8">Добро пожаловать в Love is Coffee</p>
+              <p className="text-brand-text/70 mb-2">
+                {user ? `Привет, ${user.displayName}!` : "Добро пожаловать"}
+              </p>
+              <p className="text-brand-text/50 mb-8">Давай настроим приложение</p>
               <motion.button whileTap={{ scale: 0.95 }} onClick={next}
                 className="w-full py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-lg">
                 Начать
-              </motion.button>
-            </motion.div>
-          )}
-
-          {step === "auth" && (
-            <motion.div key="auth" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
-              className="text-center">
-              <div className="text-5xl mb-4">{"\uD83D\uDC64"}</div>
-              <h2 className="font-display text-2xl font-bold text-brand-text mb-2">Как тебя зовут?</h2>
-              <p className="text-brand-text/50 mb-6">Это имя увидит бариста на заказе</p>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAuth()}
-                placeholder="Твоё имя"
-                className="w-full px-6 py-4 rounded-2xl border-2 border-[#d0f0e0] text-brand-text font-medium text-lg focus:border-brand-mint focus:ring-2 focus:ring-brand-mint/30 outline-none mb-4 text-center" />
-              <motion.button whileTap={{ scale: 0.95 }} onClick={handleAuth} disabled={!name.trim()}
-                className="w-full py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-lg disabled:opacity-50">
-                Продолжить
               </motion.button>
             </motion.div>
           )}
@@ -187,7 +160,7 @@ export default function OnboardingPage() {
               <p className="text-brand-text/50 mb-8">Добро пожаловать в Love is Coffee</p>
               <motion.button whileTap={{ scale: 0.95 }} onClick={handleDone}
                 className="w-full py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-lg">
-                Перейти в меню {"\u2615"}
+                {"Перейти в меню \u2615"}
               </motion.button>
             </motion.div>
           )}
