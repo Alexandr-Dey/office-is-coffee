@@ -16,6 +16,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb, googleProvider } from "@/lib/firebase";
+import { trackEvent, identifyUser } from "@/lib/mixpanel";
 
 export type Role = "client" | "barista" | "ceo";
 
@@ -121,7 +122,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const auth = getFirebaseAuth();
-    await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider);
+    trackEvent("User Signed Up", { method: "google" });
+    if (result.user) {
+      identifyUser(result.user.uid, {
+        $name: result.user.displayName,
+        $email: result.user.email,
+      });
+    }
   };
 
   const signOut = async () => {

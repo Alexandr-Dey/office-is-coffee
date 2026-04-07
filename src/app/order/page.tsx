@@ -6,6 +6,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import confetti from "canvas-confetti";
+import { trackEvent } from "@/lib/mixpanel";
 
 interface CartItem { name: string; size: string; price: number; qty: number; milk?: string }
 
@@ -66,6 +67,14 @@ export default function OrderPage() {
       });
 
       sessionStorage.removeItem("oic_is_repeat");
+
+      trackEvent("Order Created", {
+        total,
+        paymentMethod: payMethod,
+        itemsCount: cart.length,
+        isRepeat: isRepeat,
+        isFree,
+      });
 
       /* Loyalty, streak, deposit — all handled by Cloud Function onOrderCreate */
       if (isFree) {

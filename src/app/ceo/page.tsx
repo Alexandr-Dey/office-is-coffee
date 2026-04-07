@@ -51,7 +51,10 @@ export default function CEOPage() {
             <span className="text-2xl">\uD83D\uDC51</span>
             <span className="font-display text-xl font-bold text-brand-text">CEO Дашборд</span>
           </div>
-          <a href="/menu" className="text-sm text-brand-text/50 hover:text-brand-dark">\u2190 Меню</a>
+          <div className="flex items-center gap-3">
+            <a href="/ceo/menu" className="text-sm text-brand-dark font-semibold hover:underline">{"\uD83D\uDCDD Меню"}</a>
+            <a href="/menu" className="text-sm text-brand-text/50 hover:text-brand-dark">{"\u2190 Клиент"}</a>
+          </div>
         </div>
       </nav>
 

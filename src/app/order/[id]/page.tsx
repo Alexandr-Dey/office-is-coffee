@@ -7,6 +7,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { useToast } from "@/components/Toast";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
+import { trackEvent } from "@/lib/mixpanel";
 
 interface OrderData {
   name: string;
@@ -81,6 +82,7 @@ function FeedbackSheet({ orderId, onDismiss }: { orderId: string; onDismiss: () 
 
   const submitRating = async (rating: number) => {
     setSubmitted(true);
+    trackEvent("Order Rated", { rating, orderId });
     await updateDoc(doc(getFirebaseDb(), "orders", orderId), { rating }).catch(() => {});
     setTimeout(onDismiss, 1000);
   };

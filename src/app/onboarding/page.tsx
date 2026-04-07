@@ -8,6 +8,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import confetti from "canvas-confetti";
 import { requestPushPermission } from "@/lib/push";
+import { trackEvent } from "@/lib/mixpanel";
 
 /* With Google OAuth, user is already authenticated when they reach onboarding.
    We skip the "auth" (name input) step entirely — name comes from Google account. */
@@ -73,6 +74,7 @@ export default function OnboardingPage() {
     if (user) {
       await updateDoc(doc(getFirebaseDb(), "users", user.uid), { onboardingDone: true }).catch(() => {});
     }
+    trackEvent("Onboarding Completed", { stepsCompleted: STEPS.length });
     confetti({ particleCount: 80, spread: 60, colors: ["#1a7a44", "#3ecf82", "#d42b4f"] });
     setTimeout(() => router.replace("/menu"), 800);
   };
