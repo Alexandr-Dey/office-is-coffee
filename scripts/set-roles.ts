@@ -15,9 +15,10 @@ initializeApp({
 });
 
 const ROLES: Record<string, string> = {
-  "EMAIL_VITALIY@gmail.com": "barista",
-  "EMAIL_ASLAN@gmail.com": "barista",
-  "EMAIL_CEO@gmail.com": "ceo",
+  "alex.d.workt@gmail.com": "ceo",
+  // TODO: добавить barista emails когда будут известны
+  // "VITALIY_EMAIL@gmail.com": "barista",
+  // "ASLAN_EMAIL@gmail.com": "barista",
 };
 
 async function setRoles() {

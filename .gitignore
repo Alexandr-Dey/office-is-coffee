@@ -42,4 +42,4 @@ next-env.d.ts
 # firebase service account
 *-firebase-adminsdk-*.json
 service-account.json
-h
+functions/node_modules/
