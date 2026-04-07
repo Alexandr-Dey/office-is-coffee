@@ -81,7 +81,7 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
       id="barista-vitaliy"
       onClick={handleTap}
       style={{ cursor: "pointer" }}
-      transform="translate(200, 275)"
+      transform="translate(330, 275)"
     >
       {/* Name above head */}
       <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
