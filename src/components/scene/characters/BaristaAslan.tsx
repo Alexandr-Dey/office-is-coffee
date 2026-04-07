@@ -13,13 +13,36 @@ const SKIN_SHADOW = "#b8956a";
 const HAIR = "#1a1a1a";
 const APRON = "#27ae60";
 
+// Aslan prefers right side (pickup), but roams everywhere
+const ASLAN_SPOTS = [
+  { x: 320, weight: 10 },  // near grinder
+  { x: 400, weight: 15 },  // at POS
+  { x: 470, weight: 20 },  // center
+  { x: 550, weight: 30 },  // pickup zone
+  { x: 680, weight: 25 },  // far right
+];
+
+function pickSpot(spots: typeof ASLAN_SPOTS, currentX: number): number {
+  const available = spots.filter(s => Math.abs(s.x - currentX) > 30);
+  if (available.length === 0) return spots[0].x;
+  const total = available.reduce((s, sp) => s + sp.weight, 0);
+  let r = Math.random() * total;
+  for (const sp of available) {
+    r -= sp.weight;
+    if (r <= 0) return sp.x;
+  }
+  return available[0].x;
+}
+
 export function BaristaAslan({ orderStatus }: Props) {
   const [currentAction, setCurrentAction] = useState(ASLAN_IDLE_ACTIONS[0].id);
+  const [posX, setPosX] = useState(550);
   const [tapCount, setTapCount] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
 
   const state = orderStatus;
 
+  // Idle action cycle
   useEffect(() => {
     if (state !== "idle") return;
     let timeout: ReturnType<typeof setTimeout>;
@@ -30,6 +53,24 @@ export function BaristaAslan({ orderStatus }: Props) {
     };
     timeout = setTimeout(cycle, 3000);
     return () => clearTimeout(timeout);
+  }, [state]);
+
+  // Random movement cycle
+  useEffect(() => {
+    if (state !== "idle") return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const move = () => {
+      setPosX(prev => pickSpot(ASLAN_SPOTS, prev));
+      timeout = setTimeout(move, 7000 + Math.random() * 8000); // 7-15s
+    };
+    timeout = setTimeout(move, 3000 + Math.random() * 4000);
+    return () => clearTimeout(timeout);
+  }, [state]);
+
+  // Order-specific positions
+  useEffect(() => {
+    if (state === "accepted") setPosX(550); // writing on cup at pickup
+    if (state === "ready") setPosX(550);    // handing out at pickup
   }, [state]);
 
   useEffect(() => {
@@ -51,21 +92,28 @@ export function BaristaAslan({ orderStatus }: Props) {
     setTapCount(p => p + 1);
   }, []);
 
-  // Position: behind counter. Head+shoulders above counter top (y=340)
   return (
     <motion.g
       id="barista-aslan"
       onClick={handleTap}
       style={{ cursor: "pointer" }}
-      transform="translate(600, 275)"
-      animate={isFlipping ? { rotate: [0, 360], y: [0, -40, 0] } : {}}
-      transition={isFlipping ? { duration: 1.5, ease: "easeInOut" } : {}}
+      animate={{
+        x: posX,
+        ...(isFlipping ? { rotate: [0, 360], y: [0, -40, 0] } : {}),
+      }}
+      transition={
+        isFlipping
+          ? { duration: 1.5, ease: "easeInOut" }
+          : { type: "spring", stiffness: 40, damping: 15, mass: 1 }
+      }
     >
-      {/* Name above head */}
-      <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
-        Аслан
-      </text>
-      <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />
+      <g transform="translate(0, 275)">
+        {/* Name above head */}
+        <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
+          Аслан
+        </text>
+        <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />
+      </g>
     </motion.g>
   );
 }
@@ -75,10 +123,8 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
   const apronEl = (
     <>
       <rect x="-14" y="36" width="28" height="34" fill={APRON} rx="3" />
-      {/* Apron straps */}
       <rect x="-14" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
       <rect x="9" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
-      {/* Logo on apron */}
       <rect x="-8" y="44" width="16" height="10" fill="#1a7a44" rx="2" opacity="0.5" />
       <text x="0" y="52" textAnchor="middle" fill="#FFD700" fontSize="7" fontWeight="bold">LiC</text>
     </>
@@ -89,7 +135,6 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
       return (
         <>
           <rect x="-26" y="40" width="10" height="16" fill={SKIN} rx="4" />
-          {/* Cup in left hand */}
           <rect x="-24" y="42" width="12" height="14" fill="#d42b4f" rx="2" />
           <rect x="-23" y="44" width="9" height="2" fill="#fff" opacity="0.7" />
           <motion.rect x="16" y="30" width="10" height="18" fill={SKIN} rx="4"
@@ -210,26 +255,15 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
       {bodyEl}
       {apronEl}
       {renderArms()}
-
-      {/* Neck */}
       <rect x="-5" y="20" width="10" height="10" fill={SKIN} />
-
-      {/* Head */}
       <motion.g animate={{ y: [0, -1.5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
         <ellipse cx="0" cy="10" rx="16" ry="16" fill={SKIN} />
         <ellipse cx="2" cy="14" rx="11" ry="9" fill={SKIN_SHADOW} opacity="0.1" />
-
-        {/* Hair */}
         <ellipse cx="0" cy="-1" rx="15" ry="8" fill={HAIR} />
         <ellipse cx="-7" cy="2" rx="7" ry="5" fill={HAIR} />
-
-        {/* Ears */}
         <ellipse cx="-15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
         <ellipse cx="15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
-        {/* Bracelet on wrist area */}
         <rect x="16" y="44" width="8" height="3" fill="#e8b88a" rx="1" opacity="0.5" />
-
-        {/* Face */}
         {action === "laugh" ? (
           <g>
             <path d="M-7,7 Q-5,5 -3,7" stroke={HAIR} strokeWidth="1" fill="none" />
@@ -242,19 +276,15 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
           </g>
         ) : (
           <g>
-            {/* Eyes */}
             <circle cx="-6" cy="9" r="3.5" fill="#FFF" />
             <circle cx="6" cy="9" r="3.5" fill="#FFF" />
             <circle cx="-6" cy="10" r="2.2" fill="#2A1810" />
             <circle cx="6" cy="10" r="2.2" fill="#2A1810" />
             <circle cx="-5" cy="8.5" r="0.8" fill="#FFF" />
             <circle cx="7" cy="8.5" r="0.8" fill="#FFF" />
-            {/* Eyebrows */}
             <path d="M-9,4 Q-5,2 -2,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
             <path d="M2,4 Q5,2 9,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
-            {/* Nose */}
             <path d="M0,12 Q2,15 0,15.5" stroke="rgba(150,100,70,0.3)" strokeWidth="1" fill="none" />
-            {/* Smile */}
             <path d="M-5,19 Q0,22 5,19" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
           </g>
         )}

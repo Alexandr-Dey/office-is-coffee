@@ -16,8 +16,31 @@ const SKIN_SHADOW = "#d4a574";
 const HAIR = "#2c1810";
 const APRON = "#2980b9";
 
+// Safe X positions behind the counter (between/beside objects)
+// Counter: x=100..700. Objects block: machine 120-260, grinder 270-300, POS 365-405, cups 610-674
+const VITALIY_SPOTS = [
+  { x: 320, weight: 30 },  // near grinder (coffee zone)
+  { x: 400, weight: 20 },  // at POS (cash zone)
+  { x: 470, weight: 25 },  // center, between POS and pickup
+  { x: 550, weight: 15 },  // pickup zone
+  { x: 680, weight: 10 },  // far right
+];
+
+function pickSpot(spots: typeof VITALIY_SPOTS, currentX: number): number {
+  const available = spots.filter(s => Math.abs(s.x - currentX) > 30);
+  if (available.length === 0) return spots[0].x;
+  const total = available.reduce((s, sp) => s + sp.weight, 0);
+  let r = Math.random() * total;
+  for (const sp of available) {
+    r -= sp.weight;
+    if (r <= 0) return sp.x;
+  }
+  return available[0].x;
+}
+
 export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props) {
   const [currentAction, setCurrentAction] = useState(VITALIY_IDLE_ACTIONS[0].id);
+  const [posX, setPosX] = useState(320);
   const [tapCount, setTapCount] = useState(0);
   const [isAngry, setIsAngry] = useState(false);
   const [isGone, setIsGone] = useState(false);
@@ -25,6 +48,7 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
   const isSad = streakDays === 0 && daysSinceOrder(lastOrderDate) >= 2;
   const state = isSad ? "sad" : orderStatus;
 
+  // Idle action cycle
   useEffect(() => {
     if (state !== "idle") return;
     let timeout: ReturnType<typeof setTimeout>;
@@ -35,6 +59,24 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     };
     timeout = setTimeout(cycle, 2000);
     return () => clearTimeout(timeout);
+  }, [state]);
+
+  // Random movement cycle
+  useEffect(() => {
+    if (state !== "idle") return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const move = () => {
+      setPosX(prev => pickSpot(VITALIY_SPOTS, prev));
+      timeout = setTimeout(move, 8000 + Math.random() * 7000); // 8-15s
+    };
+    timeout = setTimeout(move, 5000 + Math.random() * 5000);
+    return () => clearTimeout(timeout);
+  }, [state]);
+
+  // When working on order, go to machine area
+  useEffect(() => {
+    if (state === "accepted") setPosX(320);
+    if (state === "ready") setPosX(470);
   }, [state]);
 
   useEffect(() => {
@@ -74,20 +116,21 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     );
   }
 
-  // Position: behind counter. Head+shoulders visible above counter top (y=340)
-  // translate y=280 means head center at ~290, shoulders at ~310, body hidden by counter from 340+
   return (
     <motion.g
       id="barista-vitaliy"
       onClick={handleTap}
       style={{ cursor: "pointer" }}
-      transform="translate(330, 275)"
+      animate={{ x: posX }}
+      transition={{ type: "spring", stiffness: 40, damping: 15, mass: 1 }}
     >
-      {/* Name above head */}
-      <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
-        Виталий
-      </text>
-      <VitaliyBody action={isAngry ? "angry" : state === "idle" ? currentAction : state} isSad={isSad} />
+      <g transform="translate(0, 275)">
+        {/* Name above head */}
+        <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
+          Виталий
+        </text>
+        <VitaliyBody action={isAngry ? "angry" : state === "idle" ? currentAction : state} isSad={isSad} />
+      </g>
     </motion.g>
   );
 }
@@ -97,10 +140,8 @@ function VitaliyBody({ action, isSad }: { action: string; isSad: boolean }) {
   const apronEl = (
     <>
       <rect x="-14" y="36" width="28" height="34" fill={APRON} rx="3" />
-      {/* Apron straps */}
       <rect x="-14" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
       <rect x="9" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
-      {/* Logo on apron */}
       <rect x="-8" y="44" width="16" height="10" fill="#1a5276" rx="2" opacity="0.5" />
       <text x="0" y="52" textAnchor="middle" fill="#FFD700" fontSize="7" fontWeight="bold">LiC</text>
     </>
@@ -218,25 +259,15 @@ function VitaliyBody({ action, isSad }: { action: string; isSad: boolean }) {
       {bodyEl}
       {apronEl}
       {renderArms()}
-
-      {/* Neck */}
       <rect x="-5" y="20" width="10" height="10" fill={SKIN} />
-
-      {/* Head */}
       <motion.g animate={{ y: [0, -1.5, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
         <ellipse cx="0" cy="10" rx="16" ry="16" fill={SKIN} />
         <ellipse cx="2" cy="14" rx="11" ry="9" fill={SKIN_SHADOW} opacity="0.1" />
-
-        {/* Hair */}
         <ellipse cx="0" cy="-1" rx="15" ry="9" fill={HAIR} />
         <ellipse cx="9" cy="2" rx="6" ry="5" fill={HAIR} />
         <ellipse cx="-8" cy="3" rx="4" ry="3" fill={HAIR} />
-
-        {/* Ears */}
         <ellipse cx="-15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
         <ellipse cx="15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
-
-        {/* Face */}
         {action === "angry" ? (
           <g>
             <line x1="-9" y1="4" x2="-3" y2="7" stroke="#222" strokeWidth="2" />
@@ -262,19 +293,15 @@ function VitaliyBody({ action, isSad }: { action: string; isSad: boolean }) {
           </g>
         ) : (
           <g>
-            {/* Eyes */}
             <circle cx="-6" cy="9" r="3.5" fill="#FFF" />
             <circle cx="6" cy="9" r="3.5" fill="#FFF" />
             <circle cx="-6" cy="10" r="2.2" fill="#2A1810" />
             <circle cx="6" cy="10" r="2.2" fill="#2A1810" />
             <circle cx="-5" cy="8.5" r="0.8" fill="#FFF" />
             <circle cx="7" cy="8.5" r="0.8" fill="#FFF" />
-            {/* Eyebrows */}
             <path d="M-9,4 Q-5,2 -2,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
             <path d="M2,4 Q5,2 9,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
-            {/* Nose */}
             <path d="M0,12 Q2,15 0,15.5" stroke="rgba(150,100,70,0.3)" strokeWidth="1" fill="none" />
-            {/* Smile */}
             <path d="M-5,19 Q0,22 5,19" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
           </g>
         )}
