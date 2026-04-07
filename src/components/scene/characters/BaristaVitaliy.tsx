@@ -25,7 +25,6 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
   const isSad = streakDays === 0 && daysSinceOrder(lastOrderDate) >= 2;
   const state = isSad ? "sad" : orderStatus;
 
-  // Idle action cycle
   useEffect(() => {
     if (state !== "idle") return;
     let timeout: ReturnType<typeof setTimeout>;
@@ -38,7 +37,6 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     return () => clearTimeout(timeout);
   }, [state]);
 
-  // Tap easter egg: 8 taps
   useEffect(() => {
     if (tapCount >= 8 && !isAngry && !isGone) {
       setIsAngry(true);
@@ -52,7 +50,6 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     }
   }, [tapCount, isAngry, isGone]);
 
-  // Tap reset timer
   useEffect(() => {
     if (tapCount > 0 && tapCount < 8) {
       const t = setTimeout(() => setTapCount(0), 10000);
@@ -68,110 +65,113 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     return (
       <g id="vitaliy-gone">
         <motion.rect
-          x="240" y="350" width="30" height="15" fill={APRON} rx="2"
-          initial={{ rotate: 0, y: 300 }}
-          animate={{ rotate: 20, y: 350 }}
+          x="200" y="310" width="30" height="15" fill={APRON} rx="2"
+          initial={{ rotate: 0, y: 280 }}
+          animate={{ rotate: 20, y: 310 }}
           transition={{ type: "spring" }}
         />
       </g>
     );
   }
 
+  // Position: behind counter. Head+shoulders visible above counter top (y=340)
+  // translate y=280 means head center at ~290, shoulders at ~310, body hidden by counter from 340+
   return (
     <motion.g
       id="barista-vitaliy"
       onClick={handleTap}
       style={{ cursor: "pointer" }}
-      transform="translate(280, 360)"
+      transform="translate(200, 275)"
     >
-      <VitaliyBody action={isAngry ? "angry" : state === "idle" ? currentAction : state} isSad={isSad} />
-      <text x="0" y="80" textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize="10" fontWeight="bold">
-        {"Виталий"}
+      {/* Name above head */}
+      <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
+        Виталий
       </text>
+      <VitaliyBody action={isAngry ? "angry" : state === "idle" ? currentAction : state} isSad={isSad} />
     </motion.g>
   );
 }
 
 function VitaliyBody({ action, isSad }: { action: string; isSad: boolean }) {
-  // Body/shirt
-  const bodyEl = <ellipse cx="0" cy="48" rx="16" ry="18" fill="#F0F0F0" />;
-  // Apron
+  const bodyEl = <ellipse cx="0" cy="52" rx="18" ry="20" fill="#f5f0e8" />;
   const apronEl = (
     <>
-      <rect x="-12" y="34" width="24" height="30" fill={APRON} rx="2" />
-      <rect x="-12" y="32" width="4" height="5" fill={APRON} opacity="0.7" />
-      <rect x="8" y="32" width="4" height="5" fill={APRON} opacity="0.7" />
+      <rect x="-14" y="36" width="28" height="34" fill={APRON} rx="3" />
+      {/* Apron straps */}
+      <rect x="-14" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
+      <rect x="9" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
+      {/* Logo on apron */}
+      <rect x="-8" y="44" width="16" height="10" fill="#1a5276" rx="2" opacity="0.5" />
       <text x="0" y="52" textAnchor="middle" fill="#FFD700" fontSize="7" fontWeight="bold">LiC</text>
     </>
   );
 
-  // Arms depend on action
   const renderArms = () => {
     switch (action) {
       case "wipe_counter":
         return (
           <>
-            <motion.g animate={{ x: [-4, 4, -4] }} transition={{ duration: 1, repeat: Infinity }}>
-              <rect x="-22" y="42" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="-25" y="58" width="12" height="4" fill="#bbb" rx="1" />
+            <motion.g animate={{ x: [-5, 5, -5] }} transition={{ duration: 1, repeat: Infinity }}>
+              <rect x="-26" y="44" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="-28" y="62" width="14" height="5" fill="#bbb" rx="1" />
             </motion.g>
-            <rect x="14" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="16" y="42" width="10" height="18" fill={SKIN} rx="4" />
           </>
         );
       case "check_machine":
         return (
           <>
-            <motion.rect x="-22" y="36" width="8" height="18" fill={SKIN} rx="3"
+            <motion.rect x="-26" y="38" width="10" height="20" fill={SKIN} rx="4"
               animate={{ rotate: [-5, 5, -5] }} transition={{ duration: 1.5, repeat: Infinity }} />
-            <rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
           </>
         );
       case "adjust_apron":
         return (
           <>
-            <motion.rect x="-14" y="34" width="6" height="14" fill={SKIN} rx="2"
-              animate={{ y: [34, 32, 34] }} transition={{ duration: 0.8, repeat: 1 }} />
-            <motion.rect x="8" y="34" width="6" height="14" fill={SKIN} rx="2"
-              animate={{ y: [34, 32, 34] }} transition={{ duration: 0.8, repeat: 1, delay: 0.2 }} />
+            <motion.rect x="-16" y="36" width="8" height="16" fill={SKIN} rx="3"
+              animate={{ y: [36, 33, 36] }} transition={{ duration: 0.8, repeat: 1 }} />
+            <motion.rect x="8" y="36" width="8" height="16" fill={SKIN} rx="3"
+              animate={{ y: [36, 33, 36] }} transition={{ duration: 0.8, repeat: 1, delay: 0.2 }} />
           </>
         );
       case "stretch_back":
         return (
           <>
-            <motion.rect x="-20" y="30" width="8" height="16" fill={SKIN} rx="3"
+            <motion.rect x="-24" y="32" width="10" height="18" fill={SKIN} rx="4"
               animate={{ rotate: [0, -15, 0] }} transition={{ duration: 1.5, repeat: 1 }} />
-            <motion.rect x="12" y="30" width="8" height="16" fill={SKIN} rx="3"
+            <motion.rect x="14" y="32" width="10" height="18" fill={SKIN} rx="4"
               animate={{ rotate: [0, 15, 0] }} transition={{ duration: 1.5, repeat: 1 }} />
           </>
         );
       case "polish_cup":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
             <motion.g animate={{ rotate: [-10, 10, -10] }} transition={{ duration: 0.6, repeat: Infinity }}>
-              <rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="16" y="54" width="6" height="8" fill="#fff" rx="1" />
+              <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="18" y="58" width="8" height="10" fill="#fff" rx="1" />
             </motion.g>
           </>
         );
       case "check_phone":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
             <motion.g animate={{ y: [0, -2, 0] }} transition={{ duration: 2, repeat: 1 }}>
-              <rect x="14" y="36" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="15" y="52" width="8" height="12" fill="#333" rx="1" />
-              <rect x="16" y="53" width="6" height="9" fill="#4488ff" rx="0.5" />
+              <rect x="16" y="38" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="17" y="56" width="10" height="14" fill="#333" rx="2" />
+              <rect x="18" y="57" width="8" height="11" fill="#4488ff" rx="1" />
             </motion.g>
           </>
         );
       case "organize_cups":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <motion.g animate={{ x: [0, 6, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
-              <rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="18" y="54" width="6" height="10" fill="#d42b4f" rx="1" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
+            <motion.g animate={{ x: [0, 8, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
+              <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="20" y="58" width="8" height="12" fill="#d42b4f" rx="2" />
             </motion.g>
           </>
         );
@@ -179,49 +179,35 @@ function VitaliyBody({ action, isSad }: { action: string; isSad: boolean }) {
         return (
           <>
             <motion.g animate={{ rotate: [0, -20, -20, 0] }} transition={{ duration: 2, repeat: 1 }}>
-              <rect x="-22" y="38" width="8" height="16" fill={SKIN} rx="3" />
-              <circle cx="-20" cy="38" r="4" fill="none" stroke="#c0c0c0" strokeWidth="1.5" />
-              <circle cx="-20" cy="38" r="1" fill="#333" />
+              <rect x="-26" y="40" width="10" height="18" fill={SKIN} rx="4" />
+              <circle cx="-24" cy="40" r="5" fill="none" stroke="#c0c0c0" strokeWidth="1.5" />
+              <circle cx="-24" cy="40" r="1.5" fill="#333" />
             </motion.g>
-            <rect x="14" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="16" y="42" width="10" height="18" fill={SKIN} rx="4" />
           </>
         );
       case "tap_rhythm":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <motion.g animate={{ y: [0, -3, 0, -3, 0] }} transition={{ duration: 0.8, repeat: Infinity }}>
-              <rect x="14" y="42" width="8" height="14" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
+            <motion.g animate={{ y: [0, -4, 0, -4, 0] }} transition={{ duration: 0.8, repeat: Infinity }}>
+              <rect x="16" y="44" width="10" height="16" fill={SKIN} rx="4" />
             </motion.g>
           </>
         );
       case "accepted":
         return (
           <>
-            <motion.rect x="-22" y="36" width="8" height="18" fill={SKIN} rx="3"
+            <motion.rect x="-26" y="38" width="10" height="20" fill={SKIN} rx="4"
               animate={{ rotate: [-5, 5, -5] }} transition={{ duration: 0.8, repeat: Infinity }} />
-            <rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3" />
-          </>
-        );
-      case "pending":
-        return (
-          <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <rect x="14" y="40" width="8" height="16" fill={SKIN} rx="3" />
-          </>
-        );
-      case "ready":
-        return (
-          <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <rect x="14" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
           </>
         );
       default:
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <rect x="14" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
+            <rect x="16" y="42" width="10" height="18" fill={SKIN} rx="4" />
           </>
         );
     }
@@ -234,62 +220,62 @@ function VitaliyBody({ action, isSad }: { action: string; isSad: boolean }) {
       {renderArms()}
 
       {/* Neck */}
-      <rect x="-4" y="20" width="8" height="8" fill={SKIN} />
+      <rect x="-5" y="20" width="10" height="10" fill={SKIN} />
 
       {/* Head */}
       <motion.g animate={{ y: [0, -1.5, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
-        <ellipse cx="0" cy="10" rx="14" ry="15" fill={SKIN} />
-        <ellipse cx="2" cy="13" rx="10" ry="8" fill={SKIN_SHADOW} opacity="0.12" />
+        <ellipse cx="0" cy="10" rx="16" ry="16" fill={SKIN} />
+        <ellipse cx="2" cy="14" rx="11" ry="9" fill={SKIN_SHADOW} opacity="0.1" />
 
         {/* Hair */}
-        <ellipse cx="0" cy="0" rx="13" ry="8" fill={HAIR} />
-        <ellipse cx="8" cy="3" rx="5" ry="4" fill={HAIR} />
+        <ellipse cx="0" cy="-1" rx="15" ry="9" fill={HAIR} />
+        <ellipse cx="9" cy="2" rx="6" ry="5" fill={HAIR} />
+        <ellipse cx="-8" cy="3" rx="4" ry="3" fill={HAIR} />
 
         {/* Ears */}
-        <ellipse cx="-13" cy="10" rx="3" ry="4.5" fill={SKIN_SHADOW} />
-        <ellipse cx="13" cy="10" rx="3" ry="4.5" fill={SKIN_SHADOW} />
+        <ellipse cx="-15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
+        <ellipse cx="15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
 
         {/* Face */}
         {action === "angry" ? (
           <g>
-            <line x1="-8" y1="4" x2="-3" y2="7" stroke="#222" strokeWidth="2" />
-            <line x1="8" y1="4" x2="3" y2="7" stroke="#222" strokeWidth="2" />
-            <rect x="-6" y="9" width="5" height="3" fill="#222" rx="1" />
-            <rect x="1" y="9" width="5" height="3" fill="#222" rx="1" />
-            <path d="M-4,19 Q0,16 4,19" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
-            <ellipse cx="0" cy="10" rx="12" ry="13" fill="rgba(255,0,0,0.08)" />
+            <line x1="-9" y1="4" x2="-3" y2="7" stroke="#222" strokeWidth="2" />
+            <line x1="9" y1="4" x2="3" y2="7" stroke="#222" strokeWidth="2" />
+            <rect x="-7" y="9" width="5" height="3.5" fill="#222" rx="1" />
+            <rect x="2" y="9" width="5" height="3.5" fill="#222" rx="1" />
+            <path d="M-5,20 Q0,17 5,20" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
+            <ellipse cx="0" cy="10" rx="14" ry="14" fill="rgba(255,0,0,0.08)" />
           </g>
         ) : isSad ? (
           <g>
-            <circle cx="-5" cy="9" r="3" fill="#FFF" />
-            <circle cx="5" cy="9" r="3" fill="#FFF" />
-            <circle cx="-6" cy="9.5" r="1.5" fill="#2A1810" />
-            <circle cx="4" cy="9.5" r="1.5" fill="#2A1810" />
-            <line x1="-8" y1="4" x2="-3" y2="5.5" stroke={HAIR} strokeWidth="1" />
-            <line x1="3" y1="5.5" x2="8" y2="4" stroke={HAIR} strokeWidth="1" />
-            <path d="M-4,19 Q0,16 4,19" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
-            {/* Thought bubble */}
-            <circle cx="-20" cy="-10" r="3" fill="rgba(255,255,255,0.5)" />
-            <circle cx="-26" cy="-18" r="4" fill="rgba(255,255,255,0.5)" />
-            <circle cx="-30" cy="-28" r="7" fill="rgba(255,255,255,0.6)" />
-            <text x="-30" y="-25" textAnchor="middle" fill="#666" fontSize="10">?</text>
-            {/* Sigh animation */}
-            <motion.g animate={{ y: [0, -3, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
-              <rect x="-10" y="24" width="20" height="10" fill="transparent" />
-            </motion.g>
+            <circle cx="-6" cy="9" r="3.5" fill="#FFF" />
+            <circle cx="6" cy="9" r="3.5" fill="#FFF" />
+            <circle cx="-7" cy="10" r="1.8" fill="#2A1810" />
+            <circle cx="5" cy="10" r="1.8" fill="#2A1810" />
+            <line x1="-9" y1="4" x2="-3" y2="6" stroke={HAIR} strokeWidth="1" />
+            <line x1="3" y1="6" x2="9" y2="4" stroke={HAIR} strokeWidth="1" />
+            <path d="M-5,20 Q0,17 5,20" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
+            <circle cx="-22" cy="-10" r="3" fill="rgba(255,255,255,0.5)" />
+            <circle cx="-28" cy="-18" r="4" fill="rgba(255,255,255,0.5)" />
+            <circle cx="-32" cy="-28" r="7" fill="rgba(255,255,255,0.6)" />
+            <text x="-32" y="-25" textAnchor="middle" fill="#666" fontSize="10">?</text>
           </g>
         ) : (
           <g>
-            <circle cx="-5" cy="9" r="3" fill="#FFF" />
-            <circle cx="5" cy="9" r="3" fill="#FFF" />
-            <circle cx="-5" cy="9.5" r="2" fill="#2A1810" />
-            <circle cx="5" cy="9.5" r="2" fill="#2A1810" />
-            <circle cx="-4.3" cy="8.5" r="0.7" fill="#FFF" />
-            <circle cx="5.7" cy="8.5" r="0.7" fill="#FFF" />
-            <path d="M-7,4 Q-4,2 -1,4" stroke={HAIR} strokeWidth="1.2" fill="none" />
-            <path d="M1,4 Q4,2 7,4" stroke={HAIR} strokeWidth="1.2" fill="none" />
-            <path d="M0,12 Q2,14 0,14.5" stroke="rgba(150,100,70,0.3)" strokeWidth="1" fill="none" />
-            <path d="M-4,18 Q0,21 4,18" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
+            {/* Eyes */}
+            <circle cx="-6" cy="9" r="3.5" fill="#FFF" />
+            <circle cx="6" cy="9" r="3.5" fill="#FFF" />
+            <circle cx="-6" cy="10" r="2.2" fill="#2A1810" />
+            <circle cx="6" cy="10" r="2.2" fill="#2A1810" />
+            <circle cx="-5" cy="8.5" r="0.8" fill="#FFF" />
+            <circle cx="7" cy="8.5" r="0.8" fill="#FFF" />
+            {/* Eyebrows */}
+            <path d="M-9,4 Q-5,2 -2,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
+            <path d="M2,4 Q5,2 9,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
+            {/* Nose */}
+            <path d="M0,12 Q2,15 0,15.5" stroke="rgba(150,100,70,0.3)" strokeWidth="1" fill="none" />
+            {/* Smile */}
+            <path d="M-5,19 Q0,22 5,19" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
           </g>
         )}
       </motion.g>

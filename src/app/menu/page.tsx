@@ -9,6 +9,7 @@ import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, where } fr
 import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants";
 import type { MenuItem, CartItem } from "@/lib/types";
 import { trackEvent } from "@/lib/mixpanel";
+import QuickOrdersBlock from "@/components/QuickOrdersBlock";
 
 /* ═══ CATEGORIES ═══ */
 const CATEGORIES = [
@@ -473,8 +474,11 @@ export default function MenuPage() {
         />
       </div>
 
+      {/* Quick orders block */}
+      <QuickOrdersBlock />
+
       {/* Content overlaps bottom of scene */}
-      <div className="relative z-10 -mt-12 px-3 space-y-3">
+      <div className="relative z-10 px-3 space-y-3">
         <LoyaltyBanner count={loyaltyCount} />
         <QuickRepeat onRepeat={repeatOrder} />
       </div>

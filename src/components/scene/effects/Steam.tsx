@@ -7,28 +7,27 @@ interface Props {
 }
 
 export function Steam({ active }: Props) {
-  // Extra steam puffs when coffee is being made
   if (!active) return null;
 
   return (
     <g id="extra-steam">
-      {[0, 1, 2, 3].map((i) => (
+      {[0, 1, 2, 3, 4].map((i) => (
         <motion.ellipse
           key={i}
-          cx={360 + i * 10 - 15}
-          cy={210 - i * 15}
-          rx="6"
-          ry="10"
+          cx={190 + i * 12 - 24}
+          cy={230 - i * 12}
+          rx="7"
+          ry="11"
           fill="white"
           animate={{
-            opacity: [0.4, 0],
-            y: [-5, -30],
-            x: [0, (i - 1.5) * 5],
+            opacity: [0.5, 0],
+            y: [-5, -35],
+            x: [0, (i - 2) * 5],
           }}
           transition={{
-            duration: 1.5,
+            duration: 1.2,
             repeat: Infinity,
-            delay: i * 0.3,
+            delay: i * 0.25,
             ease: "easeOut",
           }}
         />

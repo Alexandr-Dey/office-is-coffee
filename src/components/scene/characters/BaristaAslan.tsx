@@ -20,7 +20,6 @@ export function BaristaAslan({ orderStatus }: Props) {
 
   const state = orderStatus;
 
-  // Idle action cycle
   useEffect(() => {
     if (state !== "idle") return;
     let timeout: ReturnType<typeof setTimeout>;
@@ -33,7 +32,6 @@ export function BaristaAslan({ orderStatus }: Props) {
     return () => clearTimeout(timeout);
   }, [state]);
 
-  // Tap easter egg: 5 taps -> flip
   useEffect(() => {
     if (tapCount >= 5 && !isFlipping) {
       setIsFlipping(true);
@@ -42,7 +40,6 @@ export function BaristaAslan({ orderStatus }: Props) {
     }
   }, [tapCount, isFlipping]);
 
-  // Tap reset timer
   useEffect(() => {
     if (tapCount > 0 && tapCount < 5) {
       const t = setTimeout(() => setTapCount(0), 10000);
@@ -54,32 +51,35 @@ export function BaristaAslan({ orderStatus }: Props) {
     setTapCount(p => p + 1);
   }, []);
 
+  // Position: behind counter. Head+shoulders above counter top (y=340)
   return (
     <motion.g
       id="barista-aslan"
       onClick={handleTap}
       style={{ cursor: "pointer" }}
-      transform="translate(500, 360)"
+      transform="translate(600, 275)"
       animate={isFlipping ? { rotate: [0, 360], y: [0, -40, 0] } : {}}
       transition={isFlipping ? { duration: 1.5, ease: "easeInOut" } : {}}
     >
-      <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />
-      <text x="0" y="80" textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize="10" fontWeight="bold">
-        {"Аслан"}
+      {/* Name above head */}
+      <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
+        Аслан
       </text>
+      <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />
     </motion.g>
   );
 }
 
 function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) {
-  // Body
-  const bodyEl = <ellipse cx="0" cy="48" rx="16" ry="18" fill="#F0F0F0" />;
-  // Apron
+  const bodyEl = <ellipse cx="0" cy="52" rx="18" ry="20" fill="#f5f0e8" />;
   const apronEl = (
     <>
-      <rect x="-12" y="34" width="24" height="30" fill={APRON} rx="2" />
-      <rect x="-12" y="32" width="4" height="5" fill={APRON} opacity="0.7" />
-      <rect x="8" y="32" width="4" height="5" fill={APRON} opacity="0.7" />
+      <rect x="-14" y="36" width="28" height="34" fill={APRON} rx="3" />
+      {/* Apron straps */}
+      <rect x="-14" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
+      <rect x="9" y="30" width="5" height="8" fill={APRON} opacity="0.8" rx="1" />
+      {/* Logo on apron */}
+      <rect x="-8" y="44" width="16" height="10" fill="#1a7a44" rx="2" opacity="0.5" />
       <text x="0" y="52" textAnchor="middle" fill="#FFD700" fontSize="7" fontWeight="bold">LiC</text>
     </>
   );
@@ -88,13 +88,14 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
     if (isWaving) {
       return (
         <>
-          <rect x="-22" y="38" width="8" height="14" fill={SKIN} rx="3" />
-          <rect x="-20" y="40" width="10" height="12" fill="#d42b4f" rx="1" />
-          <rect x="-19" y="42" width="7" height="2" fill="#fff" opacity="0.7" />
-          <motion.rect x="14" y="28" width="8" height="16" fill={SKIN} rx="3"
+          <rect x="-26" y="40" width="10" height="16" fill={SKIN} rx="4" />
+          {/* Cup in left hand */}
+          <rect x="-24" y="42" width="12" height="14" fill="#d42b4f" rx="2" />
+          <rect x="-23" y="44" width="9" height="2" fill="#fff" opacity="0.7" />
+          <motion.rect x="16" y="30" width="10" height="18" fill={SKIN} rx="4"
             animate={{ rotate: [-20, 20, -20] }}
             transition={{ duration: 0.5, repeat: Infinity }}
-            style={{ transformOrigin: "18px 44px" }} />
+            style={{ transformOrigin: "21px 48px" }} />
         </>
       );
     }
@@ -103,109 +104,102 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
       case "juggle_cup":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <motion.g animate={{ y: [0, -20, 0] }} transition={{ duration: 1, repeat: Infinity }}>
-              <rect x="14" y="36" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="16" y="20" width="8" height="12" fill="#d42b4f" rx="1" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
+            <motion.g animate={{ y: [0, -22, 0] }} transition={{ duration: 1, repeat: Infinity }}>
+              <rect x="16" y="38" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="18" y="22" width="10" height="14" fill="#d42b4f" rx="2" />
             </motion.g>
           </>
         );
       case "dance_move":
         return (
           <>
-            <motion.rect x="-22" y="36" width="8" height="16" fill={SKIN} rx="3"
+            <motion.rect x="-26" y="38" width="10" height="18" fill={SKIN} rx="4"
               animate={{ rotate: [-10, 10, -10] }} transition={{ duration: 0.6, repeat: Infinity }} />
-            <motion.rect x="14" y="36" width="8" height="16" fill={SKIN} rx="3"
+            <motion.rect x="16" y="38" width="10" height="18" fill={SKIN} rx="4"
               animate={{ rotate: [10, -10, 10] }} transition={{ duration: 0.6, repeat: Infinity }} />
           </>
         );
       case "check_phone":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
             <motion.g animate={{ y: [0, -1, 0] }} transition={{ duration: 1.5, repeat: 1 }}>
-              <rect x="14" y="36" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="15" y="52" width="8" height="12" fill="#333" rx="1" />
-              <rect x="16" y="53" width="6" height="9" fill="#4488ff" rx="0.5" />
+              <rect x="16" y="38" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="17" y="56" width="10" height="14" fill="#333" rx="2" />
+              <rect x="18" y="57" width="8" height="11" fill="#4488ff" rx="1" />
             </motion.g>
           </>
         );
       case "laugh":
         return (
           <>
-            <motion.rect x="-22" y="38" width="8" height="16" fill={SKIN} rx="3"
-              animate={{ y: [38, 36, 38] }} transition={{ duration: 0.4, repeat: 3 }} />
-            <motion.rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3"
-              animate={{ y: [38, 36, 38] }} transition={{ duration: 0.4, repeat: 3, delay: 0.1 }} />
+            <motion.rect x="-26" y="40" width="10" height="18" fill={SKIN} rx="4"
+              animate={{ y: [40, 37, 40] }} transition={{ duration: 0.4, repeat: 3 }} />
+            <motion.rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4"
+              animate={{ y: [40, 37, 40] }} transition={{ duration: 0.4, repeat: 3, delay: 0.1 }} />
           </>
         );
       case "stretch_arms":
         return (
           <>
-            <motion.rect x="-26" y="38" width="8" height="16" fill={SKIN} rx="3"
-              animate={{ x: [-26, -32, -26] }} transition={{ duration: 1.5, repeat: 1 }} />
-            <motion.rect x="18" y="38" width="8" height="16" fill={SKIN} rx="3"
-              animate={{ x: [18, 24, 18] }} transition={{ duration: 1.5, repeat: 1 }} />
+            <motion.rect x="-30" y="40" width="10" height="18" fill={SKIN} rx="4"
+              animate={{ x: [-30, -36, -30] }} transition={{ duration: 1.5, repeat: 1 }} />
+            <motion.rect x="20" y="40" width="10" height="18" fill={SKIN} rx="4"
+              animate={{ x: [20, 26, 20] }} transition={{ duration: 1.5, repeat: 1 }} />
           </>
         );
       case "wipe_cup":
         return (
           <>
-            <rect x="-22" y="38" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="40" width="10" height="18" fill={SKIN} rx="4" />
             <motion.g animate={{ rotate: [-8, 8, -8] }} transition={{ duration: 0.5, repeat: Infinity }}>
-              <rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="16" y="54" width="8" height="10" fill="#fff" rx="1" />
+              <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="18" y="58" width="10" height="12" fill="#fff" rx="2" />
             </motion.g>
           </>
         );
       case "pose":
         return (
           <>
-            <rect x="-18" y="40" width="8" height="14" fill={SKIN} rx="3" />
-            <rect x="10" y="40" width="8" height="14" fill={SKIN} rx="3" />
+            <rect x="-20" y="42" width="10" height="16" fill={SKIN} rx="4" />
+            <rect x="10" y="42" width="10" height="16" fill={SKIN} rx="4" />
           </>
         );
       case "air_drums":
         return (
           <>
-            <motion.rect x="-22" y="40" width="8" height="14" fill={SKIN} rx="3"
-              animate={{ y: [40, 36, 40] }} transition={{ duration: 0.3, repeat: Infinity }} />
-            <motion.rect x="14" y="40" width="8" height="14" fill={SKIN} rx="3"
-              animate={{ y: [40, 36, 40] }} transition={{ duration: 0.3, repeat: Infinity, delay: 0.15 }} />
+            <motion.rect x="-26" y="42" width="10" height="16" fill={SKIN} rx="4"
+              animate={{ y: [42, 38, 42] }} transition={{ duration: 0.3, repeat: Infinity }} />
+            <motion.rect x="16" y="42" width="10" height="16" fill={SKIN} rx="4"
+              animate={{ y: [42, 38, 42] }} transition={{ duration: 0.3, repeat: Infinity, delay: 0.15 }} />
           </>
         );
       case "write_on_cup":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
             <motion.g animate={{ rotate: [-3, 3, -3] }} transition={{ duration: 0.5, repeat: Infinity }}>
-              <rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="18" y="54" width="3" height="7" fill="#333" />
+              <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="20" y="58" width="4" height="8" fill="#333" rx="0.5" />
             </motion.g>
           </>
         );
       case "accepted":
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
             <motion.g animate={{ rotate: [-3, 3, -3] }} transition={{ duration: 0.5, repeat: Infinity }}>
-              <rect x="14" y="38" width="8" height="16" fill={SKIN} rx="3" />
-              <rect x="18" y="54" width="3" height="7" fill="#333" />
+              <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
+              <rect x="20" y="58" width="4" height="8" fill="#333" rx="0.5" />
             </motion.g>
-          </>
-        );
-      case "pending":
-        return (
-          <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <rect x="14" y="40" width="8" height="16" fill={SKIN} rx="3" />
           </>
         );
       default:
         return (
           <>
-            <rect x="-22" y="40" width="8" height="16" fill={SKIN} rx="3" />
-            <rect x="14" y="40" width="8" height="16" fill={SKIN} rx="3" />
+            <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
+            <rect x="16" y="42" width="10" height="18" fill={SKIN} rx="4" />
           </>
         );
     }
@@ -218,46 +212,50 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
       {renderArms()}
 
       {/* Neck */}
-      <rect x="-4" y="20" width="8" height="8" fill={SKIN} />
+      <rect x="-5" y="20" width="10" height="10" fill={SKIN} />
 
       {/* Head */}
       <motion.g animate={{ y: [0, -1.5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
-        <ellipse cx="0" cy="10" rx="14" ry="15" fill={SKIN} />
-        <ellipse cx="2" cy="13" rx="10" ry="8" fill={SKIN_SHADOW} opacity="0.12" />
+        <ellipse cx="0" cy="10" rx="16" ry="16" fill={SKIN} />
+        <ellipse cx="2" cy="14" rx="11" ry="9" fill={SKIN_SHADOW} opacity="0.1" />
 
         {/* Hair */}
-        <ellipse cx="0" cy="0" rx="13" ry="7" fill={HAIR} />
-        <ellipse cx="-6" cy="2" rx="6" ry="4" fill={HAIR} />
+        <ellipse cx="0" cy="-1" rx="15" ry="8" fill={HAIR} />
+        <ellipse cx="-7" cy="2" rx="7" ry="5" fill={HAIR} />
 
         {/* Ears */}
-        <ellipse cx="-13" cy="10" rx="3" ry="4.5" fill={SKIN_SHADOW} />
-        <ellipse cx="13" cy="10" rx="3" ry="4.5" fill={SKIN_SHADOW} />
-        {/* Bracelet */}
-        <rect x="14" y="42" width="6" height="2" fill="#e8b88a" rx="1" opacity="0.6" />
+        <ellipse cx="-15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
+        <ellipse cx="15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
+        {/* Bracelet on wrist area */}
+        <rect x="16" y="44" width="8" height="3" fill="#e8b88a" rx="1" opacity="0.5" />
 
         {/* Face */}
         {action === "laugh" ? (
           <g>
-            <path d="M-6,7 Q-4,5 -2,7" stroke={HAIR} strokeWidth="1" fill="none" />
-            <path d="M2,7 Q4,5 6,7" stroke={HAIR} strokeWidth="1" fill="none" />
-            <ellipse cx="0" cy="18" rx="4" ry="4" fill="#6B3E26" />
-            <circle cx="-5" cy="9" r="2" fill="#FFF" />
-            <circle cx="5" cy="9" r="2" fill="#FFF" />
-            <circle cx="-5" cy="9.5" r="1.2" fill="#2A1810" />
-            <circle cx="5" cy="9.5" r="1.2" fill="#2A1810" />
+            <path d="M-7,7 Q-5,5 -3,7" stroke={HAIR} strokeWidth="1" fill="none" />
+            <path d="M3,7 Q5,5 7,7" stroke={HAIR} strokeWidth="1" fill="none" />
+            <ellipse cx="0" cy="19" rx="5" ry="4.5" fill="#6B3E26" />
+            <circle cx="-6" cy="9" r="2.5" fill="#FFF" />
+            <circle cx="6" cy="9" r="2.5" fill="#FFF" />
+            <circle cx="-6" cy="10" r="1.5" fill="#2A1810" />
+            <circle cx="6" cy="10" r="1.5" fill="#2A1810" />
           </g>
         ) : (
           <g>
-            <circle cx="-5" cy="9" r="3" fill="#FFF" />
-            <circle cx="5" cy="9" r="3" fill="#FFF" />
-            <circle cx="-5" cy="9.5" r="2" fill="#2A1810" />
-            <circle cx="5" cy="9.5" r="2" fill="#2A1810" />
-            <circle cx="-4.3" cy="8.5" r="0.7" fill="#FFF" />
-            <circle cx="5.7" cy="8.5" r="0.7" fill="#FFF" />
-            <path d="M-7,4 Q-4,2 -1,4" stroke={HAIR} strokeWidth="1.2" fill="none" />
-            <path d="M1,4 Q4,2 7,4" stroke={HAIR} strokeWidth="1.2" fill="none" />
-            <path d="M0,12 Q2,14 0,14.5" stroke="rgba(150,100,70,0.3)" strokeWidth="1" fill="none" />
-            <path d="M-4,18 Q0,21 4,18" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
+            {/* Eyes */}
+            <circle cx="-6" cy="9" r="3.5" fill="#FFF" />
+            <circle cx="6" cy="9" r="3.5" fill="#FFF" />
+            <circle cx="-6" cy="10" r="2.2" fill="#2A1810" />
+            <circle cx="6" cy="10" r="2.2" fill="#2A1810" />
+            <circle cx="-5" cy="8.5" r="0.8" fill="#FFF" />
+            <circle cx="7" cy="8.5" r="0.8" fill="#FFF" />
+            {/* Eyebrows */}
+            <path d="M-9,4 Q-5,2 -2,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
+            <path d="M2,4 Q5,2 9,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
+            {/* Nose */}
+            <path d="M0,12 Q2,15 0,15.5" stroke="rgba(150,100,70,0.3)" strokeWidth="1" fill="none" />
+            {/* Smile */}
+            <path d="M-5,19 Q0,22 5,19" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
           </g>
         )}
       </motion.g>
