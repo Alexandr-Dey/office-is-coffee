@@ -40,4 +40,6 @@ next-env.d.ts
 .sentryclirc
 
 # firebase service account
+*-firebase-adminsdk-*.json
 service-account.json
+h
