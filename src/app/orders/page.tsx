@@ -25,7 +25,7 @@ const statusLabel: Record<string, { text: string; color: string }> = {
   ready: { text: "Готов", color: "text-green-600" },
 };
 
-const ratingEmoji: Record<number, string> = { 3: "\uD83D\uDE0D", 2: "\uD83D\uDC4D", 1: "\uD83D\uDE15" };
+const ratingEmoji: Record<number, string> = { 3: "😍", 2: "👍", 1: "😕" };
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
@@ -57,7 +57,7 @@ export default function OrdersPage() {
   return (
     <main className="min-h-screen pb-20 pt-6 px-4 bg-brand-bg">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg mx-auto">
-        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">\uD83D\uDCE6 Мои заказы</h1>
+        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">📦 Мои заказы</h1>
 
         {loading ? (
           <div className="space-y-3">
@@ -70,7 +70,7 @@ export default function OrdersPage() {
           </div>
         ) : orders.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#d0f0e0] p-8 text-center" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            <p className="text-4xl mb-3">\u2615</p>
+            <p className="text-4xl mb-3">☕</p>
             <p className="text-brand-text/60">Заказов пока нет</p>
             <a href="/menu" className="inline-block mt-4 px-6 py-2 bg-brand-dark text-white rounded-full text-sm font-semibold">Заказать кофе</a>
           </div>
@@ -101,7 +101,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-brand-dark text-sm">
-                      {order.isFreeByLoyalty ? "Бесплатно \uD83C\uDF89" : `${order.total} \u20B8`}
+                      {order.isFreeByLoyalty ? "Бесплатно 🎉" : `${order.total} ₸`}
                     </span>
                     <motion.button whileTap={{ scale: 0.9 }}
                       onClick={() => repeatOrder(order.items)}

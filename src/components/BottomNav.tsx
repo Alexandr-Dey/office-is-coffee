@@ -5,10 +5,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 const tabs = [
-  { href: "/menu", icon: "\u2615", label: "Меню" },
-  { href: "/orders", icon: "\uD83D\uDCE6", label: "Заказы" },
-  { href: "/coins", icon: "\u2B50", label: "Монеты" },
-  { href: "/profile", icon: "\uD83D\uDC64", label: "Профиль" },
+  { href: "/menu", icon: "☕", label: "Меню" },
+  { href: "/orders", icon: "📦", label: "Заказы" },
+  { href: "/coins", icon: "⭐", label: "Монеты" },
+  { href: "/profile", icon: "👤", label: "Профиль" },
 ];
 
 export default function BottomNav() {

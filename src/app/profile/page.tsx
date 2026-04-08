@@ -72,7 +72,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen pb-20 pt-6 px-4 bg-brand-bg">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg mx-auto">
-        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">\uD83D\uDC64 Профиль</h1>
+        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">👤 Профиль</h1>
 
         <div className="bg-white rounded-2xl border border-[#d0f0e0] p-6 space-y-4 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
           {user && (
@@ -83,16 +83,16 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className="text-xs text-brand-text/50">Роль</p>
-                <p className="font-medium">{user.role === "barista" ? "\uD83E\uDDD1\u200D\uD83C\uDF73 Бариста" : user.role === "ceo" ? "\uD83D\uDC51 CEO" : "\u2615 Клиент"}</p>
+                <p className="font-medium">{user.role === "barista" ? "🧑‍🍳 Бариста" : user.role === "ceo" ? "👑 CEO" : "☕ Клиент"}</p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <p className="text-xs text-brand-text/50">Стрик</p>
-                  <p className="font-bold text-lg">{streak > 0 ? `\uD83D\uDD25 ${streak} дней` : "—"}</p>
+                  <p className="font-bold text-lg">{streak > 0 ? `🔥 ${streak} дней` : "—"}</p>
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-brand-text/50">Лояльность</p>
-                  <p className="font-bold text-lg">{loyaltyCount}/8 \u2615</p>
+                  <p className="font-bold text-lg">{loyaltyCount}/8 ☕</p>
                 </div>
               </div>
             </>
@@ -105,7 +105,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-xs text-brand-text/50">Депозит</p>
-                <p className="text-2xl font-bold text-brand-dark">{depositBalance}\u20B8</p>
+                <p className="text-2xl font-bold text-brand-dark">{depositBalance}₸</p>
               </div>
               <div className="bg-white p-2 rounded-xl border border-[#d0f0e0]">
                 <QRCodeSVG value={`oic:deposit:${user.uid}`} size={64} bgColor="#ffffff" fgColor="#1a7a44" level="M" />
@@ -141,14 +141,14 @@ export default function ProfilePage() {
             className="w-full bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 text-left"
             style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
           >
-            <p className="font-bold text-brand-text text-sm">\uD83D\uDCCD Узнай когда кофейня рядом</p>
+            <p className="font-bold text-brand-text text-sm">📍 Узнай когда кофейня рядом</p>
             <p className="text-xs text-brand-text/50 mt-1">Получай уведомления когда ты в 300м от кофейни</p>
           </motion.button>
         )}
         {showGeoPrompt && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-2xl border border-[#d0f0e0] p-6 mb-4 text-center" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            <p className="text-4xl mb-3">\uD83D\uDCCD</p>
+            <p className="text-4xl mb-3">📍</p>
             <p className="font-bold text-brand-text mb-2">Узнай когда кофейня рядом</p>
             <p className="text-sm text-brand-text/50 mb-4">Мы покажем расстояние до кофейни и напомним когда ты близко</p>
             <motion.button whileTap={{ scale: 0.95 }} onClick={requestGeo}
@@ -158,7 +158,7 @@ export default function ProfilePage() {
 
         {geoPermission && (
           <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            <span className="text-green-500 text-xl">\u2705</span>
+            <span className="text-green-500 text-xl">✅</span>
             <div>
               <p className="font-bold text-brand-text text-sm">Геолокация включена</p>
               <p className="text-xs text-brand-text/50">{CAFE_ADDRESS}</p>
@@ -178,13 +178,13 @@ export default function ProfilePage() {
         {user && (user.role === "barista" || user.role === "ceo") && (
           <a href="/admin" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 text-center font-bold text-brand-dark text-sm"
             style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            \u2615 Админ-панель
+            ☕ Админ-панель
           </a>
         )}
         {user && user.role === "ceo" && (
           <a href="/ceo" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 text-center font-bold text-brand-dark text-sm"
             style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            \uD83D\uDC51 CEO Дашборд
+            👑 CEO Дашборд
           </a>
         )}
 

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, where } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, getDoc, where } from "firebase/firestore";
 import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants";
 import type { MenuItem, CartItem } from "@/lib/types";
 import { trackEvent } from "@/lib/mixpanel";
@@ -389,18 +389,21 @@ export default function MenuPage() {
     return () => unsub();
   }, [user]);
 
-  /* Geolocation check */
+  /* Geolocation check — once on mount, not on every snapshot */
   useEffect(() => {
     if (!navigator.geolocation || !user) return;
-    const unsub = onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
+    let cancelled = false;
+    getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
+      if (cancelled) return;
       if (snap.exists() && snap.data().geolocationAllowed) {
         navigator.geolocation.getCurrentPosition((pos) => {
+          if (cancelled) return;
           const dist = getDistanceM(pos.coords.latitude, pos.coords.longitude, CAFE_LAT, CAFE_LNG);
           if (dist <= CAFE_RADIUS_M) setGeoNearby(true);
         }, () => {});
       }
-    }, () => {});
-    return () => unsub();
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [user]);
 
   /* Listen to CURRENT USER's active orders for scene state */
@@ -478,7 +481,7 @@ export default function MenuPage() {
       <QuickOrdersBlock />
 
       {/* Content overlaps bottom of scene */}
-      <div className="relative z-10 px-3 space-y-3">
+      <div className="relative z-10 -mt-8 px-3 space-y-3">
         <LoyaltyBanner count={loyaltyCount} />
         <QuickRepeat onRepeat={repeatOrder} />
       </div>
@@ -597,7 +600,7 @@ export default function MenuPage() {
       <AnimatePresence>
         {totalItems > 0 && (
           <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
+            className="fixed bottom-20 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
             <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
               <button onClick={() => setShowCart(!showCart)} className="flex items-center gap-2">
                 <span className="bg-brand-dark text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">{totalItems}</span>
