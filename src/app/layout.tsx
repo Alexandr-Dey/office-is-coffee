@@ -15,7 +15,6 @@ export const viewport: Viewport = {
   themeColor: "#1a7a44",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -26,12 +25,14 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className="font-sans antialiased bg-brand-bg text-brand-text">
-        <AuthProvider>
-          <ToastProvider>
-            {children}
-            <BottomNav />
-          </ToastProvider>
-        </AuthProvider>
+        <div className="mx-auto max-w-[480px] min-h-screen bg-brand-bg shadow-[0_0_40px_rgba(0,0,0,0.08)] relative">
+          <AuthProvider>
+            <ToastProvider>
+              {children}
+              <BottomNav />
+            </ToastProvider>
+          </AuthProvider>
+        </div>
       </body>
     </html>
   );

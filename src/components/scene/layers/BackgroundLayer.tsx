@@ -51,9 +51,9 @@ export function BackgroundLayer() {
 
       {/* === MENU BOARDS on light wall === */}
       {[
-        { x: 340, title: "☕ CLASSIC", items: ["Cappuccino  850", "Latte  900", "Americano  750", "Espresso  450"] },
-        { x: 490, title: "✨ AUTHOR", items: ["Raf Classic  1250", "Raf Honey  1250", "Mocha  1250", "Flat White  1050"] },
-        { x: 640, title: "🍵 MORE", items: ["Matcha  1100", "Cacao  900", "Fresh  800", "Smoothie  1000"] },
+        { x: 340, title: "☕ КОФЕ", items: ["Капучино     850", "Латте        900", "Американо    750", "Эспрессо     450"] },
+        { x: 490, title: "✨ АВТОРСКИЙ", items: ["Раф классика 1250", "Раф мёд      1250", "Мокко        1250", "Флэт уайт   1050"] },
+        { x: 640, title: "🍵 ЕЩЁ", items: ["Матча        1100", "Какао         900", "Фреш          800", "Смузи        1000"] },
       ].map((board, i) => (
         <g key={i}>
           <rect x={board.x} y="50" width="120" height="105" fill="#1a1a1a" rx="3" />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from "firebase/firestore";
@@ -12,6 +13,7 @@ interface CartItem { name: string; size: string; price: number; qty: number; mil
 
 export default function OrderPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
@@ -82,7 +84,7 @@ export default function OrderPage() {
       }
 
       sessionStorage.removeItem("oic_cart");
-      window.location.href = `/order/${docRef.id}`;
+      router.push(`/order/${docRef.id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Ошибка";
       setOrderError(msg.includes("Insufficient") ? "Недостаточно средств на депозите" : "Ошибка при создании заказа");

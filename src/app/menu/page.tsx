@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import { useAuth } from "@/lib/auth";
@@ -451,7 +452,8 @@ export default function MenuPage() {
   const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   useEffect(() => { if (cart.length > 0) sessionStorage.setItem("oic_cart", JSON.stringify(cart)); }, [cart]);
-  const goToOrder = () => { sessionStorage.setItem("oic_cart", JSON.stringify(cart)); window.location.href = "/order"; };
+  const router = useRouter();
+  const goToOrder = () => { sessionStorage.setItem("oic_cart", JSON.stringify(cart)); router.push("/order"); };
 
   return (
     <main className="min-h-screen bg-brand-bg pb-32">
@@ -468,8 +470,8 @@ export default function MenuPage() {
           <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
         </div>
       </div>
-      {/* Scene: 60vh */}
-      <div className="h-[60vh] relative overflow-hidden">
+      {/* Scene */}
+      <div className="h-[45vh] relative overflow-hidden">
         <CoffeeScene
           orderStatus={activeOrderStatus === "new" ? "pending" : activeOrderStatus as BaristaState}
           streakDays={streakDays}
@@ -600,7 +602,7 @@ export default function MenuPage() {
       <AnimatePresence>
         {totalItems > 0 && (
           <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-20 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
             <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
               <button onClick={() => setShowCart(!showCart)} className="flex items-center gap-2">
                 <span className="bg-brand-dark text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">{totalItems}</span>

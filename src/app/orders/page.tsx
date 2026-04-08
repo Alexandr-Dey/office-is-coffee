@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { collection, query, orderBy, where as fbWhere, limit, getDocs, Timestamp } from "firebase/firestore";
@@ -29,6 +30,7 @@ const ratingEmoji: Record<number, string> = { 3: "😍", 2: "👍", 1: "😕" };
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +53,7 @@ export default function OrdersPage() {
   const repeatOrder = (items: OrderItem[]) => {
     sessionStorage.setItem("oic_cart", JSON.stringify(items));
     sessionStorage.setItem("oic_is_repeat", "true");
-    window.location.href = "/order";
+    router.push("/order");
   };
 
   return (

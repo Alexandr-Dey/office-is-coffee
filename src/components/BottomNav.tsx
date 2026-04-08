@@ -18,8 +18,8 @@ export default function BottomNav() {
   if (hideOn.includes(pathname) || pathname.startsWith("/admin") || pathname.startsWith("/ceo")) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white" style={{ boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
-      <div className="flex items-center justify-around max-w-lg mx-auto h-16 pb-[env(safe-area-inset-bottom)]">
+    <nav className="sticky bottom-0 left-0 right-0 z-50 bg-white" style={{ boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
+      <div className="flex items-center justify-around h-16 pb-[env(safe-area-inset-bottom)]">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (

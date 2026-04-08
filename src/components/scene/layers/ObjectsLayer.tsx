@@ -109,7 +109,7 @@ export function ObjectsLayer({ orderStatus }: Props) {
       {/* Pickup surface marker */}
       <rect x="510" y="334" width="80" height="6" fill="#2d9e5a" opacity="0.2" rx="2" />
       <text x="550" y="330" textAnchor="middle" fill="#1a7a44" fontSize="7" opacity="0.35" fontWeight="bold">
-        PICKUP
+        ВЫДАЧА
       </text>
 
       {/* Cup stacks — S M L */}
