@@ -13,31 +13,17 @@ const SKIN_SHADOW = "#b8956a";
 const HAIR = "#1a1a1a";
 const APRON = "#27ae60";
 
-// Aslan prefers right side (pickup), but roams everywhere
-// Keep baristas centered behind the counter (center = x:400)
-const ASLAN_SPOTS = [
-  { x: 340, weight: 10 },
-  { x: 380, weight: 20 },
-  { x: 420, weight: 25 },
-  { x: 460, weight: 30 },
-  { x: 500, weight: 15 },
-];
+// Counter center = 400. Spots tightly around center.
+const SPOTS = [360, 390, 420, 450, 480];
 
-function pickSpot(spots: typeof ASLAN_SPOTS, currentX: number): number {
-  const available = spots.filter(s => Math.abs(s.x - currentX) > 30);
-  if (available.length === 0) return spots[0].x;
-  const total = available.reduce((s, sp) => s + sp.weight, 0);
-  let r = Math.random() * total;
-  for (const sp of available) {
-    r -= sp.weight;
-    if (r <= 0) return sp.x;
-  }
-  return available[0].x;
+function pickSpot(current: number): number {
+  const others = SPOTS.filter(s => Math.abs(s - current) > 20);
+  return others[Math.floor(Math.random() * others.length)] ?? 420;
 }
 
 export function BaristaAslan({ orderStatus }: Props) {
   const [currentAction, setCurrentAction] = useState(ASLAN_IDLE_ACTIONS[0].id);
-  const [posX, setPosX] = useState(450);
+  const [posX, setPosX] = useState(430);
   const [tapCount, setTapCount] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
 
@@ -56,22 +42,21 @@ export function BaristaAslan({ orderStatus }: Props) {
     return () => clearTimeout(timeout);
   }, [state]);
 
-  // Random movement cycle
+  // Random movement
   useEffect(() => {
     if (state !== "idle") return;
     let timeout: ReturnType<typeof setTimeout>;
     const move = () => {
-      setPosX(prev => pickSpot(ASLAN_SPOTS, prev));
-      timeout = setTimeout(move, 7000 + Math.random() * 8000); // 7-15s
+      setPosX(prev => pickSpot(prev));
+      timeout = setTimeout(move, 7000 + Math.random() * 8000);
     };
     timeout = setTimeout(move, 3000 + Math.random() * 4000);
     return () => clearTimeout(timeout);
   }, [state]);
 
-  // Order-specific positions
   useEffect(() => {
-    if (state === "accepted") setPosX(460);
-    if (state === "ready") setPosX(460);
+    if (state === "accepted") setPosX(440);
+    if (state === "ready") setPosX(440);
   }, [state]);
 
   useEffect(() => {
@@ -93,31 +78,19 @@ export function BaristaAslan({ orderStatus }: Props) {
     setTapCount(p => p + 1);
   }, []);
 
+  // SVG native transform — reliable. CSS transition for smooth movement.
   return (
-    <motion.g
+    <g
       id="barista-aslan"
       onClick={handleTap}
-      style={{ cursor: "pointer" }}
-      initial={{ x: posX, y: 275 }}
-      animate={{
-        x: posX,
-        y: 275,
-        ...(isFlipping ? { rotate: [0, 360] } : {}),
-      }}
-      transition={
-        isFlipping
-          ? { duration: 1.5, ease: "easeInOut" }
-          : { type: "spring", stiffness: 40, damping: 15, mass: 1 }
-      }
+      style={{ cursor: "pointer", transition: "transform 1.5s ease-in-out" }}
+      transform={`translate(${posX}, 275)`}
     >
-      <g>
-        {/* Name above head */}
-        <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
-          Аслан
-        </text>
-        <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />
-      </g>
-    </motion.g>
+      <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
+        Аслан
+      </text>
+      <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />
+    </g>
   );
 }
 
@@ -139,11 +112,9 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
         <>
           <rect x="-26" y="40" width="10" height="16" fill={SKIN} rx="4" />
           <rect x="-24" y="42" width="12" height="14" fill="#d42b4f" rx="2" />
-          <rect x="-23" y="44" width="9" height="2" fill="#fff" opacity="0.7" />
           <motion.rect x="16" y="30" width="10" height="18" fill={SKIN} rx="4"
             animate={{ rotate: [-20, 20, -20] }}
-            transition={{ duration: 0.5, repeat: Infinity }}
-            style={{ transformOrigin: "21px 48px" }} />
+            transition={{ duration: 0.5, repeat: Infinity }} />
         </>
       );
     }
@@ -172,11 +143,9 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
         return (
           <>
             <rect x="-26" y="42" width="10" height="18" fill={SKIN} rx="4" />
-            <motion.g animate={{ y: [0, -1, 0] }} transition={{ duration: 1.5, repeat: 1 }}>
-              <rect x="16" y="38" width="10" height="18" fill={SKIN} rx="4" />
-              <rect x="17" y="56" width="10" height="14" fill="#333" rx="2" />
-              <rect x="18" y="57" width="8" height="11" fill="#4488ff" rx="1" />
-            </motion.g>
+            <rect x="16" y="38" width="10" height="18" fill={SKIN} rx="4" />
+            <rect x="17" y="56" width="10" height="14" fill="#333" rx="2" />
+            <rect x="18" y="57" width="8" height="11" fill="#4488ff" rx="1" />
           </>
         );
       case "laugh":
@@ -188,15 +157,6 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
               animate={{ y: [40, 37, 40] }} transition={{ duration: 0.4, repeat: 3, delay: 0.1 }} />
           </>
         );
-      case "stretch_arms":
-        return (
-          <>
-            <motion.rect x="-30" y="40" width="10" height="18" fill={SKIN} rx="4"
-              animate={{ x: [-30, -36, -30] }} transition={{ duration: 1.5, repeat: 1 }} />
-            <motion.rect x="20" y="40" width="10" height="18" fill={SKIN} rx="4"
-              animate={{ x: [20, 26, 20] }} transition={{ duration: 1.5, repeat: 1 }} />
-          </>
-        );
       case "wipe_cup":
         return (
           <>
@@ -205,13 +165,6 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
               <rect x="16" y="40" width="10" height="18" fill={SKIN} rx="4" />
               <rect x="18" y="58" width="10" height="12" fill="#fff" rx="2" />
             </motion.g>
-          </>
-        );
-      case "pose":
-        return (
-          <>
-            <rect x="-20" y="42" width="10" height="16" fill={SKIN} rx="4" />
-            <rect x="10" y="42" width="10" height="16" fill={SKIN} rx="4" />
           </>
         );
       case "air_drums":
@@ -266,7 +219,6 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
         <ellipse cx="-7" cy="2" rx="7" ry="5" fill={HAIR} />
         <ellipse cx="-15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
         <ellipse cx="15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
-        <rect x="16" y="44" width="8" height="3" fill="#e8b88a" rx="1" opacity="0.5" />
         {action === "laugh" ? (
           <g>
             <path d="M-7,7 Q-5,5 -3,7" stroke={HAIR} strokeWidth="1" fill="none" />
@@ -287,7 +239,6 @@ function AslanBody({ action, isWaving }: { action: string; isWaving: boolean }) 
             <circle cx="7" cy="8.5" r="0.8" fill="#FFF" />
             <path d="M-9,4 Q-5,2 -2,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
             <path d="M2,4 Q5,2 9,4" stroke={HAIR} strokeWidth="1.3" fill="none" />
-            <path d="M0,12 Q2,15 0,15.5" stroke="rgba(150,100,70,0.3)" strokeWidth="1" fill="none" />
             <path d="M-5,19 Q0,22 5,19" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
           </g>
         )}
