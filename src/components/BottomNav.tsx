@@ -18,12 +18,12 @@ export default function BottomNav() {
   if (hideOn.includes(pathname) || pathname.startsWith("/admin") || pathname.startsWith("/ceo")) return null;
 
   return (
-    <nav className="sticky bottom-0 left-0 right-0 z-50 bg-white" style={{ boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
+    <nav className="sticky bottom-0 left-0 right-0 z-50 bg-white" style={{ boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }} aria-label="Основная навигация" role="navigation">
       <div className="flex items-center justify-around h-16 pb-[env(safe-area-inset-bottom)]">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
-            <Link key={tab.href} href={tab.href} className="flex flex-col items-center gap-0.5 relative">
+            <Link key={tab.href} href={tab.href} aria-label={tab.label} aria-current={active ? "page" : undefined} className="flex flex-col items-center gap-0.5 relative min-w-[44px] min-h-[44px] justify-center">
               <motion.span
                 whileTap={{ scale: 0.85 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}

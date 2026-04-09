@@ -10,6 +10,7 @@ import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, getDoc, wh
 import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants";
 import type { MenuItem, CartItem } from "@/lib/types";
 import { trackEvent } from "@/lib/mixpanel";
+import { useToast } from "@/components/Toast";
 import QuickOrdersBlock from "@/components/QuickOrdersBlock";
 
 /* ═══ CATEGORIES ═══ */
@@ -238,11 +239,12 @@ function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped }: {
   };
 
   return (
-    <motion.div
+    <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.04 }}
       onClick={unavailable ? undefined : onDetail}
+      aria-label={`${item.name}, от ${getMinPrice(item)} ₸`}
       className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow ${unavailable ? "opacity-50 cursor-not-allowed" : ""} bg-gradient-to-br ${gradient} text-white`}
       style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
     >
@@ -266,12 +268,13 @@ function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped }: {
         <span className="font-bold text-white">{"от "}{getMinPrice(item)}{" \u20B8"}</span>
         {!unavailable && (
           <motion.button whileTap={{ scale: 0.85 }} onClick={handleQuickAdd}
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+            aria-label={`Добавить ${item.name} в корзину`}
+            className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
               added ? "bg-white text-green-600" : "bg-white/25 text-white hover:bg-white/40"
-            }`}>{added ? "\u2713" : "+"}</motion.button>
+            }`}>{added ? "✓" : "+"}</motion.button>
         )}
       </div>
-    </motion.div>
+    </motion.article>
   );
 }
 
@@ -433,8 +436,10 @@ export default function MenuPage() {
     trackEvent("Menu Viewed", { category: cat });
   }, [cat]);
 
+  const { showToast } = useToast();
   const addToCart = (name: string, size: string, price: number, milk?: string, syrup?: string) => {
     trackEvent("Item Added to Cart", { name, size, price, milk, syrup });
+    showToast(`${name} добавлен в корзину`, "success");
     setCart((prev) => {
       const key = `${name}_${size}_${milk ?? ""}_${syrup ?? ""}`;
       const ex = prev.find((i) => `${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}` === key);
@@ -458,18 +463,18 @@ export default function MenuPage() {
   return (
     <main className="min-h-screen bg-brand-bg pb-32">
       {!cafeOpen && (
-        <div className="bg-red-50 text-red-600 text-center py-2 text-sm font-medium">
-          {"Кофейня закрыта \u00B7 Открывается в 07:30"}
+        <div className="bg-red-50 text-red-600 text-center py-2 text-sm font-medium" role="alert">
+          Кофейня закрыта · Открывается в 07:30
         </div>
       )}
 
-      <div className="px-3 pt-2 flex items-center justify-between">
-        <span className="font-display text-lg font-bold text-brand-text">Love is Coffee</span>
+      <header className="px-3 pt-2 flex items-center justify-between">
+        <h1 className="font-display text-lg font-bold text-brand-text">Love is Coffee</h1>
         <div className="flex items-center gap-1.5">
-          <div className={`w-2.5 h-2.5 rounded-full ${cafeOpen ? "bg-green-500" : "bg-red-500"}`} />
+          <div className={`w-2.5 h-2.5 rounded-full ${cafeOpen ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
           <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
         </div>
-      </div>
+      </header>
       {/* Scene */}
       <div className="h-[45vh] relative overflow-hidden">
         <CoffeeScene
@@ -499,39 +504,47 @@ export default function MenuPage() {
       )}
 
       {/* Hero hit */}
-      <div className="px-3 mt-3">
+      <section className="px-3 mt-3" aria-label="Хит сезона">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           className="bg-gradient-to-br from-brand-dark to-brand-mid rounded-2xl p-5 text-white relative overflow-hidden">
-          <div className="absolute -right-8 -top-8 w-32 h-32 bg-brand-mint/20 rounded-full" />
-          <div className="absolute right-10 bottom-2 w-16 h-16 bg-brand-mint/15 rounded-full" />
-          <div className="absolute left-1/2 top-0 w-24 h-24 bg-brand-mint/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
-          <p className="text-[10px] uppercase tracking-wider text-brand-mint font-bold mb-1">{"Хит сезона"}</p>
-          <p className="font-display text-xl font-bold mb-1">{"Раф классика"}</p>
-          <p className="text-sm text-white/70 mb-3">{"Нежный сливочный кофе с ванилью"}</p>
+          <div className="absolute -right-8 -top-8 w-32 h-32 bg-brand-mint/20 rounded-full" aria-hidden="true" />
+          <div className="absolute right-10 bottom-2 w-16 h-16 bg-brand-mint/15 rounded-full" aria-hidden="true" />
+          <div className="absolute left-1/2 top-0 w-24 h-24 bg-brand-mint/10 rounded-full -translate-x-1/2 -translate-y-1/2" aria-hidden="true" />
+          <p className="text-[10px] uppercase tracking-wider text-brand-mint font-bold mb-1">Хит сезона</p>
+          <h2 className="font-display text-xl font-bold mb-1">Раф классика</h2>
+          <p className="text-sm text-white/70 mb-3">Нежный сливочный кофе с ванилью</p>
           <div className="flex items-center gap-3">
-            <span className="font-bold text-lg">{"1 250 \u20B8"}</span>
+            <span className="font-bold text-lg">1 250 ₸</span>
             <motion.button whileTap={{ scale: 0.9 }}
               onClick={() => { if (cafeOpen) addToCart("Раф классика", "M", 1250, MILKS[0].name); }}
               disabled={!cafeOpen}
-              className="bg-white text-brand-dark px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-50">{"В корзину"}</motion.button>
+              aria-label="Добавить Раф классика в корзину"
+              className="bg-white text-brand-dark px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-50 min-h-[44px]">В корзину</motion.button>
           </div>
         </motion.div>
-      </div>
+      </section>
 
       {/* Tabs */}
-      <div ref={tabsRef} data-menu-tabs className="px-3 mt-4 overflow-x-auto scrollbar-hide">
-        <div className="flex gap-2 pb-1">
-          {CATEGORIES.map((c) => (
-            <button key={c.id} onClick={() => setCat(c.id)}
-              className={`px-4 py-1.5 rounded-[20px] text-sm font-medium whitespace-nowrap transition-all ${
-                cat === c.id ? "bg-[#1a7a44] text-white shadow-md" : "bg-[#f0fdf4] text-[#2d9e5a]"
-              }`}><span className="mr-1">{c.icon}</span>{c.name}</button>
-          ))}
+      <nav ref={tabsRef} data-menu-tabs aria-label="Категории меню" className="px-3 mt-4 relative">
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex gap-2 pb-1" role="tablist">
+            {CATEGORIES.map((c) => (
+              <button key={c.id} onClick={() => setCat(c.id)}
+                role="tab"
+                aria-selected={cat === c.id}
+                aria-label={`Категория ${c.name}`}
+                className={`px-4 py-2.5 min-h-[44px] rounded-[20px] text-sm font-medium whitespace-nowrap transition-all ${
+                  cat === c.id ? "bg-[#1a7a44] text-white shadow-md" : "bg-[#f0fdf4] text-[#2d9e5a]"
+                }`}><span className="mr-1">{c.icon}</span>{c.name}</button>
+            ))}
+          </div>
         </div>
-      </div>
+        {/* Scroll fade indicator */}
+        <div className="absolute right-3 top-0 bottom-0 w-8 bg-gradient-to-l from-brand-bg to-transparent pointer-events-none" aria-hidden="true" />
+      </nav>
 
       {/* Grid */}
-      <div className="px-3 mt-3">
+      <section className="px-3 mt-3" aria-label="Каталог напитков" role="tabpanel">
         {menuLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[1, 2, 3, 4].map(i => (
@@ -557,7 +570,7 @@ export default function MenuPage() {
             </motion.div>
           </AnimatePresence>
         )}
-      </div>
+      </section>
 
       {/* Detail sheet */}
       <AnimatePresence>
