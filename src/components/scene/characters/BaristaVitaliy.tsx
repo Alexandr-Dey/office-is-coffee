@@ -122,10 +122,11 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
       id="barista-vitaliy"
       onClick={handleTap}
       style={{ cursor: "pointer" }}
-      animate={{ x: posX }}
+      initial={{ x: posX, y: 275 }}
+      animate={{ x: posX, y: 275 }}
       transition={{ type: "spring", stiffness: 40, damping: 15, mass: 1 }}
     >
-      <g transform="translate(0, 275)">
+      <g>
         {/* Name above head */}
         <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
           Виталий

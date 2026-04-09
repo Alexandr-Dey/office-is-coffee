@@ -98,9 +98,11 @@ export function BaristaAslan({ orderStatus }: Props) {
       id="barista-aslan"
       onClick={handleTap}
       style={{ cursor: "pointer" }}
+      initial={{ x: posX, y: 275 }}
       animate={{
         x: posX,
-        ...(isFlipping ? { rotate: [0, 360], y: [0, -40, 0] } : {}),
+        y: 275,
+        ...(isFlipping ? { rotate: [0, 360] } : {}),
       }}
       transition={
         isFlipping
@@ -108,7 +110,7 @@ export function BaristaAslan({ orderStatus }: Props) {
           : { type: "spring", stiffness: 40, damping: 15, mass: 1 }
       }
     >
-      <g transform="translate(0, 275)">
+      <g>
         {/* Name above head */}
         <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
           Аслан
