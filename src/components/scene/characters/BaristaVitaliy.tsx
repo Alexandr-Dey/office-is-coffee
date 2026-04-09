@@ -18,13 +18,13 @@ const APRON = "#2980b9";
 
 // Safe X positions behind the counter (between/beside objects)
 // Counter: x=100..700. Objects block: machine 120-260, grinder 270-300, POS 365-405, cups 610-674
-// Visible SVG range on mobile ≈ x=170..630, keep baristas well within
+// Keep baristas centered behind the counter (center = x:400)
 const VITALIY_SPOTS = [
-  { x: 300, weight: 30 },  // near grinder
-  { x: 370, weight: 25 },  // between grinder and POS
-  { x: 430, weight: 20 },  // center
-  { x: 500, weight: 15 },  // between POS and pickup
-  { x: 560, weight: 10 },  // pickup zone
+  { x: 340, weight: 15 },
+  { x: 380, weight: 30 },
+  { x: 420, weight: 25 },
+  { x: 460, weight: 20 },
+  { x: 500, weight: 10 },
 ];
 
 function pickSpot(spots: typeof VITALIY_SPOTS, currentX: number): number {
@@ -41,7 +41,7 @@ function pickSpot(spots: typeof VITALIY_SPOTS, currentX: number): number {
 
 export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props) {
   const [currentAction, setCurrentAction] = useState(VITALIY_IDLE_ACTIONS[0].id);
-  const [posX, setPosX] = useState(300);
+  const [posX, setPosX] = useState(380);
   const [tapCount, setTapCount] = useState(0);
   const [isAngry, setIsAngry] = useState(false);
   const [isGone, setIsGone] = useState(false);
@@ -76,8 +76,8 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
 
   // When working on order, go to machine area
   useEffect(() => {
-    if (state === "accepted") setPosX(300);
-    if (state === "ready") setPosX(430);
+    if (state === "accepted") setPosX(380);
+    if (state === "ready") setPosX(420);
   }, [state]);
 
   useEffect(() => {

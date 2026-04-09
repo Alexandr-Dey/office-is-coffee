@@ -14,13 +14,13 @@ const HAIR = "#1a1a1a";
 const APRON = "#27ae60";
 
 // Aslan prefers right side (pickup), but roams everywhere
-// Visible SVG range on mobile ≈ x=170..630, keep baristas well within
+// Keep baristas centered behind the counter (center = x:400)
 const ASLAN_SPOTS = [
-  { x: 300, weight: 10 },  // near grinder
-  { x: 370, weight: 15 },  // between grinder and POS
-  { x: 430, weight: 20 },  // center
-  { x: 500, weight: 30 },  // between POS and pickup
-  { x: 560, weight: 25 },  // pickup zone
+  { x: 340, weight: 10 },
+  { x: 380, weight: 20 },
+  { x: 420, weight: 25 },
+  { x: 460, weight: 30 },
+  { x: 500, weight: 15 },
 ];
 
 function pickSpot(spots: typeof ASLAN_SPOTS, currentX: number): number {
@@ -37,7 +37,7 @@ function pickSpot(spots: typeof ASLAN_SPOTS, currentX: number): number {
 
 export function BaristaAslan({ orderStatus }: Props) {
   const [currentAction, setCurrentAction] = useState(ASLAN_IDLE_ACTIONS[0].id);
-  const [posX, setPosX] = useState(500);
+  const [posX, setPosX] = useState(450);
   const [tapCount, setTapCount] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
 
@@ -70,8 +70,8 @@ export function BaristaAslan({ orderStatus }: Props) {
 
   // Order-specific positions
   useEffect(() => {
-    if (state === "accepted") setPosX(500);
-    if (state === "ready") setPosX(500);
+    if (state === "accepted") setPosX(460);
+    if (state === "ready") setPosX(460);
   }, [state]);
 
   useEffect(() => {
