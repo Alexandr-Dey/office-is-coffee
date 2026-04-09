@@ -14,7 +14,7 @@ const HAIR = "#1a1a1a";
 const APRON = "#27ae60";
 
 // Counter center = 400. Spots tightly around center.
-const SPOTS = [360, 390, 420, 450, 480];
+const SPOTS = [250, 320, 400, 480, 560, 630];
 
 function pickSpot(current: number): number {
   const others = SPOTS.filter(s => Math.abs(s - current) > 20);
@@ -48,9 +48,9 @@ export function BaristaAslan({ orderStatus }: Props) {
     let timeout: ReturnType<typeof setTimeout>;
     const move = () => {
       setPosX(prev => pickSpot(prev));
-      timeout = setTimeout(move, 7000 + Math.random() * 8000);
+      timeout = setTimeout(move, 6000 + Math.random() * 3000);
     };
-    timeout = setTimeout(move, 3000 + Math.random() * 4000);
+    timeout = setTimeout(move, 5000 + Math.random() * 3000);
     return () => clearTimeout(timeout);
   }, [state]);
 

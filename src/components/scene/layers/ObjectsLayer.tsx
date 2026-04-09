@@ -89,19 +89,23 @@ export function ObjectsLayer({ orderStatus }: Props) {
 
       {/* ═══ ZONE 2: CASH (300-500) ═══ */}
 
-      {/* POS terminal — large, center of zone 2 */}
+      {/* POS terminal — facing customer (viewer), tilted forward */}
       <g transform="translate(365, 278)">
         {/* Stand base */}
         <rect x="6" y="48" width="28" height="4" fill="#555" rx="1" />
-        {/* Stand pole */}
-        <rect x="14" y="36" width="12" height="14" fill="#666" rx="1" />
-        {/* Screen */}
-        <rect x="0" y="0" width="40" height="38" fill="#333" rx="3" />
-        <rect x="3" y="3" width="34" height="30" fill="#1a7a44" rx="2" />
+        {/* Stand pole — angled back */}
+        <rect x="16" y="36" width="8" height="14" fill="#666" rx="1" />
+        {/* Screen back (dark, visible because tilted toward viewer) */}
+        <rect x="0" y="2" width="40" height="36" fill="#222" rx="3" />
+        {/* Screen face — bright, facing viewer */}
+        <rect x="1" y="3" width="38" height="34" fill="#333" rx="2" />
+        <rect x="3" y="5" width="34" height="28" fill="#1a7a44" rx="2" />
         {/* Screen UI */}
-        <text x="20" y="16" textAnchor="middle" fill="#fff" fontSize="7" fontWeight="bold">LiC</text>
-        <rect x="8" y="22" width="24" height="3" fill="#3ecf82" rx="0.5" />
+        <text x="20" y="18" textAnchor="middle" fill="#fff" fontSize="8" fontWeight="bold">LiC</text>
+        <rect x="8" y="23" width="24" height="3" fill="#3ecf82" rx="0.5" />
         <rect x="8" y="28" width="16" height="2" fill="#2d9e5a" rx="0.5" />
+        {/* Screen shine/reflection */}
+        <rect x="4" y="6" width="6" height="18" fill="#fff" opacity="0.06" rx="1" />
       </g>
 
       {/* ═══ ZONE 3: PICKUP (500-700) ═══ */}
