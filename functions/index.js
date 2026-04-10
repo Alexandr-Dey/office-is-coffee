@@ -14,21 +14,29 @@ function getAlmatyDate(date) {
   return d.toLocaleString("sv", { timeZone: "Asia/Almaty" }).split(" ")[0];
 }
 
-async function sendPush(uid, title, body) {
+async function sendPush(uid, title, body, data) {
   const tokenSnap = await db.collection("push_tokens").doc(uid).get();
   if (!tokenSnap.exists || !tokenSnap.data().token) return;
   await getMessaging().send({
     token: tokenSnap.data().token,
     notification: { title, body },
-  }).catch(() => {});
+    data: data || {},
+    webpush: {
+      notification: { icon: "/icon-192.png", badge: "/icon-192.png" },
+    },
+  }).catch((err) => console.warn("Push failed for", uid, err.message));
 }
 
-async function sendPushMulti(tokens, title, body) {
+async function sendPushMulti(tokens, title, body, data) {
   if (tokens.length === 0) return;
   await getMessaging().sendEachForMulticast({
     tokens,
     notification: { title, body },
-  }).catch(() => {});
+    data: data || {},
+    webpush: {
+      notification: { icon: "/icon-192.png", badge: "/icon-192.png" },
+    },
+  }).catch((err) => console.warn("Multi push failed:", err.message));
 }
 
 async function getBaristaTokens() {
@@ -113,7 +121,7 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
   }
 });
 
-/* ═══ 2. ON ORDER READY — barista bonus + push client ═══ */
+/* ═══ 2. ON ORDER STATUS CHANGE — push + bonus ═══ */
 exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
   const before = event.data?.before?.data();
   const after = event.data?.after?.data();
@@ -121,7 +129,18 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
   if (before.status === after.status) return;
 
   const orderId = event.params.orderId;
+  const userId = after.userId;
+  const clientName = after.name || "Клиент";
 
+  /* ── accepted → push client ── */
+  if (after.status === "accepted") {
+    if (userId && userId !== "anonymous") {
+      const mins = after.estimatedMinutes ? ` (~${after.estimatedMinutes} мин)` : "";
+      await sendPush(userId, "Ваш кофе готовится! ☕", `Бариста принял заказ${mins}`);
+    }
+  }
+
+  /* ── ready → bonus + push client ── */
   if (after.status === "ready") {
     // Barista bonus (+5₸) only if not free
     if (!after.isFreeByLoyalty) {
@@ -132,7 +151,7 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
           const bonusSnap = await tx.get(bonusRef);
           if (bonusSnap.exists) {
             const history = bonusSnap.data().history || [];
-            if (history.some((h) => h.orderId === orderId)) return; // duplicate guard
+            if (history.some((h) => h.orderId === orderId)) return;
             tx.update(bonusRef, {
               totalBonus: FieldValue.increment(5),
               pendingPayout: FieldValue.increment(5),
@@ -149,10 +168,28 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
       }
     }
 
-    // Push to client
-    const userId = after.userId;
     if (userId && userId !== "anonymous") {
-      await sendPush(userId, "Твой кофе готов!", "Забирай у стойки ☕");
+      await sendPush(userId, "Твой кофе готов! 🎉", "Забирай у стойки");
+    }
+
+    // Push baristas that order is ready for pickup
+    const tokens = await getBaristaTokens();
+    await sendPushMulti(tokens, "Заказ готов к выдаче", `${clientName} — можно выдавать`);
+  }
+
+  /* ── cancelled → push client ── */
+  if (after.status === "cancelled") {
+    if (userId && userId !== "anonymous") {
+      const reason = after.cancelReason || "Нет в наличии";
+      await sendPush(userId, "Заказ отменён 😔", reason);
+    }
+  }
+
+  /* ── paid → push barista confirmation ── */
+  if (after.status === "paid") {
+    const baristaId = after.baristaid;
+    if (baristaId) {
+      await sendPush(baristaId, "Заказ завершён ✅", `${clientName} — оплачен`);
     }
   }
 });
