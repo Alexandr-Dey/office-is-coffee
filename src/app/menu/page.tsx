@@ -497,6 +497,11 @@ export default function MenuPage() {
   const [lastCookieDate, setLastCookieDate] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
+  /* Track push opened */
+  useEffect(() => {
+    import("@/lib/push").then(({ trackPushOpened: track }) => track()).catch(() => {});
+  }, []);
+
   /* Load menu from Firestore */
   useEffect(() => {
     const q = query(collection(getFirebaseDb(), "menu_items"), orderBy("sortOrder", "asc"));

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireCEO } from "@/lib/auth";
 import { useToast } from "@/components/Toast";
+import PushAnalytics from "@/components/ceo/PushAnalytics";
 import { collection, getDocs, doc, updateDoc, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
 
 interface BaristaBonus {
@@ -232,8 +233,9 @@ export default function CEOPage() {
             )}
           </div>
 
-          {/* Push Notifications Section */}
+          {/* Push Notifications */}
           <PushSection />
+          <PushAnalytics />
         </div>
       </div>
     </main>

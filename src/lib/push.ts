@@ -68,3 +68,33 @@ export async function requestPushPermission(uid: string): Promise<boolean> {
 
   return false;
 }
+
+/**
+ * Track push notification open via URL parameter.
+ * Called on app load — checks for ?pushId=XXX in URL.
+ */
+export async function trackPushOpened(): Promise<void> {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const pushId = params.get("pushId");
+  if (!pushId) return;
+
+  // Remove param from URL
+  params.delete("pushId");
+  const newUrl = params.toString()
+    ? `${window.location.pathname}?${params.toString()}`
+    : window.location.pathname;
+  window.history.replaceState({}, "", newUrl);
+
+  // Call Cloud Function
+  try {
+    const { getFunctions, httpsCallable } = await import("firebase/functions");
+    const { getApps } = await import("firebase/app");
+    if (!getApps().length) return;
+    const functions = getFunctions(getApps()[0]);
+    const fn = httpsCallable(functions, "trackPushOpened");
+    await fn({ pushLogId: pushId });
+  } catch {
+    // Silent fail
+  }
+}

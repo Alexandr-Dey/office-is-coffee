@@ -35,7 +35,9 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const data = event.notification.data || {};
   let url = "/menu";
-  if (data.type === "order_ready" && data.orderId) {
+  if (data.pushLogId) {
+    url = "/?pushId=" + data.pushLogId;
+  } else if (data.type === "order_ready" && data.orderId) {
     url = `/order/${data.orderId}`;
   } else if (data.type === "deposit") {
     url = "/profile";

@@ -118,6 +118,21 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
         tx.update(orderRef, { isFreeByLoyalty: true, total: 0 });
       }
     });
+
+    // Track order after push (within 2 hours)
+    const userSnap2 = await db.collection("users").doc(userId).get();
+    if (userSnap2.exists) {
+      const ud = userSnap2.data();
+      if (ud.lastPushSentAt && ud.lastPushId) {
+        const pushTime = new Date(ud.lastPushSentAt).getTime();
+        const twoHours = 2 * 60 * 60 * 1000;
+        if (Date.now() - pushTime < twoHours) {
+          await db.collection("push_log").doc(ud.lastPushId).update({
+            ordersAfterCount: FieldValue.increment(1),
+          }).catch(() => {});
+        }
+      }
+    }
   }
 });
 
@@ -282,28 +297,111 @@ exports.onCafeOpen = onDocumentUpdated("cafe_status/aksay_main", async (event) =
   await sendPushMulti(tokens, "Кофейня открыта! ☕", "Love is Coffee ждёт тебя. Заходи за кофе!");
 });
 
-/* ═══ 6. MANUAL PUSH — CEO only ═══ */
+/* ═══ 6. MANUAL PUSH — CEO only, with monitoring ═══ */
 exports.sendManualPush = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Not authenticated");
   if (request.auth.token.role !== "ceo") throw new HttpsError("permission-denied", "CEO only");
 
-  const { tokens, title, body } = request.data;
+  const { tokens, title, body, segment } = request.data;
   if (!tokens || !Array.isArray(tokens) || !title || !body) {
     throw new HttpsError("invalid-argument", "tokens, title, body required");
   }
 
-  const batch = tokens.slice(0, 500);
-  await sendPushMulti(batch, title, body);
-
-  // Log
-  await db.collection("push_log").add({
+  // Create push log first to get ID
+  const logRef = await db.collection("push_log").add({
     sentBy: callerUid,
     sentAt: new Date().toISOString(),
     title,
     body,
-    recipientCount: batch.length,
+    segment: segment || "manual",
+    recipientCount: tokens.length,
+    deliveredCount: 0,
+    openedCount: 0,
+    ordersAfterCount: 0,
+    deadTokensFound: 0,
   });
+  const pushLogId = logRef.id;
 
-  return { sent: batch.length };
+  let totalDelivered = 0;
+  let totalDead = 0;
+
+  // Process in chunks of 500
+  for (let i = 0; i < tokens.length; i += 500) {
+    const chunk = tokens.slice(i, i + 500);
+    try {
+      const response = await getMessaging().sendEachForMulticast({
+        tokens: chunk,
+        notification: { title, body },
+        data: { pushLogId },
+        webpush: {
+          notification: { icon: "/icon-192.png", badge: "/icon-192.png" },
+          fcmOptions: { link: "/?pushId=" + pushLogId },
+        },
+      });
+
+      // Process responses
+      for (let j = 0; j < response.responses.length; j++) {
+        const r = response.responses[j];
+        if (r.success) {
+          totalDelivered++;
+        } else if (r.error) {
+          const code = r.error.code;
+          if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+            totalDead++;
+            // Clean dead token
+            const deadToken = chunk[j];
+            const tokenSnap = await db.collection("push_tokens").where("token", "==", deadToken).get();
+            for (const td of tokenSnap.docs) {
+              await td.ref.delete();
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Multicast error:", err);
+    }
+  }
+
+  // Update log with results
+  await logRef.update({ deliveredCount: totalDelivered, deadTokensFound: totalDead });
+
+  // Update each recipient's lastPush
+  const tokenUserMap = new Map();
+  const pushTokensSnap = await db.collection("push_tokens").get();
+  for (const d of pushTokensSnap.docs) {
+    if (d.data().token) tokenUserMap.set(d.data().token, d.id);
+  }
+  const batch = db.batch();
+  let batchCount = 0;
+  for (const token of tokens) {
+    const uid = tokenUserMap.get(token);
+    if (uid) {
+      batch.update(db.collection("users").doc(uid), {
+        lastPushSentAt: new Date().toISOString(),
+        lastPushId: pushLogId,
+      });
+      batchCount++;
+      if (batchCount >= 499) break; // Firestore batch limit
+    }
+  }
+  if (batchCount > 0) await batch.commit();
+
+  return { pushLogId, deliveredCount: totalDelivered, deadTokensFound: totalDead };
+});
+
+/* ═══ 7. TRACK PUSH OPENED ═══ */
+exports.trackPushOpened = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Not authenticated");
+
+  const { pushLogId } = request.data;
+  if (!pushLogId) throw new HttpsError("invalid-argument", "pushLogId required");
+
+  const logRef = db.collection("push_log").doc(pushLogId);
+  const logSnap = await logRef.get();
+  if (!logSnap.exists) return { ok: false };
+
+  await logRef.update({ openedCount: FieldValue.increment(1) });
+  return { ok: true };
 });
