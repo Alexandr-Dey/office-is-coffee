@@ -149,7 +149,7 @@ export default function Home() {
             <span className="text-lg">☕</span>
             <span className="font-display font-bold text-brand-text text-sm">Love is Coffee</span>
           </div>
-          <p className="text-brand-text/30 text-xs">Аксай, ул. Момышулы 14</p>
+          <p className="text-brand-text/30 text-xs">ул. Назарбаева 226 · БанкЦентрКредит</p>
         </div>
       </footer>
     </main>
