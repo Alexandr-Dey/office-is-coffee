@@ -114,10 +114,12 @@ function RadarChart({ profile }: { profile: NonNullable<MenuItem["radarData"]> }
 }
 
 /* ═══ DRINK DETAIL SHEET ═══ */
-function DrinkDetail({ item, catGradient, onAdd, onClose }: {
+function DrinkDetail({ item, catGradient, onAdd, onClose, isFavorite, onToggleFavorite }: {
   item: MenuItem; catGradient: string;
   onAdd: (name: string, size: string, price: number, milk?: string, syrup?: string) => void;
   onClose: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 }) {
   const sizes = getSizes(item);
   const [sz, setSz] = useState<Size | null>(getDefault(item));
@@ -143,13 +145,19 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
             className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-lg backdrop-blur-sm">
             ←
           </motion.button>
-          <div className="flex gap-1.5">
+          <div className="flex items-center gap-2">
+            <motion.button whileTap={{ scale: 0.85 }} onClick={onToggleFavorite}
+              className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-lg backdrop-blur-sm">
+              {isFavorite ? "❤️" : "🤍"}
+            </motion.button>
+          </div>
+        </div>
+        <div className="flex gap-1.5 mt-2">
             {item.tags.includes("hit") && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">Хит</span>}
             {item.tags.includes("new") && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">NEW</span>}
             {item.tags.includes("season") && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">Сезон</span>}
-          </div>
         </div>
-        <div className="flex items-end gap-4">
+        <div className="flex items-end gap-4 mt-3">
           <div>
             <p className="text-5xl mb-2">{catIcon}</p>
             <h2 className="font-display text-2xl font-bold text-white">{item.name}</h2>
@@ -336,7 +344,7 @@ function LoyaltyBanner({ count }: { count: number }) {
   );
 }
 
-/* ═══ QUICK ORDER STRIP (last orders + popular) ═══ */
+/* ═══ QUICK ORDER STRIP ═══ */
 interface RecentOrder {
   key: string;
   label: string;
@@ -345,50 +353,62 @@ interface RecentOrder {
   total: number;
 }
 
-function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories }: {
+function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories, favorites }: {
   menuItems: MenuItem[];
   onRepeat: (items: CartItem[]) => void;
   onDetail: (item: MenuItem, gradient: string) => void;
   categories: typeof CATEGORIES;
+  favorites: string[];
 }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
 
   useEffect(() => {
     if (!user) return;
+    // Try with index first, fallback without orderBy
     const q = query(
       collection(getFirebaseDb(), "orders"),
       where("userId", "==", user.uid),
       where("status", "==", "paid"),
-      orderBy("createdAt", "desc"),
-      limit(10)
+      limit(15)
     );
     getDocs(q).then((snap) => {
+      const docs = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => ((b as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0 - (((a as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0));
+
       const seen = new Set<string>();
       const unique: RecentOrder[] = [];
-      for (const d of snap.docs) {
-        const data = d.data();
-        if (!data.items || data.items.length === 0) continue;
-        // Unique key by item names + sizes
-        const key = data.items.map((i: { name: string; size: string }) => `${i.name}_${i.size}`).sort().join("|");
+      for (const data of docs) {
+        const d = data as Record<string, unknown>;
+        const items = d.items as Array<{ name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }>;
+        if (!items || items.length === 0) continue;
+        const key = items.map(i => `${i.name}_${i.size}`).sort().join("|");
         if (seen.has(key)) continue;
         seen.add(key);
-        const firstName = data.items[0].name;
-        const label = data.items.length === 1
-          ? `${firstName} ${data.items[0].size || ""}`
-          : `${firstName} +${data.items.length - 1}`;
-        const milk = data.items[0].milk;
+        const label = items.length === 1
+          ? `${items[0].name} ${items[0].size || ""}`.trim()
+          : `${items[0].name} +${items.length - 1}`;
+        const milk = items[0].milk;
         const sub = milk && milk !== "Стандарт" && milk !== "standard" ? milk : "";
-        unique.push({ key, label: label.trim(), sub, items: data.items, total: data.total ?? 0 });
-        if (unique.length >= 3) break;
+        unique.push({ key, label, sub, items, total: (d.total as number) ?? 0 });
+        if (unique.length >= 1) break; // Only 1 repeat card
       }
       setRecentOrders(unique);
     }).catch(() => {});
   }, [user]);
 
-  const featured = menuItems.filter(i => (i as MenuItem & { featured?: boolean }).featured);
+  // Favorite items from user profile
+  const favoriteItems = menuItems.filter(i => favorites.includes(i.id));
+  // Popular = featured minus favorites (favorites replace them)
+  const featured = menuItems
+    .filter(i => (i as MenuItem & { featured?: boolean }).featured && !favorites.includes(i.id));
 
-  if (recentOrders.length === 0 && featured.length === 0) return null;
+  // Final cards: repeat (1) → favorites → popular (fill remaining)
+  const popularCards = [...favoriteItems, ...featured];
+
+  if (recentOrders.length === 0 && popularCards.length === 0) return null;
 
   const handleRepeat = (order: RecentOrder) => {
     const cartItems: CartItem[] = order.items.map(i => ({
@@ -399,8 +419,8 @@ function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories }: {
       milk: i.milk,
       syrup: i.addons && i.addons.length > 0 ? i.addons[0] : undefined,
     }));
-    sessionStorage.setItem("oic_is_repeat", "true");
     onRepeat(cartItems);
+    router.push("/order");
   };
 
   return (
@@ -409,24 +429,25 @@ function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories }: {
         <h2 className="text-sm font-bold text-brand-text">⚡ Быстрый заказ</h2>
       </div>
       <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-3 pb-2">
-        {/* Recent orders first */}
+        {/* Repeat last order — bright card */}
         {recentOrders.map((order) => (
           <motion.button
             key={order.key}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleRepeat(order)}
-            className="flex-shrink-0 w-32 rounded-2xl p-3 text-left bg-white border border-[#d0f0e0]"
-            style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
+            className="flex-shrink-0 w-36 rounded-2xl p-3 text-left bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-white"
+            style={{ boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}
           >
-            <span className="text-[10px] text-brand-mint font-bold">🕐 Повторить</span>
-            <p className="text-xs font-bold text-brand-text truncate mt-1">{order.label}</p>
-            {order.sub && <p className="text-[10px] text-brand-text/40 truncate">{order.sub}</p>}
-            <p className="text-xs font-bold text-brand-dark mt-1">{order.total}₸</p>
+            <span className="text-lg">🔁</span>
+            <p className="text-xs font-bold truncate mt-1">{order.label}</p>
+            {order.sub && <p className="text-[10px] text-white/70 truncate">{order.sub}</p>}
+            <p className="text-sm font-bold mt-1">{order.total}₸ →</p>
           </motion.button>
         ))}
-        {/* Then popular */}
-        {featured.map((item) => {
+        {/* Favorites (❤️) then popular */}
+        {popularCards.map((item) => {
           const itemCat = categories.find(c => c.id === item.category);
+          const isFav = favorites.includes(item.id);
           const minPrice = Math.min(...Object.values(item.sizes));
           return (
             <motion.button
@@ -436,8 +457,11 @@ function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories }: {
               className={`flex-shrink-0 w-28 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${itemCat?.gradient ?? "from-[#1a7a44] to-[#2d9e5a]"}`}
               style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
             >
-              <span className="text-2xl block mb-1">{itemCat?.icon ?? "☕"}</span>
-              <p className="text-xs font-bold truncate">{item.name}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl">{itemCat?.icon ?? "☕"}</span>
+                {isFav && <span className="text-xs">❤️</span>}
+              </div>
+              <p className="text-xs font-bold truncate mt-1">{item.name}</p>
               <p className="text-[10px] text-white/70 mt-0.5">от {minPrice}₸</p>
             </motion.button>
           );
@@ -465,6 +489,7 @@ export default function MenuPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuLoading, setMenuLoading] = useState(true);
   const [cookieCollected, setCookieCollected] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [lastCookieDate, setLastCookieDate] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -513,6 +538,7 @@ export default function MenuPage() {
         const lcd = snap.data().lastCookieDate ?? null;
         setLastCookieDate(lcd);
         setCookieCollected(isCookieCollectedToday(lcd));
+        setFavorites(snap.data().favoriteItems ?? []);
       }
     }, () => {});
     return () => unsub();
@@ -580,6 +606,15 @@ export default function MenuPage() {
     }).catch(() => {});
     showToast("🍪 Печенька в профиле!", "success");
   };
+  const toggleFavorite = async (itemId: string) => {
+    if (!user) return;
+    const newFavs = favorites.includes(itemId)
+      ? favorites.filter(f => f !== itemId)
+      : [...favorites, itemId];
+    setFavorites(newFavs);
+    await updateDoc(firestoreDoc(getFirebaseDb(), "users", user.uid), { favoriteItems: newFavs }).catch(() => {});
+  };
+
   const addToCart = (name: string, size: string, price: number, milk?: string, syrup?: string) => {
     trackEvent("Item Added to Cart", { name, size, price, milk, syrup });
     showToast(`${name} добавлен в корзину`, "success");
@@ -624,6 +659,7 @@ export default function MenuPage() {
         onRepeat={repeatOrder}
         onDetail={(item, gradient) => setDetailItem({ item, gradient })}
         categories={CATEGORIES}
+        favorites={favorites}
       />
 
       {/* Loyalty */}
@@ -741,6 +777,8 @@ export default function MenuPage() {
             catGradient={detailItem.gradient}
             onAdd={addToCart}
             onClose={() => setDetailItem(null)}
+            isFavorite={favorites.includes(detailItem.item.id)}
+            onToggleFavorite={() => toggleFavorite(detailItem.item.id)}
           />
         )}
       </AnimatePresence>
