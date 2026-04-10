@@ -11,6 +11,7 @@ import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants
 import type { MenuItem, CartItem } from "@/lib/types";
 import { trackEvent } from "@/lib/mixpanel";
 import { useToast } from "@/components/Toast";
+import { useCart } from "@/lib/cart";
 import QuickOrdersBlock from "@/components/QuickOrdersBlock";
 import CookieButton from "@/components/CookieButton";
 import { getDailyCookie, isCookieCollectedToday } from "@/lib/dailyCookie";
@@ -349,8 +350,8 @@ function QuickRepeat({ onRepeat }: { onRepeat: (items: CartItem[]) => void }) {
 /* ═══ PAGE ═══ */
 export default function MenuPage() {
   const { user } = useAuth();
+  const { cart, addItem, removeItem, setItems, clearCart, totalItems, totalPrice } = useCart();
   const [cat, setCat] = useState("classic-coffee");
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [detailItem, setDetailItem] = useState<{ item: MenuItem; gradient: string } | null>(null);
   const [loyaltyCount, setLoyaltyCount] = useState(0);
@@ -471,25 +472,16 @@ export default function MenuPage() {
   const addToCart = (name: string, size: string, price: number, milk?: string, syrup?: string) => {
     trackEvent("Item Added to Cart", { name, size, price, milk, syrup });
     showToast(`${name} добавлен в корзину`, "success");
-    setCart((prev) => {
-      const key = `${name}_${size}_${milk ?? ""}_${syrup ?? ""}`;
-      const ex = prev.find((i) => `${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}` === key);
-      if (ex) return prev.map((i) => `${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}` === key ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { name, size, price, qty: 1, milk, syrup }];
-    });
+    addItem(name, size, price, milk, syrup);
   };
 
-  const repeatOrder = (items: CartItem[]) => { setCart(items); };
+  const repeatOrder = (items: CartItem[]) => { setItems(items); };
   const removeFromCart = (name: string, size: string, milk?: string, syrup?: string) => {
-    setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size && (i.milk ?? "") === (milk ?? "") && (i.syrup ?? "") === (syrup ?? ""))));
+    removeItem(name, size, milk, syrup);
   };
 
-  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
-  const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
-
-  useEffect(() => { if (cart.length > 0) sessionStorage.setItem("oic_cart", JSON.stringify(cart)); }, [cart]);
   const router = useRouter();
-  const goToOrder = () => { sessionStorage.setItem("oic_cart", JSON.stringify(cart)); router.push("/order"); };
+  const goToOrder = () => { router.push("/order"); };
 
   return (
     <main className="min-h-screen bg-brand-bg pb-40">
@@ -705,7 +697,7 @@ export default function MenuPage() {
                   {cafeOpen ? `Оформить заказ · ${totalPrice}₸` : "Кофейня закрыта"}
                 </motion.button>
                 <button
-                  onClick={() => { setCart([]); sessionStorage.removeItem("oic_cart"); setShowCart(false); }}
+                  onClick={() => { clearCart(); setShowCart(false); }}
                   className="w-full py-2 text-red-400 text-sm font-medium mt-2"
                 >
                   Очистить корзину

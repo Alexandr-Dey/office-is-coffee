@@ -6,14 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { collection, query, orderBy, where as fbWhere, limit, onSnapshot, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
-import type { CartItem } from "@/lib/types";
+import { useCart } from "@/lib/cart";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
 interface Order {
   id: string; name: string; items: OrderItem[]; total: number;
   status: string; rating?: number; createdAt: Timestamp | null;
   isFreeByLoyalty?: boolean; cancelReason?: string;
-  paymentMethod?: string;
 }
 
 function formatDate(ts: Timestamp | null): string {
@@ -36,19 +35,11 @@ const ratingEmoji: Record<number, string> = { 3: "😍", 2: "👍", 1: "😕" };
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { cart, removeItem, clearCart, setItems, totalItems, totalPrice } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [tab, setTab] = useState<"active" | "history">("active");
 
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("oic_cart");
-      if (raw) setCart(JSON.parse(raw));
-    } catch { /* ignore */ }
-  }, []);
-
-  // Real-time orders
   useEffect(() => {
     if (authLoading || !user) { setLoading(false); return; }
     const q = query(
@@ -65,15 +56,13 @@ export default function OrdersPage() {
   }, [user, authLoading]);
 
   const repeatOrder = (items: OrderItem[]) => {
-    sessionStorage.setItem("oic_cart", JSON.stringify(items));
+    setItems(items.map(i => ({ name: i.name, size: i.size, price: i.price, qty: i.qty, milk: i.milk })));
     sessionStorage.setItem("oic_is_repeat", "true");
     router.push("/order");
   };
 
   const activeOrders = orders.filter(o => ["new", "pending", "accepted", "ready"].includes(o.status));
   const historyOrders = orders.filter(o => ["paid", "cancelled"].includes(o.status));
-  const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
   return (
     <main className="min-h-screen pb-20 pt-6 px-4 bg-brand-bg">
@@ -81,25 +70,43 @@ export default function OrdersPage() {
         <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">📦 Заказы</h1>
 
         {/* Current cart */}
-        {cartCount > 0 && (
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-gradient-to-r from-brand-dark to-brand-mid rounded-2xl p-4 mb-4 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-bold">🛒 В корзине</p>
-              <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs">{cartCount} шт · {cartTotal}₸</span>
+        {totalItems > 0 && (
+          <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-bold text-sm text-brand-dark">🛒 В корзине ({totalItems})</p>
+              <button onClick={clearCart} className="text-xs text-red-400 font-medium min-h-[44px] flex items-center">Очистить</button>
             </div>
-            <div className="space-y-1 mb-3 max-h-24 overflow-y-auto">
+            <div className="space-y-2 mb-3">
               {cart.map((item, i) => (
-                <p key={i} className="text-sm text-white/80">
-                  {item.name} {item.size !== "—" ? `(${item.size})` : ""} {item.qty > 1 ? `×${item.qty}` : ""}
-                </p>
+                <div key={i} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-brand-text truncate">
+                      {item.name} {item.size !== "—" ? `(${item.size})` : ""}
+                      {item.qty > 1 && ` ×${item.qty}`}
+                    </p>
+                    {(item.milk || item.syrup) && (
+                      <p className="text-[10px] text-brand-text/40">
+                        {item.milk && item.milk !== "Стандарт" && item.milk}
+                        {item.syrup && ` · ${item.syrup}`}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-sm font-bold text-brand-dark flex-shrink-0">{item.price * item.qty}₸</span>
+                  <button
+                    onClick={() => removeItem(item.name, item.size, item.milk, item.syrup)}
+                    className="text-red-400 min-w-[36px] min-h-[36px] flex items-center justify-center flex-shrink-0"
+                  >✕</button>
+                </div>
               ))}
             </div>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => router.push("/order")}
-              className="w-full py-2.5 bg-white text-brand-dark font-bold rounded-xl text-sm">
-              Оформить заказ →
-            </motion.button>
-          </motion.div>
+            <div className="flex items-center justify-between border-t border-[#d0f0e0] pt-3">
+              <span className="font-bold text-brand-dark">{totalPrice}₸</span>
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => router.push("/order")}
+                className="px-5 py-2.5 bg-brand-dark text-white font-bold rounded-xl text-sm min-h-[44px]">
+                Оформить →
+              </motion.button>
+            </div>
+          </div>
         )}
 
         {/* Tabs */}
@@ -143,20 +150,15 @@ export default function OrdersPage() {
                       const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.new;
                       return (
                         <motion.div key={order.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.05 }}
+                          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
                           onClick={() => router.push(`/order/${order.id}`)}
                           className={`rounded-2xl border p-4 cursor-pointer ${cfg.bg}`}
-                          style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
-                        >
+                          style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
                           <div className="flex items-center justify-between mb-2">
                             <span className={`text-sm font-bold ${cfg.color}`}>{cfg.icon} {cfg.text}</span>
                             <span className="text-xs text-brand-text/40">{formatDate(order.createdAt)}</span>
                           </div>
-                          <p className="font-semibold text-sm text-brand-text mb-1">
-                            {order.items.map(i => i.name).join(", ")}
-                          </p>
+                          <p className="font-semibold text-sm text-brand-text mb-1">{order.items.map(i => i.name).join(", ")}</p>
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-brand-dark">{order.total}₸</span>
                             <span className="text-xs text-brand-dark font-medium">Подробнее →</span>
@@ -179,17 +181,12 @@ export default function OrdersPage() {
                       const isCancelled = order.status === "cancelled";
                       return (
                         <motion.div key={order.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.05 }}
+                          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
                           className={`rounded-2xl border p-4 ${cfg.bg}`}
-                          style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
-                        >
+                          style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <p className="font-semibold text-sm text-brand-text">
-                                {order.items.map(i => i.name).join(", ")}
-                              </p>
+                              <p className="font-semibold text-sm text-brand-text">{order.items.map(i => i.name).join(", ")}</p>
                               <p className="text-xs text-brand-text/40">{formatDate(order.createdAt)}</p>
                             </div>
                             <div className="flex items-center gap-1.5">

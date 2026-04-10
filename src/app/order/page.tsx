@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
+import { useCart } from "@/lib/cart";
 import confetti from "canvas-confetti";
 import { trackEvent } from "@/lib/mixpanel";
 import type { CartItem } from "@/lib/types";
@@ -13,7 +14,7 @@ import type { CartItem } from "@/lib/types";
 export default function OrderPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, clearCart } = useCart();
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
@@ -24,8 +25,6 @@ export default function OrderPage() {
   const [orderError, setOrderError] = useState("");
 
   useEffect(() => {
-    const raw = sessionStorage.getItem("oic_cart");
-    if (raw) { try { setCart(JSON.parse(raw)); } catch { /* ignore */ } }
     if (user?.displayName) setName(user.displayName);
 
     if (user) {
@@ -97,7 +96,7 @@ export default function OrderPage() {
         confetti({ particleCount: 100, spread: 70, colors: ["#1a7a44", "#3ecf82", "#d42b4f"] });
       }
 
-      sessionStorage.removeItem("oic_cart");
+      clearCart();
       router.push(`/order/${docRef.id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Ошибка";
