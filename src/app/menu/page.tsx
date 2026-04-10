@@ -336,49 +336,114 @@ function LoyaltyBanner({ count }: { count: number }) {
   );
 }
 
-/* ═══ QUICK REPEAT ═══ */
-function QuickRepeat({ onRepeat }: { onRepeat: (items: CartItem[]) => void }) {
-  const [lastOrder, setLastOrder] = useState<{ items: CartItem[]; name: string } | null>(null);
+/* ═══ QUICK ORDER STRIP (last orders + popular) ═══ */
+interface RecentOrder {
+  key: string;
+  label: string;
+  sub: string;
+  items: Array<{ name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }>;
+  total: number;
+}
+
+function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories }: {
+  menuItems: MenuItem[];
+  onRepeat: (items: CartItem[]) => void;
+  onDetail: (item: MenuItem, gradient: string) => void;
+  categories: typeof CATEGORIES;
+}) {
   const { user } = useAuth();
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
 
   useEffect(() => {
     if (!user) return;
     const q = query(
       collection(getFirebaseDb(), "orders"),
       where("userId", "==", user.uid),
+      where("status", "==", "paid"),
       orderBy("createdAt", "desc"),
-      limit(1)
+      limit(10)
     );
     getDocs(q).then((snap) => {
-      if (!snap.empty && snap.docs[0]) {
-        const d = snap.docs[0].data();
-        if (d && d.items) {
-          setLastOrder({ items: d.items, name: d.items.map((i: CartItem) => i.name).join(", ") });
-        }
+      const seen = new Set<string>();
+      const unique: RecentOrder[] = [];
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (!data.items || data.items.length === 0) continue;
+        // Unique key by item names + sizes
+        const key = data.items.map((i: { name: string; size: string }) => `${i.name}_${i.size}`).sort().join("|");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const firstName = data.items[0].name;
+        const label = data.items.length === 1
+          ? `${firstName} ${data.items[0].size || ""}`
+          : `${firstName} +${data.items.length - 1}`;
+        const milk = data.items[0].milk;
+        const sub = milk && milk !== "Стандарт" && milk !== "standard" ? milk : "";
+        unique.push({ key, label: label.trim(), sub, items: data.items, total: data.total ?? 0 });
+        if (unique.length >= 3) break;
       }
+      setRecentOrders(unique);
     }).catch(() => {});
   }, [user]);
 
-  if (!lastOrder) return null;
+  const featured = menuItems.filter(i => (i as MenuItem & { featured?: boolean }).featured);
+
+  if (recentOrders.length === 0 && featured.length === 0) return null;
+
+  const handleRepeat = (order: RecentOrder) => {
+    const cartItems: CartItem[] = order.items.map(i => ({
+      name: i.name,
+      size: i.size,
+      price: i.price,
+      qty: i.qty,
+      milk: i.milk,
+      syrup: i.addons && i.addons.length > 0 ? i.addons[0] : undefined,
+    }));
+    sessionStorage.setItem("oic_is_repeat", "true");
+    onRepeat(cartItems);
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3 flex items-center justify-between"
-      style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
-    >
-      <div>
-        <p className="text-xs text-brand-text/50">{"Обычный?"}</p>
-        <p className="text-sm font-medium text-brand-text truncate max-w-[200px]">{lastOrder.name}</p>
+    <section className="mt-2" aria-label="Быстрый заказ">
+      <div className="px-3 mb-2">
+        <h2 className="text-sm font-bold text-brand-text">⚡ Быстрый заказ</h2>
       </div>
-      <motion.button
-        whileTap={{ scale: 0.9 }}
-        onClick={() => { sessionStorage.setItem("oic_is_repeat", "true"); onRepeat(lastOrder.items); }}
-        className="px-4 py-2 bg-brand-dark text-white rounded-full text-sm font-bold"
-      >
-        Повторить
-      </motion.button>
-    </motion.div>
+      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-3 pb-2">
+        {/* Recent orders first */}
+        {recentOrders.map((order) => (
+          <motion.button
+            key={order.key}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleRepeat(order)}
+            className="flex-shrink-0 w-32 rounded-2xl p-3 text-left bg-white border border-[#d0f0e0]"
+            style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
+          >
+            <span className="text-[10px] text-brand-mint font-bold">🕐 Повторить</span>
+            <p className="text-xs font-bold text-brand-text truncate mt-1">{order.label}</p>
+            {order.sub && <p className="text-[10px] text-brand-text/40 truncate">{order.sub}</p>}
+            <p className="text-xs font-bold text-brand-dark mt-1">{order.total}₸</p>
+          </motion.button>
+        ))}
+        {/* Then popular */}
+        {featured.map((item) => {
+          const itemCat = categories.find(c => c.id === item.category);
+          const minPrice = Math.min(...Object.values(item.sizes));
+          return (
+            <motion.button
+              key={item.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onDetail(item, itemCat?.gradient ?? "from-[#1a7a44] to-[#2d9e5a]")}
+              className={`flex-shrink-0 w-28 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${itemCat?.gradient ?? "from-[#1a7a44] to-[#2d9e5a]"}`}
+              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+            >
+              <span className="text-2xl block mb-1">{itemCat?.icon ?? "☕"}</span>
+              <p className="text-xs font-bold truncate">{item.name}</p>
+              <p className="text-[10px] text-white/70 mt-0.5">от {minPrice}₸</p>
+            </motion.button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -553,57 +618,18 @@ export default function MenuPage() {
         />
       </div>
 
-      {/* Quick orders block */}
-      <QuickOrdersBlock />
+      {/* Quick order strip: recent orders + popular */}
+      <QuickOrderStrip
+        menuItems={menuItems}
+        onRepeat={repeatOrder}
+        onDetail={(item, gradient) => setDetailItem({ item, gradient })}
+        categories={CATEGORIES}
+      />
 
-      {/* Content overlaps bottom of scene */}
-      <div className="relative z-10 -mt-8 px-3 space-y-3">
+      {/* Loyalty */}
+      <div className="relative z-10 px-3 mt-2">
         <LoyaltyBanner count={loyaltyCount} />
-        <QuickRepeat onRepeat={repeatOrder} />
       </div>
-
-      {geoNearby && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="mx-3 mt-3 bg-brand-dark text-white rounded-2xl px-4 py-3 flex items-center justify-between"
-        >
-          <span className="text-sm">📍 Кофейня рядом!</span>
-          <button onClick={() => window.scrollTo({ top: 600, behavior: "smooth" })} className="text-sm font-bold bg-white/20 px-3 py-1 rounded-full">{"Быстрый заказ"}</button>
-        </motion.div>
-      )}
-
-      {/* Popular items — horizontal scroll */}
-      {(() => {
-        const featured = menuItems.filter(i => (i as MenuItem & { featured?: boolean }).featured);
-        if (featured.length === 0) return null;
-        return (
-          <section className="mt-3" aria-label="Популярное">
-            <div className="px-3 flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold text-brand-text">🔥 Популярное</h2>
-              <span className="text-[10px] text-brand-text/40">{featured.length} напитков</span>
-            </div>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide px-3 pb-2">
-              {featured.map((item) => {
-                const itemCat = CATEGORIES.find(c => c.id === item.category);
-                const minPrice = Math.min(...Object.values(item.sizes));
-                return (
-                  <motion.button
-                    key={item.id}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setDetailItem({ item, gradient: itemCat?.gradient ?? "from-[#1a7a44] to-[#2d9e5a]" })}
-                    className={`flex-shrink-0 w-28 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${itemCat?.gradient ?? "from-[#1a7a44] to-[#2d9e5a]"}`}
-                    style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-                  >
-                    <span className="text-2xl block mb-1">{itemCat?.icon ?? "☕"}</span>
-                    <p className="text-xs font-bold truncate">{item.name}</p>
-                    <p className="text-[10px] text-white/70 mt-0.5">от {minPrice}₸</p>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })()}
 
       {/* Hero hit */}
       <section className="px-3 mt-3" aria-label="Хит сезона">
