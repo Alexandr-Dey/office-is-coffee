@@ -659,6 +659,7 @@ export default function MenuPage() {
           orderStatus={activeOrderStatus === "new" ? "pending" : activeOrderStatus as BaristaState}
           streakDays={streakDays}
           lastOrderDate={lastOrderDate}
+          cafeOpen={cafeOpen}
         />
       </div>
 
