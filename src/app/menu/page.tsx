@@ -461,7 +461,7 @@ export default function MenuPage() {
   const goToOrder = () => { sessionStorage.setItem("oic_cart", JSON.stringify(cart)); router.push("/order"); };
 
   return (
-    <main className="min-h-screen bg-brand-bg pb-32">
+    <main className="min-h-screen bg-brand-bg pb-40">
       {!cafeOpen && (
         <div className="bg-red-50 text-red-600 text-center py-2 text-sm font-medium" role="alert">
           Кофейня закрыта · Открывается в 07:30
@@ -615,7 +615,7 @@ export default function MenuPage() {
       <AnimatePresence>
         {totalItems > 0 && (
           <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
+            className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
             <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
               <button onClick={() => setShowCart(!showCart)} className="flex items-center gap-2">
                 <span className="bg-brand-dark text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">{totalItems}</span>
