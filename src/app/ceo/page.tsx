@@ -247,46 +247,100 @@ const TEMPLATES = [
   { title: "🎁 Один кофе до бесплатного!", body: "Зайди сегодня — осталось совсем чуть-чуть" },
 ];
 
-interface SegmentInfo {
-  key: string;
-  label: string;
-  icon: string;
-  color: string;
-  count: number;
-  tokens: string[];
+interface ClientInfo {
+  uid: string;
+  name: string;
+  token: string | null;
+  loyalty: number;
+  streak: number;
+  lastOrder: string | null;
+  role: string;
 }
 
 function PushSection() {
   const { showToast } = useToast();
-  const [segments, setSegments] = useState<SegmentInfo[]>([]);
-  const [allTokens, setAllTokens] = useState<string[]>([]);
+  const [clients, setClients] = useState<ClientInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [title, setTitle] = useState(TEMPLATES[0].title);
   const [body, setBody] = useState(TEMPLATES[0].body);
+  const [tab, setTab] = useState<"segments" | "clients" | "all">("segments");
+  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [error, setError] = useState("");
 
+  // Load all clients
   useEffect(() => {
-    import("@/lib/pushNotifications").then(({ getClientSegments }) => {
-      getClientSegments().then((s) => {
-        setSegments([
-          { key: "sleeping", label: "Спящие (7+ дней)", icon: "😴", color: "bg-gray-100 border-gray-300", count: s.sleeping.length, tokens: s.sleeping.map(c => c.token) },
-          { key: "streakRisk", label: "Стрик горит", icon: "🔥", color: "bg-orange-50 border-orange-300", count: s.streakRisk.length, tokens: s.streakRisk.map(c => c.token) },
-          { key: "almostFree", label: "Почти бесплатный", icon: "🎁", color: "bg-green-50 border-green-300", count: s.almostFree.length, tokens: s.almostFree.map(c => c.token) },
-          { key: "vip", label: "VIP (10+ заказов)", icon: "👑", color: "bg-purple-50 border-purple-300", count: s.vip.length, tokens: s.vip.map(c => c.token) },
-        ]);
-        setAllTokens(s.all.map(c => c.token));
-        setLoading(false);
-      }).catch(() => setLoading(false));
-    });
+    async function load() {
+      try {
+        const db = getFirebaseDb();
+        const usersSnap = await getDocs(collection(db, "users"));
+        const tokensSnap = await getDocs(collection(db, "push_tokens"));
+        const tokenMap = new Map<string, string>();
+        tokensSnap.docs.forEach(d => { if (d.data().token) tokenMap.set(d.id, d.data().token); });
+
+        const list: ClientInfo[] = [];
+        for (const doc of usersSnap.docs) {
+          const d = doc.data();
+          if (d.role === "barista" || d.role === "ceo") continue;
+          list.push({
+            uid: doc.id,
+            name: d.displayName ?? "Клиент",
+            token: tokenMap.get(doc.id) ?? null,
+            loyalty: d.loyaltyCount ?? 0,
+            streak: d.streak ?? 0,
+            lastOrder: d.lastOrderDate ?? null,
+            role: d.role ?? "client",
+          });
+        }
+        setClients(list);
+      } catch (e) {
+        setError("Не удалось загрузить клиентов");
+        console.error(e);
+      }
+      setLoading(false);
+    }
+    load();
   }, []);
 
-  const getTargetTokens = (): string[] => {
-    if (selectedSegment === "all") return allTokens;
-    const seg = segments.find(s => s.key === selectedSegment);
-    return seg?.tokens ?? [];
+  // Segments
+  const today = new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() + 5 * 3600000 - 86400000).toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() + 5 * 3600000 - 7 * 86400000).toISOString().slice(0, 10);
+
+  const withToken = clients.filter(c => c.token);
+  const sleeping = withToken.filter(c => c.lastOrder && c.lastOrder < weekAgo);
+  const streakRisk = withToken.filter(c => c.lastOrder === yesterday && c.streak > 2);
+  const almostFree = withToken.filter(c => c.loyalty === 7);
+  const vip = withToken.filter(c => c.streak >= 5);
+
+  const segmentMap: Record<string, ClientInfo[]> = {
+    sleeping, streakRisk, almostFree, vip, all: withToken,
   };
+
+  const segmentCards = [
+    { key: "sleeping", label: "Спящие (7+ дней)", icon: "😴", color: "border-gray-300 bg-gray-50", list: sleeping },
+    { key: "streakRisk", label: "Стрик горит", icon: "🔥", color: "border-orange-300 bg-orange-50", list: streakRisk },
+    { key: "almostFree", label: "Почти бесплатный", icon: "🎁", color: "border-green-300 bg-green-50", list: almostFree },
+    { key: "vip", label: "Стрик 5+ дней", icon: "👑", color: "border-purple-300 bg-purple-50", list: vip },
+  ];
+
+  // Get target tokens
+  const getTargetTokens = (): string[] => {
+    if (tab === "segments" && selectedSegment) {
+      return (segmentMap[selectedSegment] ?? []).map(c => c.token).filter(Boolean) as string[];
+    }
+    if (tab === "clients") {
+      return clients.filter(c => selectedUids.has(c.uid) && c.token).map(c => c.token) as string[];
+    }
+    if (tab === "all") {
+      return withToken.map(c => c.token) as string[];
+    }
+    return [];
+  };
+
+  const targetCount = getTargetTokens().length;
 
   const handleSend = async () => {
     const tokens = getTargetTokens();
@@ -296,7 +350,6 @@ function PushSection() {
       const { sendManualPush } = await import("@/lib/pushNotifications");
       const sent = await sendManualPush(tokens, title.trim(), body.trim());
       showToast(`📨 Отправлено ${sent} клиентам`, "success");
-      setSelectedSegment(null);
     } catch (e) {
       showToast("Ошибка отправки", "info");
       console.error(e);
@@ -304,53 +357,110 @@ function PushSection() {
     setSending(false);
   };
 
-  const targetCount = selectedSegment === "all" ? allTokens.length : (segments.find(s => s.key === selectedSegment)?.count ?? 0);
+  const toggleClient = (uid: string) => {
+    setSelectedUids(prev => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid); else next.add(uid);
+      return next;
+    });
+  };
 
   return (
     <div className="mt-8">
-      <h2 className="font-bold text-brand-text mb-4">📨 Отправить пуш</h2>
+      <h2 className="font-bold text-brand-text mb-3">📨 Отправить пуш</h2>
+
+      {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2].map(i => <div key={i} className="h-20 bg-[#d0f0e0] rounded-2xl animate-pulse" />)}
+          {[1, 2].map(i => <div key={i} className="h-16 bg-[#d0f0e0] rounded-2xl animate-pulse" />)}
         </div>
       ) : (
         <>
-          {/* Segments */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {segments.map((seg) => (
-              <motion.button key={seg.key} whileTap={{ scale: 0.97 }}
-                onClick={() => setSelectedSegment(selectedSegment === seg.key ? null : seg.key)}
-                className={`p-3 rounded-xl border-2 text-left transition-all ${
-                  selectedSegment === seg.key ? "border-brand-dark bg-brand-dark/5" : `${seg.color}`
+          {/* Tabs */}
+          <div className="flex gap-2 mb-4">
+            {([
+              { key: "segments" as const, label: "Сегменты" },
+              { key: "clients" as const, label: `Клиенты (${clients.length})` },
+              { key: "all" as const, label: `Всем (${withToken.length})` },
+            ]).map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold min-h-[40px] transition-all ${
+                  tab === t.key ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
                 }`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span>{seg.icon}</span>
-                  <span className="text-xs font-bold text-brand-text">{seg.count}</span>
-                </div>
-                <p className="text-[10px] text-brand-text/60">{seg.label}</p>
-              </motion.button>
+                {t.label}
+              </button>
             ))}
           </div>
 
-          {/* All button */}
-          <motion.button whileTap={{ scale: 0.97 }}
-            onClick={() => setSelectedSegment(selectedSegment === "all" ? null : "all")}
-            className={`w-full p-3 rounded-xl border-2 mb-4 text-left transition-all ${
-              selectedSegment === "all" ? "border-brand-dark bg-brand-dark/5" : "border-[#d0f0e0] bg-white"
-            }`}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-brand-text">📢 Всем клиентам</span>
-              <span className="text-xs text-brand-text/40">{allTokens.length} с push</span>
+          {/* Segments tab */}
+          {tab === "segments" && (
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {segmentCards.map(seg => (
+                <motion.button key={seg.key} whileTap={{ scale: 0.97 }}
+                  onClick={() => setSelectedSegment(selectedSegment === seg.key ? null : seg.key)}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                    selectedSegment === seg.key ? "border-brand-dark bg-brand-dark/5" : seg.color
+                  }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{seg.icon}</span>
+                    <span className="text-sm font-bold text-brand-text">{seg.list.length}</span>
+                  </div>
+                  <p className="text-[10px] text-brand-text/60">{seg.label}</p>
+                  {selectedSegment === seg.key && seg.list.length > 0 && (
+                    <div className="mt-2 space-y-0.5">
+                      {seg.list.slice(0, 3).map(c => (
+                        <p key={c.uid} className="text-[9px] text-brand-text/40 truncate">{c.name}</p>
+                      ))}
+                      {seg.list.length > 3 && <p className="text-[9px] text-brand-text/30">+{seg.list.length - 3} ещё</p>}
+                    </div>
+                  )}
+                </motion.button>
+              ))}
             </div>
-          </motion.button>
+          )}
 
-          {/* Message */}
-          {selectedSegment && (
+          {/* Clients tab */}
+          {tab === "clients" && (
+            <div className="space-y-1.5 mb-4 max-h-60 overflow-y-auto">
+              {clients.map(c => (
+                <button key={c.uid} onClick={() => toggleClient(c.uid)}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all ${
+                    selectedUids.has(c.uid) ? "bg-brand-dark/5 border border-brand-dark" : "bg-white border border-[#d0f0e0]"
+                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    selectedUids.has(c.uid) ? "bg-brand-dark text-white" : "bg-brand-bg text-brand-text/40"
+                  }`}>
+                    {selectedUids.has(c.uid) ? "✓" : c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-brand-text truncate">{c.name}</p>
+                    <p className="text-[10px] text-brand-text/40">
+                      ☕ {c.loyalty}/8 · 🔥 {c.streak}
+                      {c.lastOrder && ` · ${c.lastOrder}`}
+                      {!c.token && " · ❌ нет push"}
+                    </p>
+                  </div>
+                </button>
+              ))}
+              {clients.length === 0 && <p className="text-center text-brand-text/40 py-4">Нет клиентов</p>}
+            </div>
+          )}
+
+          {/* All tab — just info */}
+          {tab === "all" && (
+            <div className="bg-white rounded-xl border border-[#d0f0e0] p-4 mb-4 text-center">
+              <p className="text-3xl mb-2">📢</p>
+              <p className="font-bold text-brand-text">{withToken.length} клиентов с push</p>
+              <p className="text-xs text-brand-text/40">{clients.length - withToken.length} без push-токена</p>
+            </div>
+          )}
+
+          {/* Message composer — show when target selected */}
+          {(tab === "all" || (tab === "segments" && selectedSegment) || (tab === "clients" && selectedUids.size > 0)) && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
 
-              {/* Templates */}
               <p className="text-xs text-brand-text/50 mb-2">Шаблоны:</p>
               <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-3">
                 {TEMPLATES.map((t, i) => (
@@ -369,8 +479,8 @@ function PushSection() {
                 placeholder="Текст" rows={2} className="w-full px-3 py-2.5 rounded-xl border border-[#d0f0e0] text-sm mb-3 outline-none focus:border-brand-mint resize-none" />
 
               {/* Preview */}
-              <button onClick={() => setShowPreview(!showPreview)} className="text-xs text-brand-dark font-medium mb-3">
-                {showPreview ? "Скрыть предпросмотр" : "👁 Предпросмотр"}
+              <button onClick={() => setShowPreview(!showPreview)} className="text-xs text-brand-dark font-medium mb-3 block">
+                {showPreview ? "Скрыть" : "👁 Предпросмотр"}
               </button>
               <AnimatePresence>
                 {showPreview && (
@@ -380,7 +490,7 @@ function PushSection() {
                       <div className="w-8 h-8 rounded-lg bg-brand-dark flex items-center justify-center text-xs flex-shrink-0">☕</div>
                       <div>
                         <p className="text-xs font-bold">{title || "Заголовок"}</p>
-                        <p className="text-[10px] text-white/70">{body || "Текст уведомления"}</p>
+                        <p className="text-[10px] text-white/70">{body || "Текст"}</p>
                         <p className="text-[9px] text-white/30 mt-1">Love is Coffee · сейчас</p>
                       </div>
                     </div>
@@ -388,11 +498,10 @@ function PushSection() {
                 )}
               </AnimatePresence>
 
-              {/* Send */}
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleSend}
                 disabled={sending || targetCount === 0 || !title.trim() || !body.trim()}
                 className="w-full py-3 bg-brand-dark text-white font-bold rounded-xl disabled:opacity-50 min-h-[48px]">
-                {sending ? "Отправка..." : `Отправить → ${targetCount} клиентам`}
+                {sending ? "Отправка..." : targetCount > 0 ? `Отправить → ${targetCount} клиентам` : "Нет получателей с push"}
               </motion.button>
             </motion.div>
           )}
