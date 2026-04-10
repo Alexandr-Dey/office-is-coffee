@@ -624,8 +624,8 @@ export default function MenuPage() {
       <AnimatePresence>
         {showCart && cart.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 80 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 80 }}
-            className="fixed bottom-20 left-3 right-3 max-w-lg mx-auto bg-white rounded-2xl shadow-2xl border border-[#d0f0e0] p-4 z-50">
-            <h3 className="font-bold text-brand-dark mb-2">{"Твой заказ"}</h3>
+            className="fixed bottom-[130px] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[456px] bg-white rounded-2xl shadow-2xl border border-[#d0f0e0] p-4 z-[55]">
+            <h3 className="font-bold text-brand-dark mb-2">Твой заказ</h3>
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {cart.map((i, idx) => (
                 <div key={`${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}_${idx}`} className="flex items-center justify-between text-sm">
@@ -651,7 +651,7 @@ export default function MenuPage() {
       <AnimatePresence>
         {totalItems > 0 && (
           <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-40">
+            className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-[55]">
             <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
               <button onClick={() => setShowCart(!showCart)} className="flex items-center gap-2">
                 <span className="bg-brand-dark text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">{totalItems}</span>
