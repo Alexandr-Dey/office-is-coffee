@@ -620,50 +620,98 @@ export default function MenuPage() {
         )}
       </AnimatePresence>
 
-      {/* Cart popup */}
+      {/* Floating cart button */}
       <AnimatePresence>
-        {showCart && cart.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 80 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 80 }}
-            className="fixed bottom-[130px] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[456px] bg-white rounded-2xl shadow-2xl border border-[#d0f0e0] p-4 z-[55]">
-            <h3 className="font-bold text-brand-dark mb-2">Твой заказ</h3>
-            <div className="space-y-1 max-h-40 overflow-y-auto">
-              {cart.map((i, idx) => (
-                <div key={`${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}_${idx}`} className="flex items-center justify-between text-sm">
-                  <div className="flex-1">
-                    <span className="font-medium text-brand-text">{i.name}</span>
-                    {i.size !== "—" && <span className="text-brand-text/40 text-xs ml-1">({i.size})</span>}
-                    {i.milk && <span className="text-brand-mint text-xs ml-1">{i.milk}</span>}
-                    {i.syrup && <span className="text-amber-500 text-xs ml-1">{i.syrup}</span>}
-                    {i.qty > 1 && <span className="text-brand-pink text-xs font-bold ml-1">×{i.qty}</span>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-brand-dark">{i.price * i.qty} ₸</span>
-                    <button onClick={() => removeFromCart(i.name, i.size, i.milk, i.syrup)} className="text-brand-pink/50 hover:text-brand-pink text-xs min-w-[44px] min-h-[44px] flex items-center justify-center">✕</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+        {totalItems > 0 && !showCart && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowCart(true)}
+            className="fixed bottom-[80px] right-4 z-[60] w-14 h-14 bg-brand-dark text-white rounded-full shadow-xl flex items-center justify-center"
+            style={{ maxWidth: "calc((480px - 100%) / 2 + 100% - 16px)" }}
+          >
+            <span className="text-xl">🛒</span>
+            <span className="absolute -top-1 -right-1 bg-brand-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {totalItems}
+            </span>
+          </motion.button>
         )}
       </AnimatePresence>
 
-      {/* Bottom cart bar */}
+      {/* Full cart bottom sheet */}
       <AnimatePresence>
-        {totalItems > 0 && (
-          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-[#d0f0e0] z-[55]">
-            <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
-              <button onClick={() => setShowCart(!showCart)} className="flex items-center gap-2">
-                <span className="bg-brand-dark text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">{totalItems}</span>
-                <span className="text-sm font-medium text-brand-text">{showCart ? "Скрыть" : "Показать"}</span>
-              </button>
-              <motion.button whileTap={{ scale: 0.95 }} onClick={goToOrder}
-                disabled={!cafeOpen}
-                className="flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white font-bold rounded-full text-sm shadow-lg disabled:opacity-50">
-                <span>Оформить</span>
-                <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs">{totalPrice} ₸</span>
-              </motion.button>
-            </div>
+        {showCart && cart.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/40 flex items-end justify-center"
+            onClick={() => setShowCart(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-t-3xl w-full max-w-[480px] max-h-[80vh] flex flex-col"
+            >
+              <div className="p-5 pb-0">
+                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-xl text-brand-dark">🛒 Корзина</h3>
+                  <button onClick={() => setShowCart(false)} className="text-brand-text/40 text-sm min-w-[44px] min-h-[44px] flex items-center justify-center">✕</button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 pb-2">
+                {cart.map((item, idx) => (
+                  <div key={`${item.name}_${item.size}_${item.milk ?? ""}_${item.syrup ?? ""}_${idx}`}
+                    className="flex items-center gap-3 py-3 border-b border-[#d0f0e0] last:border-0">
+                    <div className="w-10 h-10 rounded-xl bg-brand-bg flex items-center justify-center text-lg flex-shrink-0">☕</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-brand-text truncate">{item.name}</p>
+                      <p className="text-xs text-brand-text/40">
+                        {item.size !== "—" && `${item.size}`}
+                        {item.milk && item.milk !== "Стандарт" && ` · ${item.milk}`}
+                        {item.syrup && ` · ${item.syrup}`}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-sm text-brand-dark">{item.price * item.qty}₸</p>
+                      {item.qty > 1 && <p className="text-[10px] text-brand-text/40">×{item.qty}</p>}
+                    </div>
+                    <button
+                      onClick={() => removeFromCart(item.name, item.size, item.milk, item.syrup)}
+                      className="text-red-400 hover:text-red-600 min-w-[36px] min-h-[36px] flex items-center justify-center flex-shrink-0"
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-5 pt-3 border-t border-[#d0f0e0] bg-white">
+                <div className="flex justify-between mb-3">
+                  <span className="text-brand-text font-medium">Итого</span>
+                  <span className="text-xl font-bold text-brand-dark">{totalPrice}₸</span>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setShowCart(false); goToOrder(); }}
+                  disabled={!cafeOpen}
+                  className="w-full py-3.5 bg-brand-dark text-white font-bold rounded-xl text-base shadow-lg disabled:opacity-50 min-h-[48px]"
+                >
+                  {cafeOpen ? `Оформить заказ · ${totalPrice}₸` : "Кофейня закрыта"}
+                </motion.button>
+                <button
+                  onClick={() => { setCart([]); sessionStorage.removeItem("oic_cart"); setShowCart(false); }}
+                  className="w-full py-2 text-red-400 text-sm font-medium mt-2"
+                >
+                  Очистить корзину
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
