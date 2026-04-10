@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { VITALIY_IDLE_ACTIONS, pickWeightedRandom } from "../behaviors/baristaIdleActions";
 import { daysSinceOrder } from "../behaviors/sceneTime";
+import { doc, setDoc, increment } from "firebase/firestore";
+import { getFirebaseDb } from "@/lib/firebase";
 
 interface Props {
   orderStatus: string;
@@ -30,6 +32,7 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
   const [tapCount, setTapCount] = useState(0);
   const [isAngry, setIsAngry] = useState(false);
   const [isGone, setIsGone] = useState(false);
+  const [hearts, setHearts] = useState<number[]>([]);
 
   const isSad = streakDays === 0 && daysSinceOrder(lastOrderDate) >= 2;
   const state = isSad ? "sad" : orderStatus;
@@ -87,6 +90,15 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
 
   const handleTap = useCallback(() => {
     setTapCount(p => p + 1);
+    // Floating heart
+    setHearts(prev => [...prev, Date.now()]);
+    // Save to Firestore
+    const today = new Date().toISOString().slice(0, 10);
+    setDoc(doc(getFirebaseDb(), "barista_hearts", `vitaliy_${today}`), {
+      baristaName: "Виталий",
+      date: today,
+      count: increment(1),
+    }, { merge: true }).catch(() => {});
   }, []);
 
   if (isGone) {
@@ -108,6 +120,26 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
         Виталий
       </text>
       <VitaliyBody action={isAngry ? "angry" : canMove ? currentAction : state} isSad={isSad} />
+      {/* Floating hearts */}
+      <AnimatePresence>
+        {hearts.map((id) => (
+          <motion.text
+            key={id}
+            x={-5 + Math.random() * 10}
+            y={-25}
+            fontSize="20"
+            textAnchor="middle"
+            initial={{ opacity: 1, y: -25, scale: 0.5 }}
+            animate={{ opacity: 0, y: -70, scale: 1.3, x: -10 + Math.random() * 20 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            onAnimationComplete={() => setHearts(prev => prev.filter(h => h !== id))}
+            style={{ pointerEvents: "none" }}
+          >
+            ❤️
+          </motion.text>
+        ))}
+      </AnimatePresence>
     </g>
   );
 }

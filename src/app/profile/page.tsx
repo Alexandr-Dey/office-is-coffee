@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, getDoc } from "firebase/firestore";
 
 interface BonusData { totalBonus: number; pendingPayout: number; payoutRequested: boolean }
 
@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const [depositBalance, setDepositBalance] = useState(0);
   const [depositHistory, setDepositHistory] = useState<DepositHistoryEntry[]>([]);
   const [bonus, setBonus] = useState<BonusData | null>(null);
+  const [heartsToday, setHeartsToday] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -56,6 +57,12 @@ export default function ProfilePage() {
           setBonus({ totalBonus: d.totalBonus ?? 0, pendingPayout: d.pendingPayout ?? 0, payoutRequested: d.payoutRequested ?? false });
         }
       }, () => {}));
+      // Hearts today
+      const today = new Date().toISOString().slice(0, 10);
+      const baristaKey = user.displayName?.toLowerCase().includes("аслан") ? "aslan" : "vitaliy";
+      getDoc(doc(getFirebaseDb(), "barista_hearts", `${baristaKey}_${today}`)).then((snap) => {
+        if (snap.exists()) setHeartsToday(snap.data().count ?? 0);
+      }).catch(() => {});
     }
     return () => unsubs.forEach(u => u());
   }, [user]);
@@ -146,6 +153,17 @@ export default function ProfilePage() {
             <a href="/barista/bonuses" className="block text-center text-xs text-brand-dark font-medium mt-2 min-h-[44px] leading-[44px]">
               Подробнее →
             </a>
+          </div>
+        )}
+
+        {/* Hearts counter */}
+        {user && (user.role === "barista" || user.role === "ceo") && heartsToday > 0 && (
+          <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4 flex items-center justify-between" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+            <div>
+              <p className="text-xs text-brand-text/50">Сердечки сегодня</p>
+              <p className="text-2xl font-bold text-brand-dark">❤️ {heartsToday}</p>
+            </div>
+            <p className="text-xs text-brand-text/40 max-w-[140px] text-right">Клиенты нажимают на тебя в сцене</p>
           </div>
         )}
 

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ASLAN_IDLE_ACTIONS, pickWeightedRandom } from "../behaviors/baristaIdleActions";
+import { doc, setDoc, increment } from "firebase/firestore";
+import { getFirebaseDb } from "@/lib/firebase";
 
 interface Props {
   orderStatus: string;
@@ -27,6 +29,7 @@ export function BaristaAslan({ orderStatus }: Props) {
   const [posX, setPosX] = useState(380);
   const [tapCount, setTapCount] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
+  const [hearts, setHearts] = useState<number[]>([]);
 
   const state = orderStatus;
 
@@ -77,6 +80,13 @@ export function BaristaAslan({ orderStatus }: Props) {
 
   const handleTap = useCallback(() => {
     setTapCount(p => p + 1);
+    setHearts(prev => [...prev, Date.now()]);
+    const today = new Date().toISOString().slice(0, 10);
+    setDoc(doc(getFirebaseDb(), "barista_hearts", `aslan_${today}`), {
+      baristaName: "Аслан",
+      date: today,
+      count: increment(1),
+    }, { merge: true }).catch(() => {});
   }, []);
 
   // SVG native transform — reliable. CSS transition for smooth movement.
@@ -91,6 +101,25 @@ export function BaristaAslan({ orderStatus }: Props) {
         Аслан
       </text>
       <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />
+      <AnimatePresence>
+        {hearts.map((id) => (
+          <motion.text
+            key={id}
+            x={-5 + Math.random() * 10}
+            y={-25}
+            fontSize="20"
+            textAnchor="middle"
+            initial={{ opacity: 1, y: -25, scale: 0.5 }}
+            animate={{ opacity: 0, y: -70, scale: 1.3, x: -10 + Math.random() * 20 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            onAnimationComplete={() => setHearts(prev => prev.filter(h => h !== id))}
+            style={{ pointerEvents: "none" }}
+          >
+            ❤️
+          </motion.text>
+        ))}
+      </AnimatePresence>
     </g>
   );
 }
