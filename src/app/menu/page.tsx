@@ -128,100 +128,132 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
   const syrupSurcharge = SYRUPS[syrup].surcharge;
   const totalPrice = basePrice + milkSurcharge + syrupSurcharge;
 
+  const catIcon = CATEGORIES.find(c => c.id === item.category)?.icon ?? "☕";
+
   return (
     <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-white flex flex-col"
+      initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
+      transition={{ type: "spring", damping: 25 }}
+      className="fixed inset-0 z-[100] bg-brand-bg flex flex-col"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#d0f0e0]">
-        <button onClick={onClose} className="text-brand-text/60 text-sm font-medium min-w-[44px] min-h-[44px] flex items-center">← Назад</button>
-        <h2 className="font-display text-lg font-bold text-brand-text">{item.name}</h2>
-        <div className="w-[44px]" />
-      </div>
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto p-5">
-          <div className="flex items-start gap-4 mb-2">
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${catGradient} flex items-center justify-center text-2xl text-white shrink-0`}>
-              {CATEGORIES.find(c => c.id === item.category)?.icon ?? "☕"}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                {item.tags.includes("hit") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-brand-pink/10 text-brand-pink">Хит</span>}
-                {item.tags.includes("new") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-brand-mint/20 text-brand-dark">NEW</span>}
-                {item.tags.includes("season") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-100 text-orange-600">Сезон</span>}
-              </div>
-              {item.ingredients && <p className="text-xs text-brand-text/50">{item.ingredients}</p>}
-            </div>
-            {item.radarData && <RadarChart profile={item.radarData} />}
-          </div>
-
-        {sizes && (
-          <div className="mt-4">
-            <p className="text-xs text-brand-text/50 mb-2">Размер</p>
-            <div className="flex gap-2">
-              {sizes.map((s) => (
-                <button key={s} onClick={() => setSz(s)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    sz === s ? "bg-brand-dark text-white shadow-md" : "bg-gray-100 text-brand-text/50"
-                  }`}>{s} — {item.sizes[s]}₸</button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {item.availableMilk && (
-          <div className="mt-4">
-            <p className="text-xs text-brand-text/50 mb-2">Молоко</p>
-            <div className="flex gap-2 flex-wrap">
-              {MILKS.map((m, i) => (
-                <button key={m.name} onClick={() => setMilk(i)}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                    milk === i ? "bg-brand-mint/20 text-brand-dark border border-brand-mint" : "bg-gray-100 text-gray-500"
-                  }`}>
-                  {m.name}
-                  {m.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{m.surcharge}₸</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4">
-          <p className="text-xs text-brand-text/50 mb-2">Сироп</p>
-          <div className="flex gap-2 flex-wrap">
-            {SYRUPS.map((s, i) => (
-              <button key={s.name} onClick={() => setSyrup(i)}
-                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                  syrup === i ? "bg-brand-mint/20 text-brand-dark border border-brand-mint" : "bg-gray-100 text-gray-500"
-                }`}>
-                {s.name}
-                {s.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{s.surcharge}₸</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        </div>
-        {/* Sticky add button at bottom of sheet */}
-        <div className="p-4 border-t border-[#d0f0e0] bg-white pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              onAdd(
-                item.name,
-                sz ?? "—",
-                totalPrice,
-                item.availableMilk ? MILKS[milk].name : undefined,
-                SYRUPS[syrup].surcharge > 0 ? SYRUPS[syrup].name : undefined,
-              );
-              onClose();
-            }}
-            className="w-full py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-lg min-h-[52px]"
-          >
-            Добавить — {totalPrice}₸
+      {/* Hero header */}
+      <div className={`bg-gradient-to-br ${catGradient} px-5 pt-4 pb-8 relative`}>
+        <div className="flex items-center justify-between mb-6">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={onClose}
+            className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-lg backdrop-blur-sm">
+            ←
           </motion.button>
+          <div className="flex gap-1.5">
+            {item.tags.includes("hit") && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">Хит</span>}
+            {item.tags.includes("new") && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">NEW</span>}
+            {item.tags.includes("season") && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">Сезон</span>}
+          </div>
         </div>
+        <div className="flex items-end gap-4">
+          <div>
+            <p className="text-5xl mb-2">{catIcon}</p>
+            <h2 className="font-display text-2xl font-bold text-white">{item.name}</h2>
+            {item.ingredients && <p className="text-sm text-white/70 mt-1">{item.ingredients}</p>}
+          </div>
+          {item.radarData && (
+            <div className="ml-auto opacity-90">
+              <RadarChart profile={item.radarData} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto -mt-4">
+        <div className="bg-brand-bg rounded-t-3xl px-5 pt-5 pb-4">
+
+          {/* Size picker */}
+          {sizes && (
+            <div className="mb-5">
+              <p className="text-xs font-bold text-brand-text/50 uppercase tracking-wider mb-2">Размер</p>
+              <div className="flex gap-2">
+                {sizes.map((s) => (
+                  <motion.button key={s} whileTap={{ scale: 0.95 }} onClick={() => setSz(s)}
+                    className={`flex-1 py-3 rounded-2xl text-sm font-bold transition-all ${
+                      sz === s
+                        ? "bg-brand-dark text-white shadow-lg"
+                        : "bg-white text-brand-text/60 border border-[#d0f0e0]"
+                    }`}>
+                    <span className="block text-lg">{s}</span>
+                    <span className="block text-xs mt-0.5 opacity-70">{item.sizes[s]}₸</span>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Milk picker */}
+          {item.availableMilk && (
+            <div className="mb-5">
+              <p className="text-xs font-bold text-brand-text/50 uppercase tracking-wider mb-2">Молоко</p>
+              <div className="flex gap-2 flex-wrap">
+                {MILKS.map((m, i) => (
+                  <motion.button key={m.name} whileTap={{ scale: 0.95 }} onClick={() => setMilk(i)}
+                    className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
+                      milk === i
+                        ? "bg-brand-dark text-white shadow-md"
+                        : "bg-white text-brand-text/60 border border-[#d0f0e0]"
+                    }`}>
+                    {m.name}
+                    {m.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{m.surcharge}₸</span>}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Syrup picker */}
+          <div className="mb-2">
+            <p className="text-xs font-bold text-brand-text/50 uppercase tracking-wider mb-2">Сироп</p>
+            <div className="flex gap-2 flex-wrap">
+              {SYRUPS.map((s, i) => (
+                <motion.button key={s.name} whileTap={{ scale: 0.95 }} onClick={() => setSyrup(i)}
+                  className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
+                    syrup === i
+                      ? "bg-brand-dark text-white shadow-md"
+                      : "bg-white text-brand-text/60 border border-[#d0f0e0]"
+                  }`}>
+                  {s.name}
+                  {s.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{s.surcharge}₸</span>}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky footer */}
+      <div className="px-5 py-4 bg-white border-t border-[#d0f0e0] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs text-brand-text/40">Итого</p>
+            <p className="text-2xl font-bold text-brand-dark">{totalPrice}₸</p>
+          </div>
+          {milkSurcharge > 0 && <span className="text-xs text-brand-mint bg-brand-mint/10 px-2 py-1 rounded-lg">+молоко {milkSurcharge}₸</span>}
+          {syrupSurcharge > 0 && <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">+сироп {syrupSurcharge}₸</span>}
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            onAdd(
+              item.name,
+              sz ?? "—",
+              totalPrice,
+              item.availableMilk ? MILKS[milk].name : undefined,
+              SYRUPS[syrup].surcharge > 0 ? SYRUPS[syrup].name : undefined,
+            );
+            onClose();
+          }}
+          className="w-full py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-xl min-h-[52px]"
+        >
+          Добавить в корзину
+        </motion.button>
+      </div>
     </motion.div>
   );
 }
