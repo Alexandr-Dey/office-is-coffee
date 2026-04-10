@@ -101,23 +101,26 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Barista quick links */}
-        {user && user.role === "barista" && (
-          <div className="space-y-3 mb-4">
-            <a href="/barista/stats" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-              <span className="text-2xl">📊</span>
-              <div>
-                <p className="font-bold text-brand-text text-sm">Моя смена</p>
-                <p className="text-xs text-brand-text/50">Статистика и заказы за сегодня</p>
-              </div>
-            </a>
-            <a href="/barista/bonuses" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-              <span className="text-2xl">💰</span>
-              <div>
-                <p className="font-bold text-brand-text text-sm">Мои бонусы</p>
-                <p className="text-xs text-brand-text/50">Заработок и запрос выплаты</p>
-              </div>
-            </a>
+        {/* Barista info */}
+        {user && (user.role === "barista" || user.role === "ceo") && (
+          <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+            <p className="text-xs text-brand-text/50 mb-2">Быстрые действия</p>
+            <div className="grid grid-cols-2 gap-2">
+              <a href="/admin" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
+                <span>📋</span><span className="text-sm font-medium text-brand-text">Заказы</span>
+              </a>
+              <a href="/barista/menu" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
+                <span>📝</span><span className="text-sm font-medium text-brand-text">Меню</span>
+              </a>
+              <a href="/barista/bonuses" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
+                <span>💰</span><span className="text-sm font-medium text-brand-text">Бонусы</span>
+              </a>
+              {user.role === "ceo" && (
+                <a href="/ceo" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
+                  <span>👑</span><span className="text-sm font-medium text-brand-text">CEO</span>
+                </a>
+              )}
+            </div>
           </div>
         )}
 
@@ -194,20 +197,6 @@ export default function ProfilePage() {
             <p className="text-sm font-medium text-blue-700">Установи приложение на главный экран для пуш-уведомлений</p>
             <p className="text-xs text-blue-500 mt-1">{"Нажми \"Поделиться\" \u2192 \"На экран Домой\""}</p>
           </div>
-        )}
-
-        {/* Admin link */}
-        {user && (user.role === "barista" || user.role === "ceo") && (
-          <a href="/admin" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 text-center font-bold text-brand-dark text-sm"
-            style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            ☕ Админ-панель
-          </a>
-        )}
-        {user && user.role === "ceo" && (
-          <a href="/ceo" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 text-center font-bold text-brand-dark text-sm"
-            style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            👑 CEO Дашборд
-          </a>
         )}
 
         <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>

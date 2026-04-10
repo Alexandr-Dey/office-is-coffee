@@ -14,8 +14,8 @@ const clientTabs = [
 
 const baristaTabs = [
   { href: "/admin", icon: "📋", label: "Заказы" },
+  { href: "/barista/menu", icon: "📝", label: "Меню" },
   { href: "/barista/bonuses", icon: "💰", label: "Бонусы" },
-  { href: "/barista/stats", icon: "📊", label: "Смена" },
   { href: "/profile", icon: "👤", label: "Профиль" },
 ];
 
