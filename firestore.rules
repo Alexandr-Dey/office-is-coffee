@@ -91,6 +91,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // push_log
+    match /push_log/{logId} {
+      allow read: if isCEO();
+      allow write: if false; // Only Cloud Functions
+    }
+
     // promo_codes
     match /promo_codes/{code} {
       allow read: if isAuthenticated();

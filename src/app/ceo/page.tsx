@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireCEO } from "@/lib/auth";
+import { useToast } from "@/components/Toast";
 import { collection, getDocs, doc, updateDoc, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
 
 interface BaristaBonus {
@@ -230,8 +231,173 @@ export default function CEOPage() {
               ))
             )}
           </div>
+
+          {/* Push Notifications Section */}
+          <PushSection />
         </div>
       </div>
     </main>
+  );
+}
+
+/* ═══ PUSH SECTION ═══ */
+const TEMPLATES = [
+  { title: "Скучаем по тебе ☕", body: "Зайди сегодня — Виталий и Аслан ждут" },
+  { title: "🔥 Стрик под угрозой!", body: "Успей заказать до конца дня" },
+  { title: "🎁 Один кофе до бесплатного!", body: "Зайди сегодня — осталось совсем чуть-чуть" },
+];
+
+interface SegmentInfo {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  count: number;
+  tokens: string[];
+}
+
+function PushSection() {
+  const { showToast } = useToast();
+  const [segments, setSegments] = useState<SegmentInfo[]>([]);
+  const [allTokens, setAllTokens] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [title, setTitle] = useState(TEMPLATES[0].title);
+  const [body, setBody] = useState(TEMPLATES[0].body);
+  const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => {
+    import("@/lib/pushNotifications").then(({ getClientSegments }) => {
+      getClientSegments().then((s) => {
+        setSegments([
+          { key: "sleeping", label: "Спящие (7+ дней)", icon: "😴", color: "bg-gray-100 border-gray-300", count: s.sleeping.length, tokens: s.sleeping.map(c => c.token) },
+          { key: "streakRisk", label: "Стрик горит", icon: "🔥", color: "bg-orange-50 border-orange-300", count: s.streakRisk.length, tokens: s.streakRisk.map(c => c.token) },
+          { key: "almostFree", label: "Почти бесплатный", icon: "🎁", color: "bg-green-50 border-green-300", count: s.almostFree.length, tokens: s.almostFree.map(c => c.token) },
+          { key: "vip", label: "VIP (10+ заказов)", icon: "👑", color: "bg-purple-50 border-purple-300", count: s.vip.length, tokens: s.vip.map(c => c.token) },
+        ]);
+        setAllTokens(s.all.map(c => c.token));
+        setLoading(false);
+      }).catch(() => setLoading(false));
+    });
+  }, []);
+
+  const getTargetTokens = (): string[] => {
+    if (selectedSegment === "all") return allTokens;
+    const seg = segments.find(s => s.key === selectedSegment);
+    return seg?.tokens ?? [];
+  };
+
+  const handleSend = async () => {
+    const tokens = getTargetTokens();
+    if (tokens.length === 0 || !title.trim() || !body.trim()) return;
+    setSending(true);
+    try {
+      const { sendManualPush } = await import("@/lib/pushNotifications");
+      const sent = await sendManualPush(tokens, title.trim(), body.trim());
+      showToast(`📨 Отправлено ${sent} клиентам`, "success");
+      setSelectedSegment(null);
+    } catch (e) {
+      showToast("Ошибка отправки", "info");
+      console.error(e);
+    }
+    setSending(false);
+  };
+
+  const targetCount = selectedSegment === "all" ? allTokens.length : (segments.find(s => s.key === selectedSegment)?.count ?? 0);
+
+  return (
+    <div className="mt-8">
+      <h2 className="font-bold text-brand-text mb-4">📨 Отправить пуш</h2>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2].map(i => <div key={i} className="h-20 bg-[#d0f0e0] rounded-2xl animate-pulse" />)}
+        </div>
+      ) : (
+        <>
+          {/* Segments */}
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {segments.map((seg) => (
+              <motion.button key={seg.key} whileTap={{ scale: 0.97 }}
+                onClick={() => setSelectedSegment(selectedSegment === seg.key ? null : seg.key)}
+                className={`p-3 rounded-xl border-2 text-left transition-all ${
+                  selectedSegment === seg.key ? "border-brand-dark bg-brand-dark/5" : `${seg.color}`
+                }`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span>{seg.icon}</span>
+                  <span className="text-xs font-bold text-brand-text">{seg.count}</span>
+                </div>
+                <p className="text-[10px] text-brand-text/60">{seg.label}</p>
+              </motion.button>
+            ))}
+          </div>
+
+          {/* All button */}
+          <motion.button whileTap={{ scale: 0.97 }}
+            onClick={() => setSelectedSegment(selectedSegment === "all" ? null : "all")}
+            className={`w-full p-3 rounded-xl border-2 mb-4 text-left transition-all ${
+              selectedSegment === "all" ? "border-brand-dark bg-brand-dark/5" : "border-[#d0f0e0] bg-white"
+            }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-brand-text">📢 Всем клиентам</span>
+              <span className="text-xs text-brand-text/40">{allTokens.length} с push</span>
+            </div>
+          </motion.button>
+
+          {/* Message */}
+          {selectedSegment && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+
+              {/* Templates */}
+              <p className="text-xs text-brand-text/50 mb-2">Шаблоны:</p>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-3">
+                {TEMPLATES.map((t, i) => (
+                  <button key={i} onClick={() => { setTitle(t.title); setBody(t.body); }}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-medium border ${
+                      title === t.title ? "border-brand-dark bg-brand-dark/5 text-brand-dark" : "border-[#d0f0e0] text-brand-text/50"
+                    }`}>
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+                placeholder="Заголовок" className="w-full px-3 py-2.5 rounded-xl border border-[#d0f0e0] text-sm mb-2 outline-none focus:border-brand-mint" />
+              <textarea value={body} onChange={e => setBody(e.target.value)}
+                placeholder="Текст" rows={2} className="w-full px-3 py-2.5 rounded-xl border border-[#d0f0e0] text-sm mb-3 outline-none focus:border-brand-mint resize-none" />
+
+              {/* Preview */}
+              <button onClick={() => setShowPreview(!showPreview)} className="text-xs text-brand-dark font-medium mb-3">
+                {showPreview ? "Скрыть предпросмотр" : "👁 Предпросмотр"}
+              </button>
+              <AnimatePresence>
+                {showPreview && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                    className="bg-gray-900 rounded-xl p-3 mb-3 text-white">
+                    <div className="flex items-start gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-brand-dark flex items-center justify-center text-xs flex-shrink-0">☕</div>
+                      <div>
+                        <p className="text-xs font-bold">{title || "Заголовок"}</p>
+                        <p className="text-[10px] text-white/70">{body || "Текст уведомления"}</p>
+                        <p className="text-[9px] text-white/30 mt-1">Love is Coffee · сейчас</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Send */}
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleSend}
+                disabled={sending || targetCount === 0 || !title.trim() || !body.trim()}
+                className="w-full py-3 bg-brand-dark text-white font-bold rounded-xl disabled:opacity-50 min-h-[48px]">
+                {sending ? "Отправка..." : `Отправить → ${targetCount} клиентам`}
+              </motion.button>
+            </motion.div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

@@ -281,3 +281,29 @@ exports.onCafeOpen = onDocumentUpdated("cafe_status/aksay_main", async (event) =
 
   await sendPushMulti(tokens, "Кофейня открыта! ☕", "Love is Coffee ждёт тебя. Заходи за кофе!");
 });
+
+/* ═══ 6. MANUAL PUSH — CEO only ═══ */
+exports.sendManualPush = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Not authenticated");
+  if (request.auth.token.role !== "ceo") throw new HttpsError("permission-denied", "CEO only");
+
+  const { tokens, title, body } = request.data;
+  if (!tokens || !Array.isArray(tokens) || !title || !body) {
+    throw new HttpsError("invalid-argument", "tokens, title, body required");
+  }
+
+  const batch = tokens.slice(0, 500);
+  await sendPushMulti(batch, title, body);
+
+  // Log
+  await db.collection("push_log").add({
+    sentBy: callerUid,
+    sentAt: new Date().toISOString(),
+    title,
+    body,
+    recipientCount: batch.length,
+  });
+
+  return { sent: batch.length };
+});
