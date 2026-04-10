@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
+interface BonusData { totalBonus: number; pendingPayout: number; payoutRequested: boolean }
+
 interface DepositHistoryEntry {
   type: "topup" | "payment" | "refund";
   amount: number;
@@ -28,23 +30,34 @@ export default function ProfilePage() {
   const [isPWA, setIsPWA] = useState(false);
   const [depositBalance, setDepositBalance] = useState(0);
   const [depositHistory, setDepositHistory] = useState<DepositHistoryEntry[]>([]);
+  const [bonus, setBonus] = useState<BonusData | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    const unsub = onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
+    const unsubs: Array<() => void> = [];
+    unsubs.push(onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
       if (snap.exists()) {
         setStreak(snap.data().streak ?? 0);
         setLoyaltyCount(snap.data().loyaltyCount ?? 0);
         setGeoPermission(snap.data().geolocationAllowed ?? false);
       }
-    }, () => {});
-    const unsubDep = onSnapshot(doc(getFirebaseDb(), "deposits", user.uid), (snap) => {
+    }, () => {}));
+    unsubs.push(onSnapshot(doc(getFirebaseDb(), "deposits", user.uid), (snap) => {
       if (snap.exists()) {
         setDepositBalance(snap.data().balance ?? 0);
         setDepositHistory((snap.data().history ?? []) as DepositHistoryEntry[]);
       }
-    }, () => {});
-    return () => { unsub(); unsubDep(); };
+    }, () => {}));
+    // Barista bonuses
+    if (user.role === "barista" || user.role === "ceo") {
+      unsubs.push(onSnapshot(doc(getFirebaseDb(), "barista_bonuses", user.uid), (snap) => {
+        if (snap.exists()) {
+          const d = snap.data();
+          setBonus({ totalBonus: d.totalBonus ?? 0, pendingPayout: d.pendingPayout ?? 0, payoutRequested: d.payoutRequested ?? false });
+        }
+      }, () => {}));
+    }
+    return () => unsubs.forEach(u => u());
   }, [user]);
 
   useEffect(() => {
@@ -101,26 +114,38 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Barista info */}
-        {user && (user.role === "barista" || user.role === "ceo") && (
+        {/* Barista bonuses */}
+        {user && (user.role === "barista" || user.role === "ceo") && bonus && (
           <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-            <p className="text-xs text-brand-text/50 mb-2">Быстрые действия</p>
-            <div className="grid grid-cols-2 gap-2">
-              <a href="/admin" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
-                <span>📋</span><span className="text-sm font-medium text-brand-text">Заказы</span>
-              </a>
-              <a href="/barista/menu" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
-                <span>📝</span><span className="text-sm font-medium text-brand-text">Меню</span>
-              </a>
-              <a href="/barista/bonuses" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
-                <span>💰</span><span className="text-sm font-medium text-brand-text">Бонусы</span>
-              </a>
-              {user.role === "ceo" && (
-                <a href="/ceo" className="flex items-center gap-2 p-3 bg-brand-bg rounded-xl min-h-[44px]">
-                  <span>👑</span><span className="text-sm font-medium text-brand-text">CEO</span>
-                </a>
-              )}
+            <p className="text-xs text-brand-text/50 mb-2">💰 Мои бонусы</p>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-2xl font-bold text-brand-dark">{bonus.pendingPayout.toLocaleString("ru-RU")}₸</p>
+                <p className="text-xs text-brand-text/40">к выплате</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-brand-text/60">{bonus.totalBonus.toLocaleString("ru-RU")}₸</p>
+                <p className="text-xs text-brand-text/40">всего заработано</p>
+              </div>
             </div>
+            {bonus.pendingPayout > 0 && !bonus.payoutRequested && (
+              <motion.button whileTap={{ scale: 0.97 }}
+                onClick={async () => {
+                  if (!user) return;
+                  await updateDoc(doc(getFirebaseDb(), "barista_bonuses", user.uid), { payoutRequested: true }).catch(() => {});
+                }}
+                className="w-full py-2.5 bg-brand-dark text-white font-bold rounded-xl text-sm min-h-[44px]">
+                Запросить выплату
+              </motion.button>
+            )}
+            {bonus.payoutRequested && (
+              <div className="bg-yellow-50 text-yellow-700 text-xs font-medium px-3 py-2 rounded-xl text-center">
+                ⏳ Запрос на выплату отправлен CEO
+              </div>
+            )}
+            <a href="/barista/bonuses" className="block text-center text-xs text-brand-dark font-medium mt-2 min-h-[44px] leading-[44px]">
+              Подробнее →
+            </a>
           </div>
         )}
 

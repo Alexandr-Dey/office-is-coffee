@@ -117,7 +117,29 @@ export default function BaristaMenuPage() {
       <div className="max-w-[480px] mx-auto px-4 py-4">
         {tab === "stoplist" && (
           <>
-            <p className="text-xs text-brand-text/50 mb-3">Выключи позиции которые закончились</p>
+            {/* Milk alternatives section */}
+            <div className="mb-4">
+              <h3 className="text-xs font-bold text-brand-text/60 uppercase tracking-wider mb-2">🥛 Альтернативное молоко</h3>
+              <div className="space-y-2">
+                {["Овсяное молоко", "Кокосовое молоко", "Миндальное молоко"].map((milk) => {
+                  const stopped = stopList.includes(milk);
+                  return (
+                    <div key={milk} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-[#d0f0e0]">
+                      <span className={`text-sm font-medium ${stopped ? "text-red-400 line-through" : "text-brand-text"}`}>
+                        {milk}
+                      </span>
+                      <button onClick={() => toggleStop(milk)}
+                        className={`w-12 h-7 rounded-full transition-colors flex items-center px-0.5 ${stopped ? "bg-red-400" : "bg-brand-mint"}`}>
+                        <div className={`w-6 h-6 rounded-full bg-white shadow transition-transform ${stopped ? "" : "translate-x-5"}`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Menu items section */}
+            <h3 className="text-xs font-bold text-brand-text/60 uppercase tracking-wider mb-2">☕ Напитки</h3>
             <div className="space-y-2">
               {items.map((item) => {
                 const stopped = stopList.includes(item.name) || stopList.includes(item.id);

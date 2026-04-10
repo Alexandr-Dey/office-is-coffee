@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { useRequireBarista, useAuth } from "@/lib/auth";
+import { useRequireBarista } from "@/lib/auth";
 import {
   collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, getDoc,
-  Timestamp, increment, arrayUnion, where, getDocs, limit, runTransaction,
+  Timestamp, increment, arrayUnion, limit, runTransaction,
 } from "firebase/firestore";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
@@ -15,7 +15,7 @@ interface Order {
   status: "new" | "pending" | "accepted" | "ready" | "paid"; comment?: string;
   createdAt: Timestamp | null; estimatedMinutes?: number; acceptedAt?: number;
   rating?: number; baristaid?: string; paymentMethod?: "deposit" | "cash";
-  isFreeByLoyalty?: boolean; paidAt?: unknown;
+  isFreeByLoyalty?: boolean;
 }
 
 function timeAgo(ts: Timestamp | null): string {
@@ -34,8 +34,65 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   paid: { label: "Оплачен", color: "bg-emerald-100 text-emerald-800" },
 };
 
-const TIME_OPTIONS = [5, 10, 15, 20];
+/* ═══ QUEUE VISUALIZATION ═══ */
+function QueueScene({ activeCount, readyCount }: { activeCount: number; readyCount: number }) {
+  const waiting = Math.min(activeCount, 8);
+  const ready = Math.min(readyCount, 4);
+  const colors = ["#2980b9", "#e74c3c", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#3498db", "#e91e63"];
 
+  return (
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-bold text-brand-text">Очередь</span>
+        <div className="flex gap-3 text-xs">
+          <span className="text-brand-text/50">⏳ {activeCount} ждут</span>
+          <span className="text-green-600 font-bold">✅ {readyCount} готовы</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 400 60" className="w-full" style={{ shapeRendering: "crispEdges" }}>
+        {/* Counter line */}
+        <rect x="0" y="50" width="400" height="4" fill="#1a7a44" rx="2" />
+        <rect x="0" y="54" width="400" height="6" fill="#145a32" rx="1" />
+
+        {/* Waiting people */}
+        {Array.from({ length: waiting }).map((_, i) => {
+          const x = 30 + i * 42;
+          const c = colors[i % colors.length];
+          return (
+            <g key={`w-${i}`}>
+              {/* Body */}
+              <rect x={x - 6} y="28" width="12" height="22" fill={c} rx="3" />
+              {/* Head */}
+              <circle cx={x} cy="20" r="8" fill="#e8b88a" />
+              <circle cx={x} cy="18" r="7" fill={c === "#f39c12" ? "#2c1810" : "#1a1a1a"} />
+              <circle cx={x - 2} cy="20" r="1.5" fill="#222" />
+              <circle cx={x + 2} cy="20" r="1.5" fill="#222" />
+            </g>
+          );
+        })}
+
+        {/* Ready cups on counter */}
+        {Array.from({ length: ready }).map((_, i) => {
+          const x = 350 - i * 24;
+          return (
+            <g key={`r-${i}`}>
+              <rect x={x - 5} y="38" width="10" height="14" fill="#d42b4f" rx="2" />
+              <rect x={x - 4} y="40" width="8" height="2" fill="#fff" opacity="0.5" />
+              <rect x={x - 5} y="38" width="10" height="3" fill="#8b1a2e" rx="1" />
+            </g>
+          );
+        })}
+
+        {/* Empty state */}
+        {waiting === 0 && ready === 0 && (
+          <text x="200" y="38" textAnchor="middle" fill="#9ca3af" fontSize="12">Пока никого ☕</text>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+/* ═══ ORDER CARD ═══ */
 function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const [updating, setUpdating] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -106,7 +163,6 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${sl.color}`}>{sl.label}</span>
         </div>
       </div>
-
       <div className="space-y-1 mb-3">
         {order.items.map((it, i) => (
           <div key={i} className="flex justify-between text-sm">
@@ -120,14 +176,12 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
           </div>
         ))}
       </div>
-
       {order.comment && (
         <div className="bg-brand-bg rounded-xl px-3 py-2 text-xs text-brand-text/60 mb-3">💬 {order.comment}</div>
       )}
       {order.paymentMethod === "cash" && order.status !== "paid" && (
         <div className="mb-2"><span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">💵 НАЛИЧНЫЕ</span></div>
       )}
-
       <div className="flex items-center justify-between border-t border-[#d0f0e0] pt-3">
         <span className="font-bold text-brand-dark">{order.total}₸</span>
         <div className="flex gap-2">
@@ -139,7 +193,7 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
           )}
           {showTimePicker && (
             <div className="flex gap-1.5">
-              {TIME_OPTIONS.map((m) => (
+              {[5, 10, 15, 20].map((m) => (
                 <motion.button key={m} whileTap={{ scale: 0.9 }} onClick={() => changeStatus("accepted", m)}
                   className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold min-h-[44px]">
                   {m} мин
@@ -165,91 +219,6 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
         </div>
       </div>
     </motion.div>
-  );
-}
-
-/* ═══ DEPOSITS ═══ */
-function DepositsSection({ baristaId }: { baristaId: string }) {
-  const [phone, setPhone] = useState("");
-  const [foundUser, setFoundUser] = useState<{ uid: string; name: string; balance: number } | null>(null);
-  const [amount, setAmount] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  const searchUser = async () => {
-    if (!phone.trim()) return;
-    setSearching(true); setFoundUser(null);
-    try {
-      const q = query(collection(getFirebaseDb(), "users"), where("phone", "==", phone.trim()));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const d = snap.docs[0];
-        const depSnap = await getDoc(doc(getFirebaseDb(), "deposits", d.id));
-        setFoundUser({ uid: d.id, name: d.data().displayName || "Клиент", balance: depSnap.exists() ? depSnap.data().balance ?? 0 : 0 });
-      }
-    } catch { /* ignore */ }
-    setSearching(false);
-  };
-
-  const topUp = async () => {
-    if (!foundUser || !amount) return;
-    const amt = parseInt(amount, 10);
-    if (isNaN(amt) || amt <= 0) return;
-    try {
-      const depRef = doc(getFirebaseDb(), "deposits", foundUser.uid);
-      const depSnap = await getDoc(depRef);
-      if (depSnap.exists()) {
-        await updateDoc(depRef, {
-          balance: increment(amt), totalTopup: increment(amt),
-          lastTopupAt: new Date().toISOString(),
-          history: arrayUnion({ type: "topup", amount: amt, date: new Date().toISOString(), baristaid: baristaId }),
-        });
-      } else {
-        await setDoc(depRef, {
-          balance: amt, totalTopup: amt, totalSpent: 0,
-          lastTopupAt: new Date().toISOString(),
-          history: [{ type: "topup", amount: amt, date: new Date().toISOString(), baristaid: baristaId }],
-        });
-      }
-      setSuccess(true);
-      setFoundUser({ ...foundUser, balance: foundUser.balance + amt });
-      setAmount("");
-      setTimeout(() => setSuccess(false), 3000);
-    } catch { /* ignore */ }
-  };
-
-  return (
-    <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-      <h3 className="font-bold text-brand-text text-sm mb-3">💳 Пополнить депозит клиента</h3>
-      <div className="flex gap-2 mb-3">
-        <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон или UID"
-          className="flex-1 px-3 py-2.5 rounded-xl border border-[#d0f0e0] text-sm outline-none focus:border-brand-mint min-h-[44px]" />
-        <motion.button whileTap={{ scale: 0.95 }} onClick={searchUser} disabled={searching}
-          className="px-4 py-2.5 bg-brand-dark text-white rounded-xl text-sm font-bold min-h-[44px] disabled:opacity-50">
-          {searching ? "..." : "Найти"}
-        </motion.button>
-      </div>
-      {foundUser && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex justify-between mb-3 bg-brand-bg rounded-xl p-3">
-            <div>
-              <p className="font-bold text-brand-text text-sm">{foundUser.name}</p>
-              <p className="text-xs text-brand-text/40">{foundUser.uid.slice(0, 16)}...</p>
-            </div>
-            <p className="font-bold text-brand-dark">{foundUser.balance}₸</p>
-          </div>
-          <div className="flex gap-2">
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Сумма ₸"
-              className="flex-1 px-3 py-2.5 rounded-xl border border-[#d0f0e0] text-sm outline-none focus:border-brand-mint min-h-[44px]" />
-            <motion.button whileTap={{ scale: 0.95 }} onClick={topUp}
-              className="px-4 py-2.5 bg-brand-mint text-brand-dark rounded-xl text-sm font-bold min-h-[44px]">
-              Пополнить
-            </motion.button>
-          </div>
-          {success && <p className="text-sm text-green-600 font-bold mt-2">✅ Депозит пополнен!</p>}
-        </motion.div>
-      )}
-    </div>
   );
 }
 
@@ -284,6 +253,8 @@ export default function AdminPage() {
   };
 
   const activeOrders = orders.filter((o) => ["new", "pending", "accepted", "ready"].includes(o.status));
+  const readyOrders = orders.filter((o) => o.status === "ready");
+  const waitingOrders = orders.filter((o) => ["new", "pending", "accepted"].includes(o.status));
   const paidOrders = orders.filter((o) => o.status === "paid");
   const displayed = filter === "active" ? activeOrders : paidOrders;
 
@@ -300,7 +271,6 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-brand-bg pb-20">
-      {/* Header with cafe toggle */}
       <div className="sticky top-0 z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
         <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="font-display text-lg font-bold text-brand-text">📋 Заказы</h1>
@@ -312,10 +282,10 @@ export default function AdminPage() {
       </div>
 
       <div className="px-4 pt-4 max-w-[480px] mx-auto">
-        {/* Deposit section */}
-        <DepositsSection baristaId={user.uid} />
+        {/* Queue visualization */}
+        <QueueScene activeCount={waitingOrders.length} readyCount={readyOrders.length} />
 
-        {/* Filter: active / paid */}
+        {/* Filter */}
         <div className="flex gap-2 mb-4">
           <button onClick={() => setFilter("active")}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
@@ -331,7 +301,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Orders */}
         {displayed.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
             <p className="text-5xl mb-3">😴</p>
