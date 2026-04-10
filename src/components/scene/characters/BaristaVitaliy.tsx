@@ -112,10 +112,12 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
   return (
     <g
       id="barista-vitaliy"
-      onClick={handleTap}
+      onPointerDown={handleTap}
       style={{ cursor: "pointer", transition: "transform 2s ease-in-out" }}
       transform={`translate(${posX}, 275)`}
     >
+      {/* Invisible hit area — larger than visible body */}
+      <rect x="-30" y="-20" width="60" height="90" fill="transparent" />
       <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
         Виталий
       </text>

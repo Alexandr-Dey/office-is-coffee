@@ -93,10 +93,12 @@ export function BaristaAslan({ orderStatus }: Props) {
   return (
     <g
       id="barista-aslan"
-      onClick={handleTap}
+      onPointerDown={handleTap}
       style={{ cursor: "pointer", transition: "transform 1.5s ease-in-out" }}
       transform={`translate(${posX}, 275)`}
     >
+      {/* Invisible hit area */}
+      <rect x="-30" y="-20" width="60" height="90" fill="transparent" />
       <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
         Аслан
       </text>
