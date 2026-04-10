@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -30,13 +29,13 @@ service cloud.firestore {
       allow update: if isOwner(uid)
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['role', 'loyaltyCount', 'streak']);
-      allow update: if isCEO();
+      allow update: if isBaristaOrCEO();
       allow delete: if false;
     }
 
     // orders
     match /orders/{orderId} {
-      allow read: if (resource.data.userId == request.auth.uid) || isBaristaOrCEO();
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'new';
@@ -44,16 +43,22 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // deposits — read owner + barista/CEO. Write ONLY via Cloud Functions.
+    // deposits — barista/CEO can read and write (top-up)
     match /deposits/{uid} {
       allow read: if isOwner(uid) || isBaristaOrCEO();
-      allow write: if false;
+      allow write: if isBaristaOrCEO();
     }
 
-    // barista_bonuses — read own barista + CEO. Write ONLY via Cloud Functions.
+    // barista_bonuses — own barista can read + update payoutRequested. CEO full.
     match /barista_bonuses/{uid} {
       allow read: if isOwner(uid) || isCEO();
-      allow write: if false;
+      allow write: if isOwner(uid) || isCEO();
+    }
+
+    // barista_hearts — anyone can write (client taps), barista/CEO can read
+    match /barista_hearts/{docId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
     // cafe_status
@@ -68,25 +73,25 @@ service cloud.firestore {
       allow write: if isOwner(uid);
     }
 
-    // menu_items
+    // menu_items — barista and CEO can manage
     match /menu_items/{itemId} {
       allow read: if true;
-      allow write: if isCEO();
+      allow write: if isBaristaOrCEO();
     }
 
-    // cache (weather, etc.)
+    // cache
     match /cache/{docId} {
       allow read: if true;
       allow write: if false;
     }
 
-    // scene_ambient (NPC state)
+    // scene_ambient
     match /scene_ambient/{docId} {
       allow read: if true;
       allow write: if false;
     }
 
-    // promo_codes (future)
+    // promo_codes
     match /promo_codes/{code} {
       allow read: if isAuthenticated();
       allow write: if isCEO();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -11,32 +11,32 @@ import { trackEvent } from "@/lib/mixpanel";
 
 interface OrderData {
   name: string;
-  items: { name: string; size: string; price: number; qty: number }[];
+  items: { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }[];
   total: number;
   status: "new" | "pending" | "accepted" | "ready" | "paid";
   comment?: string;
   estimatedMinutes?: number;
   acceptedAt?: number;
   rating?: number;
+  paymentMethod?: string;
+  isFreeByLoyalty?: boolean;
 }
 
 const STATUS_TEXT: Record<string, { title: string; sub: string; emoji: string }> = {
-  new: { title: "Заказ отправлен", sub: "Бариста скоро увидит...", emoji: "\uD83D\uDCE8" },
-  pending: { title: "Заказ принят", sub: "Ожидаем подтверждения баристы...", emoji: "\u231B" },
-  accepted: { title: "Виталий готовит твой кофе", sub: "Немного терпения...", emoji: "\u2615" },
-  ready: { title: "Твой кофе готов!", sub: "Забери у стойки", emoji: "\uD83C\uDF89" },
-  paid: { title: "Приятного!", sub: "До встречи снова", emoji: "\u2705" },
+  new: { title: "Заказ отправлен", sub: "Бариста скоро увидит...", emoji: "📨" },
+  pending: { title: "Заказ принят", sub: "Ожидаем подтверждения баристы...", emoji: "⏳" },
+  accepted: { title: "Виталий готовит твой кофе", sub: "Немного терпения...", emoji: "☕" },
+  ready: { title: "Твой кофе готов!", sub: "Забери у стойки", emoji: "🎉" },
+  paid: { title: "Приятного!", sub: "До встречи снова", emoji: "✅" },
 };
 
-/* ═══ COUNTDOWN TIMER ═══ */
 function CountdownTimer({ estimatedMinutes, acceptedAt }: { estimatedMinutes: number; acceptedAt: number }) {
   const [remaining, setRemaining] = useState(0);
-  const [total] = useState(estimatedMinutes * 60 * 1000);
+  const total = estimatedMinutes * 60 * 1000;
 
   useEffect(() => {
     const iv = setInterval(() => {
-      const elapsed = Date.now() - acceptedAt;
-      const rem = Math.max(0, total - elapsed);
+      const rem = Math.max(0, total - (Date.now() - acceptedAt));
       setRemaining(rem);
     }, 1000);
     return () => clearInterval(iv);
@@ -71,7 +71,6 @@ function CountdownTimer({ estimatedMinutes, acceptedAt }: { estimatedMinutes: nu
   );
 }
 
-/* ═══ FEEDBACK SHEET ═══ */
 function FeedbackSheet({ orderId, onDismiss }: { orderId: string; onDismiss: () => void }) {
   const [submitted, setSubmitted] = useState(false);
 
@@ -93,15 +92,15 @@ function FeedbackSheet({ orderId, onDismiss }: { orderId: string; onDismiss: () 
       className="fixed bottom-20 left-3 right-3 max-w-lg mx-auto bg-white rounded-2xl shadow-2xl border border-[#d0f0e0] p-5 z-50 text-center"
     >
       {submitted ? (
-        <p className="text-lg font-bold text-brand-dark">Спасибо! \u2764\uFE0F</p>
+        <p className="text-lg font-bold text-brand-dark">Спасибо! ❤️</p>
       ) : (
         <>
           <p className="font-bold text-brand-text mb-3">Как кофе?</p>
           <div className="flex justify-center gap-6">
-            {[{ emoji: "\uD83D\uDE0D", val: 3 }, { emoji: "\uD83D\uDC4D", val: 2 }, { emoji: "\uD83D\uDE15", val: 1 }].map((r) => (
+            {[{ emoji: "😍", val: 3 }, { emoji: "👍", val: 2 }, { emoji: "😕", val: 1 }].map((r) => (
               <motion.button key={r.val} whileTap={{ scale: 0.85 }}
                 onClick={() => submitRating(r.val)}
-                className="text-4xl hover:scale-110 transition-transform">{r.emoji}</motion.button>
+                className="text-4xl hover:scale-110 transition-transform min-w-[44px] min-h-[44px]">{r.emoji}</motion.button>
             ))}
           </div>
         </>
@@ -110,7 +109,6 @@ function FeedbackSheet({ orderId, onDismiss }: { orderId: string; onDismiss: () 
   );
 }
 
-/* ═══ PAGE ═══ */
 export default function OrderWaitPage() {
   const params = useParams();
   const orderId = params.id as string;
@@ -129,9 +127,9 @@ export default function OrderWaitPage() {
         if (!snap.exists()) { setNotFound(true); return; }
         const data = snap.data() as OrderData;
         if (prevStatus.current && prevStatus.current !== data.status) {
-          if (data.status === "accepted") showToast("\u2615 Ваш кофе готовится!", "info");
+          if (data.status === "accepted") showToast("☕ Ваш кофе готовится!", "info");
           else if (data.status === "ready") {
-            showToast("\u2705 Ваш кофе готов! Заберите у стойки", "success");
+            showToast("✅ Ваш кофе готов! Заберите у стойки", "success");
             feedbackTimer.current = setTimeout(() => setShowFeedback(true), 120000);
           }
         }
@@ -149,9 +147,9 @@ export default function OrderWaitPage() {
     return (
       <main className="min-h-screen bg-brand-bg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-6xl mb-4">\uD83E\uDD14</p>
+          <p className="text-6xl mb-4">🤔</p>
           <p className="text-brand-text text-lg font-medium mb-2">Заказ не найден</p>
-          <a href="/menu" className="text-brand-dark font-semibold hover:underline">\u2190 В меню</a>
+          <a href="/menu" className="text-brand-dark font-semibold hover:underline">← В меню</a>
         </div>
       </main>
     );
@@ -172,19 +170,20 @@ export default function OrderWaitPage() {
   }
 
   const st = STATUS_TEXT[order.status] ?? STATUS_TEXT.pending;
+  const isFree = order.isFreeByLoyalty;
 
   return (
     <main className="min-h-screen bg-brand-bg">
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/menu" className="text-sm text-brand-text/50 hover:text-brand-dark">\u2190 В меню</a>
-          <span className="font-display text-xl font-bold text-brand-text">Твой заказ</span>
+      <nav className="sticky top-0 w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
+        <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
+          <a href="/menu" className="text-sm text-brand-text/50 hover:text-brand-dark min-h-[44px] flex items-center">← В меню</a>
+          <h1 className="font-display text-xl font-bold text-brand-text">Твой заказ</h1>
           <div className="w-20" />
         </div>
       </nav>
 
-      <div className="pt-20 pb-24 px-4">
-        <div className="max-w-lg mx-auto text-center">
+      <div className="pt-4 pb-24 px-4">
+        <div className="max-w-[480px] mx-auto text-center">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex justify-center mb-6">
             <CoffeeScene orderStatus={order.status as BaristaState} />
           </motion.div>
@@ -192,29 +191,28 @@ export default function OrderWaitPage() {
           <AnimatePresence mode="wait">
             <motion.div key={order.status} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="mb-4">
               <p className="text-5xl mb-3">{st.emoji}</p>
-              <h1 className="font-display text-2xl font-bold text-brand-text mb-1">{st.title}</h1>
+              <h2 className="font-display text-2xl font-bold text-brand-text mb-1">{st.title}</h2>
               <p className="text-brand-text/50">{st.sub}</p>
             </motion.div>
           </AnimatePresence>
 
-          {/* Countdown timer */}
           {order.status === "accepted" && order.estimatedMinutes && order.acceptedAt && (
             <CountdownTimer estimatedMinutes={order.estimatedMinutes} acceptedAt={order.acceptedAt} />
           )}
 
           {/* Progress steps */}
           <div className="flex justify-center gap-2 mb-8">
-            {(["new", "pending", "accepted", "ready", "paid"] as const).map((s, i) => {
-              const steps = ["new", "pending", "accepted", "ready", "paid"];
-              const current = steps.indexOf(order.status);
+            {(["new", "accepted", "ready", "paid"] as const).map((s, i) => {
+              const steps = ["new", "accepted", "ready", "paid"];
+              const current = steps.indexOf(order.status === "pending" ? "new" : order.status);
               const active = i <= current;
-              const labels = ["\uD83D\uDCE8", "\u231B", "\u2615", "\uD83C\uDF89", "\u2705"];
+              const labels = ["📨", "☕", "🎉", "✅"];
               return (
                 <div key={s} className="flex items-center gap-1.5">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs transition-colors ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors ${
                     active ? "bg-brand-dark text-white" : "bg-[#d0f0e0] text-brand-text/40"
                   }`}>{labels[i]}</div>
-                  {i < 4 && <div className={`w-4 h-0.5 ${active && i < current ? "bg-brand-dark" : "bg-[#d0f0e0]"}`} />}
+                  {i < 3 && <div className={`w-6 h-0.5 ${active && i < current ? "bg-brand-dark" : "bg-[#d0f0e0]"}`} />}
                 </div>
               );
             })}
@@ -225,27 +223,39 @@ export default function OrderWaitPage() {
             className="bg-white rounded-2xl border border-[#d0f0e0] p-5 text-left" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
             <h3 className="font-bold text-brand-text mb-2">Детали заказа</h3>
             {order.items.map((it, i) => (
-              <div key={i} className="flex justify-between text-sm py-1">
-                <span className="text-brand-text/70">{it.name} {it.size !== "\u2014" && `(${it.size})`} {it.qty > 1 && `\u00D7${it.qty}`}</span>
-                <span className="font-bold text-brand-text">{it.price * it.qty} \u20B8</span>
+              <div key={i} className="flex justify-between text-sm py-1.5">
+                <div className="text-brand-text/70">
+                  <span>{it.name}</span>
+                  {it.size && it.size !== "—" && <span className="text-brand-text/40"> ({it.size})</span>}
+                  {it.milk && it.milk !== "Стандарт" && it.milk !== "standard" && (
+                    <span className="text-brand-mint"> · {it.milk}</span>
+                  )}
+                  {it.addons && it.addons.length > 0 && (
+                    <span className="text-amber-500"> · {it.addons.join(", ")}</span>
+                  )}
+                  {it.qty > 1 && <span className="font-bold"> ×{it.qty}</span>}
+                </div>
+                <span className="font-bold text-brand-text">{isFree ? "0" : it.price * it.qty}₸</span>
               </div>
             ))}
             <div className="border-t border-[#d0f0e0] mt-2 pt-2 flex justify-between">
               <span className="font-bold text-brand-text">Итого</span>
-              <span className="font-bold text-brand-dark">{order.total} \u20B8</span>
+              <span className="font-bold text-brand-dark text-lg">{isFree ? "0 (бесплатно 🎉)" : `${order.total}₸`}</span>
             </div>
+            {order.comment && (
+              <p className="text-xs text-brand-text/50 mt-2">💬 {order.comment}</p>
+            )}
           </motion.div>
 
           {(order.status === "ready" || order.status === "paid") && (
             <motion.a href="/menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-              className="inline-block mt-6 px-8 py-3 bg-brand-dark text-white font-bold rounded-2xl shadow-lg">
+              className="inline-block mt-6 px-8 py-3 bg-brand-dark text-white font-bold rounded-2xl shadow-lg min-h-[44px]">
               Вернуться в меню
             </motion.a>
           )}
         </div>
       </div>
 
-      {/* Feedback */}
       <AnimatePresence>
         {showFeedback && !order.rating && (
           <FeedbackSheet orderId={orderId} onDismiss={dismissFeedback} />
