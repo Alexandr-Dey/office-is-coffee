@@ -65,8 +65,9 @@ function isSeasonActive(from?: string | null, to?: string | null): boolean {
   return current >= from || current <= to;
 }
 
+const SIZE_ORDER: Record<Size, number> = { S: 0, M: 1, L: 2 };
 function getSizes(item: MenuItem): Size[] | null {
-  const keys = Object.keys(item.sizes) as Size[];
+  const keys = (Object.keys(item.sizes) as Size[]).sort((a, b) => SIZE_ORDER[a] - SIZE_ORDER[b]);
   return keys.length > 0 ? keys : null;
 }
 function getDefault(item: MenuItem): Size | null {
@@ -260,16 +261,16 @@ function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped, coo
       <div className="text-3xl mb-2">{catIcon}</div>
       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
         <span className="font-semibold text-sm">{item.name}</span>
-        {item.tags.includes("hit") && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-white/25 text-white">{"Хит"}</span>}
-        {item.tags.includes("new") && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-white/25 text-white">NEW</span>}
-        {item.tags.includes("season") && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-white/25 text-white">{"Сезон"}</span>}
+        {item.tags.includes("hit") && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">{"Хит"}</span>}
+        {item.tags.includes("new") && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">NEW</span>}
+        {item.tags.includes("season") && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-white/25 text-white">{"Сезон"}</span>}
       </div>
-      {unavailable && <span className="text-[10px] text-white/70 font-medium">Закончился</span>}
-      {item.ingredients && !unavailable && <p className="text-[10px] text-white/60 line-clamp-1">{item.ingredients}</p>}
+      {unavailable && <span className="text-xs text-white/70 font-medium">Закончился</span>}
+      {item.ingredients && !unavailable && <p className="text-xs text-white/60 line-clamp-1">{item.ingredients}</p>}
       {sizes && !unavailable && (
         <div className="flex gap-1 mb-1 mt-1">
           {sizes.map((s) => (
-            <span key={s} className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-white/15 text-white/80">{s}</span>
+            <span key={s} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-white/30 text-white">{s}</span>
           ))}
         </div>
       )}
@@ -296,7 +297,7 @@ function LoyaltyBanner({ count }: { count: number }) {
           <span key={i} className={`text-lg ${i < count ? "" : "opacity-20"}`}>{i < count ? "☕" : "○"}</span>
         ))}
       </div>
-      <span className="text-[11px] text-brand-text/50">каждый 8-й бесплатный</span>
+      <span className="text-xs text-brand-text/50">каждый 8-й бесплатный</span>
     </div>
   );
 }
@@ -533,7 +534,7 @@ export default function MenuPage() {
           <div className="absolute -right-8 -top-8 w-32 h-32 bg-brand-mint/20 rounded-full" aria-hidden="true" />
           <div className="absolute right-10 bottom-2 w-16 h-16 bg-brand-mint/15 rounded-full" aria-hidden="true" />
           <div className="absolute left-1/2 top-0 w-24 h-24 bg-brand-mint/10 rounded-full -translate-x-1/2 -translate-y-1/2" aria-hidden="true" />
-          <p className="text-[10px] uppercase tracking-wider text-brand-mint font-bold mb-1">Хит сезона</p>
+          <p className="text-xs uppercase tracking-wider text-brand-mint font-bold mb-1">Хит сезона</p>
           <h2 className="font-display text-xl font-bold mb-1">Раф классика</h2>
           <p className="text-sm text-white/70 mb-3">Нежный сливочный кофе с ванилью</p>
           <div className="flex items-center gap-3">
