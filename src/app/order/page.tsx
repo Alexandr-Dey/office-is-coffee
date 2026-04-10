@@ -78,6 +78,13 @@ export default function OrderPage() {
 
       sessionStorage.removeItem("oic_is_repeat");
 
+      // Request push permission after first order
+      if (userId !== "anonymous") {
+        import("@/lib/push").then(({ requestPushPermission }) => {
+          requestPushPermission(userId).catch(() => {});
+        });
+      }
+
       trackEvent("Order Created", {
         total,
         paymentMethod: payMethod,

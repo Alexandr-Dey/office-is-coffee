@@ -130,7 +130,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [streak, setStreak] = useState(0);
   const [loyaltyCount, setLoyaltyCount] = useState(0);
-  const [geoPermission, setGeoPermission] = useState(false);
+  const [geoPermission, setGeoPermission] = useState<boolean | null>(null); // null = loading
   const [showGeoPrompt, setShowGeoPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isPWA, setIsPWA] = useState(false);
@@ -184,15 +184,25 @@ export default function ProfilePage() {
     router.replace("/");
   };
 
-  const requestGeo = useCallback(() => {
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        setGeoPermission(true);
-        setShowGeoPrompt(false);
-        if (user) updateDoc(doc(getFirebaseDb(), "users", user.uid), { geolocationAllowed: true }).catch(() => {});
-      },
-      () => { setShowGeoPrompt(false); },
-    );
+  const requestGeo = useCallback(async () => {
+    try {
+      const result = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+      });
+      setGeoPermission(true);
+      setShowGeoPrompt(false);
+      if (user) {
+        await updateDoc(doc(getFirebaseDb(), "users", user.uid), { geolocationAllowed: true }).catch(() => {});
+      }
+      // Also request push permission while we have user attention
+      if (user) {
+        import("@/lib/push").then(({ requestPushPermission }) => {
+          requestPushPermission(user.uid).catch(() => {});
+        });
+      }
+    } catch {
+      setShowGeoPrompt(false);
+    }
   }, [user]);
 
   return (
@@ -357,8 +367,8 @@ export default function ProfilePage() {
         {/* Wisdom of the day */}
         <WisdomOfTheDay />
 
-        {/* Geo permission */}
-        {!geoPermission && !showGeoPrompt && (
+        {/* Geo permission — hide while loading (null) */}
+        {geoPermission === false && !showGeoPrompt && (
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowGeoPrompt(true)}
@@ -380,7 +390,7 @@ export default function ProfilePage() {
           </motion.div>
         )}
 
-        {geoPermission && (
+        {geoPermission === true && (
           <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
             <span className="text-green-500 text-xl">✅</span>
             <div>
