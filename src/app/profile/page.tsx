@@ -203,13 +203,60 @@ export default function ProfilePage() {
         <div className="bg-white rounded-2xl border border-[#d0f0e0] p-6 space-y-4 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
           {user && (
             <>
-              <div>
-                <p className="text-xs text-brand-text/50">Имя</p>
-                <p className="font-bold text-lg text-brand-dark">{user.displayName}</p>
-              </div>
-              <div>
-                <p className="text-xs text-brand-text/50">Роль</p>
-                <p className="font-medium">{user.role === "barista" ? "🧑‍🍳 Бариста" : user.role === "ceo" ? "👑 CEO" : "☕ Клиент"}</p>
+              <div className="flex items-center gap-4">
+                {/* Avatar */}
+                {user.role === "barista" ? (
+                  <div className="w-16 h-16 rounded-full bg-[#f5e0c8] flex items-center justify-center flex-shrink-0 border-2 border-[#d4a574]">
+                    <svg viewBox="0 0 64 64" width="48" height="48">
+                      {/* Civet cat (kopi luwak) */}
+                      {/* Body */}
+                      <ellipse cx="32" cy="38" rx="16" ry="12" fill="#8B6914" />
+                      <ellipse cx="32" cy="40" rx="14" ry="10" fill="#A0782C" />
+                      {/* Dark stripe on back */}
+                      <ellipse cx="32" cy="36" rx="10" ry="4" fill="#6B4E0E" opacity="0.4" />
+                      {/* Head */}
+                      <circle cx="32" cy="22" r="10" fill="#A0782C" />
+                      {/* Ears */}
+                      <ellipse cx="24" cy="14" rx="4" ry="5" fill="#8B6914" />
+                      <ellipse cx="40" cy="14" rx="4" ry="5" fill="#8B6914" />
+                      <ellipse cx="24" cy="14" rx="2.5" ry="3" fill="#D4A574" />
+                      <ellipse cx="40" cy="14" rx="2.5" ry="3" fill="#D4A574" />
+                      {/* Face mask */}
+                      <ellipse cx="32" cy="24" rx="6" ry="4" fill="#D4C4A0" />
+                      {/* Eyes */}
+                      <circle cx="28" cy="20" r="2.5" fill="#1a1a1a" />
+                      <circle cx="36" cy="20" r="2.5" fill="#1a1a1a" />
+                      <circle cx="29" cy="19" r="0.8" fill="#fff" />
+                      <circle cx="37" cy="19" r="0.8" fill="#fff" />
+                      {/* Nose */}
+                      <ellipse cx="32" cy="24" rx="2" ry="1.5" fill="#5C2E0E" />
+                      {/* Whiskers */}
+                      <line x1="22" y1="23" x2="28" y2="24" stroke="#6B4E0E" strokeWidth="0.5" />
+                      <line x1="22" y1="25" x2="28" y2="25" stroke="#6B4E0E" strokeWidth="0.5" />
+                      <line x1="42" y1="23" x2="36" y2="24" stroke="#6B4E0E" strokeWidth="0.5" />
+                      <line x1="42" y1="25" x2="36" y2="25" stroke="#6B4E0E" strokeWidth="0.5" />
+                      {/* Tail */}
+                      <path d="M48,38 Q56,30 52,22" stroke="#8B6914" strokeWidth="3" fill="none" strokeLinecap="round" />
+                      {/* Coffee bean near paw */}
+                      <ellipse cx="22" cy="48" rx="4" ry="3" fill="#5C2E0E" />
+                      <line x1="22" y1="45" x2="22" y2="51" stroke="#3a1a08" strokeWidth="0.8" />
+                    </svg>
+                  </div>
+                ) : user.role === "ceo" ? (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-dark to-brand-mid flex items-center justify-center flex-shrink-0 text-3xl">
+                    👑
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-[#f0fdf4] flex items-center justify-center flex-shrink-0 border-2 border-[#d0f0e0] text-3xl">
+                    ☕
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="font-bold text-lg text-brand-dark">{user.displayName}</p>
+                  <p className="text-sm text-brand-text/60">
+                    {user.role === "barista" ? "🧑‍🍳 Бариста · Копи-лувак" : user.role === "ceo" ? "👑 CEO" : "☕ Клиент"}
+                  </p>
+                </div>
               </div>
               {user.role === "client" && (
                 <div className="flex items-center gap-4">
