@@ -653,7 +653,12 @@ export default function MenuPage() {
         />
       </div>
 
-      {/* Quick order strip: recent orders + popular */}
+      {/* Loyalty — tight under scene */}
+      <div className="px-3 -mt-1">
+        <LoyaltyBanner count={loyaltyCount} />
+      </div>
+
+      {/* Quick order strip */}
       <QuickOrderStrip
         menuItems={menuItems}
         onRepeat={repeatOrder}
@@ -661,32 +666,6 @@ export default function MenuPage() {
         categories={CATEGORIES}
         favorites={favorites}
       />
-
-      {/* Loyalty */}
-      <div className="relative z-10 px-3 mt-2">
-        <LoyaltyBanner count={loyaltyCount} />
-      </div>
-
-      {/* Hero hit */}
-      <section className="px-3 mt-3" aria-label="Хит сезона">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          className="bg-gradient-to-br from-brand-dark to-brand-mid rounded-2xl p-5 text-white relative overflow-hidden">
-          <div className="absolute -right-8 -top-8 w-32 h-32 bg-brand-mint/20 rounded-full" aria-hidden="true" />
-          <div className="absolute right-10 bottom-2 w-16 h-16 bg-brand-mint/15 rounded-full" aria-hidden="true" />
-          <div className="absolute left-1/2 top-0 w-24 h-24 bg-brand-mint/10 rounded-full -translate-x-1/2 -translate-y-1/2" aria-hidden="true" />
-          <p className="text-xs uppercase tracking-wider text-brand-mint font-bold mb-1">Хит сезона</p>
-          <h2 className="font-display text-xl font-bold mb-1">Раф классика</h2>
-          <p className="text-sm text-white/70 mb-3">Нежный сливочный кофе с ванилью</p>
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-lg">1 250 ₸</span>
-            <motion.button whileTap={{ scale: 0.9 }}
-              onClick={() => { if (cafeOpen) addToCart("Раф классика", "M", 1250, MILKS[0].name); }}
-              disabled={!cafeOpen}
-              aria-label="Добавить Раф классика в корзину"
-              className="bg-white text-brand-dark px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-50 min-h-[44px]">В корзину</motion.button>
-          </div>
-        </motion.div>
-      </section>
 
       {/* Search */}
       <div className="px-3 mt-4">
