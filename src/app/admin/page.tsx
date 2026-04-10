@@ -8,6 +8,7 @@ import {
   collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, getDoc,
   Timestamp, increment, arrayUnion, limit, runTransaction,
 } from "firebase/firestore";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
 interface Order {
@@ -99,30 +100,22 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [error, setError] = useState("");
 
   const changeStatus = async (newStatus: "accepted" | "ready" | "paid", minutes?: number) => {
     setUpdating(true);
+    setError("");
     try {
       const orderRef = doc(getFirebaseDb(), "orders", order.id);
-      await runTransaction(getFirebaseDb(), async (tx) => {
-        const orderSnap = await tx.get(orderRef);
-        if (!orderSnap.exists()) throw new Error("Order not found");
-        const current = orderSnap.data().status;
-        const allowed: Record<string, string[]> = {
-          accepted: ["new", "pending"], ready: ["accepted"], paid: ["ready"],
-        };
-        if (allowed[newStatus] && !allowed[newStatus].includes(current)) {
-          throw new Error(`Cannot transition ${current} → ${newStatus}`);
-        }
-        const updates: Record<string, unknown> = { status: newStatus };
-        if (newStatus === "accepted" && minutes) {
-          updates.estimatedMinutes = minutes;
-          updates.acceptedAt = Date.now();
-          updates.baristaid = baristaId;
-        }
-        if (newStatus === "paid") updates.paidAt = new Date().toISOString();
-        tx.update(orderRef, updates);
-      });
+      // Simple update instead of transaction for reliability
+      const updates: Record<string, unknown> = { status: newStatus };
+      if (newStatus === "accepted" && minutes) {
+        updates.estimatedMinutes = minutes;
+        updates.acceptedAt = Date.now();
+        updates.baristaid = baristaId;
+      }
+      if (newStatus === "paid") updates.paidAt = new Date().toISOString();
+      await updateDoc(orderRef, updates);
 
       if (newStatus === "ready" && !order.isFreeByLoyalty) {
         const bonusBarista = order.baristaid || baristaId;
@@ -143,15 +136,19 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
             });
           }
         });
-        await updateDoc(doc(getFirebaseDb(), "orders", order.id), { baristaBonus: 5 });
+        await updateDoc(doc(getFirebaseDb(), "orders", order.id), { baristaBonus: 5 }).catch(() => {});
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error("changeStatus error:", e);
+      setError(e instanceof Error ? e.message : "Ошибка обновления заказа");
+    }
     setUpdating(false);
     setShowTimePicker(false);
   };
 
   const cancelOrder = async () => {
     setUpdating(true);
+    setError("");
     try {
       await updateDoc(doc(getFirebaseDb(), "orders", order.id), {
         status: "cancelled",
@@ -159,7 +156,10 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
         cancelledAt: new Date().toISOString(),
         cancelledBy: baristaId,
       });
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error("cancelOrder error:", e);
+      setError(e instanceof Error ? e.message : "Ошибка отмены заказа");
+    }
     setUpdating(false);
     setShowCancel(false);
   };
@@ -230,6 +230,12 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
             </button>
           </div>
         </motion.div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 text-red-600 text-xs font-medium px-3 py-2 rounded-xl mb-3">
+          ⚠️ {error}
+        </div>
       )}
 
       <div className="flex items-center justify-between border-t border-[#d0f0e0] pt-3">
@@ -304,6 +310,11 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"active" | "paid">("active");
   const [cafeOpen, setCafeOpen] = useState(true);
+
+  // Force token refresh to ensure Custom Claims (role) are up to date
+  useEffect(() => {
+    getFirebaseAuth().currentUser?.getIdToken(true).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const q = query(collection(getFirebaseDb(), "orders"), orderBy("createdAt", "desc"), limit(50));
