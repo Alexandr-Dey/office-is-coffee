@@ -572,6 +572,39 @@ export default function MenuPage() {
         </motion.div>
       )}
 
+      {/* Popular items — horizontal scroll */}
+      {(() => {
+        const featured = menuItems.filter(i => (i as MenuItem & { featured?: boolean }).featured);
+        if (featured.length === 0) return null;
+        return (
+          <section className="mt-3" aria-label="Популярное">
+            <div className="px-3 flex items-center justify-between mb-2">
+              <h2 className="text-sm font-bold text-brand-text">🔥 Популярное</h2>
+              <span className="text-[10px] text-brand-text/40">{featured.length} напитков</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide px-3 pb-2">
+              {featured.map((item) => {
+                const itemCat = CATEGORIES.find(c => c.id === item.category);
+                const minPrice = Math.min(...Object.values(item.sizes));
+                return (
+                  <motion.button
+                    key={item.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setDetailItem({ item, gradient: itemCat?.gradient ?? "from-[#1a7a44] to-[#2d9e5a]" })}
+                    className={`flex-shrink-0 w-28 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${itemCat?.gradient ?? "from-[#1a7a44] to-[#2d9e5a]"}`}
+                    style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                  >
+                    <span className="text-2xl block mb-1">{itemCat?.icon ?? "☕"}</span>
+                    <p className="text-xs font-bold truncate">{item.name}</p>
+                    <p className="text-[10px] text-white/70 mt-0.5">от {minPrice}₸</p>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* Hero hit */}
       <section className="px-3 mt-3" aria-label="Хит сезона">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}

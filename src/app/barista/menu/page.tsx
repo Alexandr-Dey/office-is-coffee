@@ -30,7 +30,7 @@ export default function BaristaMenuPage() {
   const { user, loading } = useRequireBarista();
   const [items, setItems] = useState<MenuItem[]>([]);
   const [stopList, setStopList] = useState<string[]>([]);
-  const [tab, setTab] = useState<"menu" | "stoplist">("stoplist");
+  const [tab, setTab] = useState<"stoplist" | "popular" | "menu">("stoplist");
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [search, setSearch] = useState("");
@@ -48,6 +48,10 @@ export default function BaristaMenuPage() {
     }, () => {});
     return () => unsub();
   }, []);
+
+  const toggleFeatured = async (itemId: string, current: boolean) => {
+    await setDoc(doc(getFirebaseDb(), "menu_items", itemId), { featured: !current }, { merge: true }).catch(() => {});
+  };
 
   const toggleStop = async (name: string) => {
     const newList = stopList.includes(name) ? stopList.filter(s => s !== name) : [...stopList, name];
@@ -99,16 +103,22 @@ export default function BaristaMenuPage() {
           {/* Tabs */}
           <div className="flex gap-2">
             <button onClick={() => setTab("stoplist")}
-              className={`flex-1 py-2 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
+              className={`flex-1 py-2 rounded-xl text-xs font-bold min-h-[44px] transition-all ${
                 tab === "stoplist" ? "bg-brand-dark text-white" : "bg-brand-bg text-brand-text"
               }`}>
-              🛑 Стоп-лист
+              🛑 Стоп
+            </button>
+            <button onClick={() => setTab("popular")}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold min-h-[44px] transition-all ${
+                tab === "popular" ? "bg-brand-dark text-white" : "bg-brand-bg text-brand-text"
+              }`}>
+              🔥 Популярное
             </button>
             <button onClick={() => setTab("menu")}
-              className={`flex-1 py-2 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
+              className={`flex-1 py-2 rounded-xl text-xs font-bold min-h-[44px] transition-all ${
                 tab === "menu" ? "bg-brand-dark text-white" : "bg-brand-bg text-brand-text"
               }`}>
-              📋 Все позиции
+              📋 Все
             </button>
           </div>
         </div>
@@ -151,6 +161,29 @@ export default function BaristaMenuPage() {
                     <button onClick={() => toggleStop(item.name)}
                       className={`w-12 h-7 rounded-full transition-colors flex items-center px-0.5 ${stopped ? "bg-red-400" : "bg-brand-mint"}`}>
                       <div className={`w-6 h-6 rounded-full bg-white shadow transition-transform ${stopped ? "" : "translate-x-5"}`} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {tab === "popular" && (
+          <>
+            <p className="text-xs text-brand-text/50 mb-3">Выбери напитки для блока «Популярное» на главной</p>
+            <div className="space-y-2">
+              {items.map((item) => {
+                const isFeatured = !!(item as MenuItem & { featured?: boolean }).featured;
+                return (
+                  <div key={item.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-[#d0f0e0]">
+                    <div className="flex items-center gap-2">
+                      {isFeatured && <span className="text-xs">🔥</span>}
+                      <span className={`text-sm font-medium ${isFeatured ? "text-brand-dark" : "text-brand-text/60"}`}>{item.name}</span>
+                    </div>
+                    <button onClick={() => toggleFeatured(item.id, isFeatured)}
+                      className={`w-12 h-7 rounded-full transition-colors flex items-center px-0.5 ${isFeatured ? "bg-orange-400" : "bg-gray-200"}`}>
+                      <div className={`w-6 h-6 rounded-full bg-white shadow transition-transform ${isFeatured ? "translate-x-5" : ""}`} />
                     </button>
                   </div>
                 );
