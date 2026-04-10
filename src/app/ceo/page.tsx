@@ -272,10 +272,14 @@ function PushSection() {
   const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState("");
 
-  // Load all clients
+  // Load all clients (force token refresh first)
   useEffect(() => {
     async function load() {
       try {
+        // Force token refresh to ensure CEO claims are fresh
+        const { getFirebaseAuth } = await import("@/lib/firebase");
+        await getFirebaseAuth().currentUser?.getIdToken(true).catch(() => {});
+
         const db = getFirebaseDb();
         const usersSnap = await getDocs(collection(db, "users"));
         const tokensSnap = await getDocs(collection(db, "push_tokens"));
@@ -298,8 +302,9 @@ function PushSection() {
         }
         setClients(list);
       } catch (e) {
-        setError("Не удалось загрузить клиентов");
-        console.error(e);
+        const msg = e instanceof Error ? e.message : "Неизвестная ошибка";
+        setError(`Не удалось загрузить: ${msg}`);
+        console.error("PushSection load error:", e);
       }
       setLoading(false);
     }
