@@ -388,6 +388,7 @@ export default function MenuPage() {
   const { cart, addItem, removeItem, setItems, clearCart, totalItems, totalPrice } = useCart();
   const [cat, setCat] = useState("classic-coffee");
   const [showCart, setShowCart] = useState(false);
+  const [search, setSearch] = useState("");
   const [detailItem, setDetailItem] = useState<{ item: MenuItem; gradient: string } | null>(null);
   const [loyaltyCount, setLoyaltyCount] = useState(0);
   const [cafeOpen, setCafeOpen] = useState(true);
@@ -412,7 +413,17 @@ export default function MenuPage() {
   }, []);
 
   const currentCat = CATEGORIES.find(c => c.id === cat) ?? CATEGORIES[0];
-  const currentItems = menuItems.filter(i => i.category === cat);
+  const isSearching = search.trim().length >= 2;
+  const searchResults = isSearching
+    ? menuItems.filter(i => {
+        const q = search.toLowerCase();
+        return i.name.toLowerCase().includes(q)
+          || (i.ingredients ?? "").toLowerCase().includes(q)
+          || (i.description ?? "").toLowerCase().includes(q)
+          || (CATEGORIES.find(c => c.id === i.category)?.name ?? "").toLowerCase().includes(q);
+      })
+    : [];
+  const currentItems = isSearching ? searchResults : menuItems.filter(i => i.category === cat);
 
   /* Listen to cafe status */
   useEffect(() => {
@@ -582,8 +593,32 @@ export default function MenuPage() {
         </motion.div>
       </section>
 
-      {/* Tabs */}
-      <nav ref={tabsRef} data-menu-tabs aria-label="Категории меню" className="px-3 mt-4 relative">
+      {/* Search */}
+      <div className="px-3 mt-4">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text/30 text-sm">🔍</span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Найти напиток..."
+            className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-[#d0f0e0] bg-white text-sm text-brand-text outline-none focus:border-brand-mint focus:ring-1 focus:ring-brand-mint min-h-[44px]"
+          />
+          {search && (
+            <button onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-text/30 min-w-[32px] min-h-[32px] flex items-center justify-center">✕</button>
+          )}
+        </div>
+        {isSearching && (
+          <p className="text-xs text-brand-text/40 mt-1.5 px-1">
+            {searchResults.length > 0 ? `Найдено: ${searchResults.length}` : "Ничего не найдено"}
+          </p>
+        )}
+      </div>
+
+      {/* Tabs — hidden during search */}
+      {!isSearching && (
+      <nav ref={tabsRef} data-menu-tabs aria-label="Категории меню" className="px-3 mt-3 relative">
         <div className="overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 pb-1" role="tablist">
             {CATEGORIES.map((c) => (
@@ -600,6 +635,7 @@ export default function MenuPage() {
         {/* Scroll fade indicator */}
         <div className="absolute right-3 top-0 bottom-0 w-8 bg-gradient-to-l from-brand-bg to-transparent pointer-events-none" aria-hidden="true" />
       </nav>
+      )}
 
       {/* Grid */}
       <section className="px-3 mt-3" aria-label="Каталог напитков" role="tabpanel">
@@ -611,24 +647,27 @@ export default function MenuPage() {
           </div>
         ) : (
           <AnimatePresence mode="wait">
-            <motion.div key={cat} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            <motion.div key={isSearching ? "search" : cat} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {currentItems.map((item, idx) => (
-                <DrinkCard
-                  key={item.id} item={item} catIcon={currentCat.icon} idx={idx}
-                  gradient={currentCat.gradient}
-                  stopped={stopList.includes(item.name) || stopList.includes(item.id)}
-                  onAdd={addToCart}
-                  onDetail={() => setDetailItem({ item, gradient: currentCat.gradient })}
-                  cookieData={dailyCookie && dailyFact && item.id === dailyCookie.menuItemId ? {
-                    fact: dailyFact,
-                    collected: cookieCollected,
-                    onCollect: handleCollectCookie,
-                  } : null}
-                />
-              ))}
+              {currentItems.map((item, idx) => {
+                const itemCat = CATEGORIES.find(c => c.id === item.category) ?? currentCat;
+                return (
+                  <DrinkCard
+                    key={item.id} item={item} catIcon={itemCat.icon} idx={idx}
+                    gradient={itemCat.gradient}
+                    stopped={stopList.includes(item.name) || stopList.includes(item.id)}
+                    onAdd={addToCart}
+                    onDetail={() => setDetailItem({ item, gradient: itemCat.gradient })}
+                    cookieData={dailyCookie && dailyFact && item.id === dailyCookie.menuItemId ? {
+                      fact: dailyFact,
+                      collected: cookieCollected,
+                      onCollect: handleCollectCookie,
+                    } : null}
+                  />
+                );
+              })}
               {currentItems.length === 0 && (
-                <p className="col-span-2 text-center text-brand-text/40 py-8">{"Нет напитков в этой категории"}</p>
+                <p className="col-span-2 text-center text-brand-text/40 py-8">{isSearching ? "Ничего не найдено" : "Нет напитков в этой категории"}</p>
               )}
             </motion.div>
           </AnimatePresence>
