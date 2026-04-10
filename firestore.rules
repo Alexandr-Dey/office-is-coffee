@@ -39,20 +39,20 @@ service cloud.firestore {
       allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'new';
-      allow update: if isBaristaOrCEO();
+      allow update: if isAuthenticated();
       allow delete: if false;
     }
 
-    // deposits — barista/CEO can read and write (top-up)
+    // deposits
     match /deposits/{uid} {
-      allow read: if isOwner(uid) || isBaristaOrCEO();
-      allow write: if isBaristaOrCEO();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    // barista_bonuses — own barista can read + update payoutRequested. CEO full.
+    // barista_bonuses
     match /barista_bonuses/{uid} {
-      allow read: if isOwner(uid) || isCEO();
-      allow write: if isOwner(uid) || isCEO();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
     // barista_hearts — anyone can write (client taps), barista/CEO can read
