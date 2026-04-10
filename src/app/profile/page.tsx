@@ -85,22 +85,44 @@ export default function ProfilePage() {
                 <p className="text-xs text-brand-text/50">Роль</p>
                 <p className="font-medium">{user.role === "barista" ? "🧑‍🍳 Бариста" : user.role === "ceo" ? "👑 CEO" : "☕ Клиент"}</p>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <p className="text-xs text-brand-text/50">Стрик</p>
-                  <p className="font-bold text-lg">{streak > 0 ? `🔥 ${streak} дней` : "—"}</p>
+              {user.role === "client" && (
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-xs text-brand-text/50">Стрик</p>
+                    <p className="font-bold text-lg">{streak > 0 ? `🔥 ${streak} дней` : "—"}</p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-brand-text/50">Лояльность</p>
+                    <p className="font-bold text-lg">{loyaltyCount}/8 ☕</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs text-brand-text/50">Лояльность</p>
-                  <p className="font-bold text-lg">{loyaltyCount}/8 ☕</p>
-                </div>
-              </div>
+              )}
             </>
           )}
         </div>
 
-        {/* Deposit balance + QR */}
-        {user && (
+        {/* Barista quick links */}
+        {user && user.role === "barista" && (
+          <div className="space-y-3 mb-4">
+            <a href="/barista/stats" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+              <span className="text-2xl">📊</span>
+              <div>
+                <p className="font-bold text-brand-text text-sm">Моя смена</p>
+                <p className="text-xs text-brand-text/50">Статистика и заказы за сегодня</p>
+              </div>
+            </a>
+            <a href="/barista/bonuses" className="block bg-white rounded-2xl border border-[#d0f0e0] p-4 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+              <span className="text-2xl">💰</span>
+              <div>
+                <p className="font-bold text-brand-text text-sm">Мои бонусы</p>
+                <p className="text-xs text-brand-text/50">Заработок и запрос выплаты</p>
+              </div>
+            </a>
+          </div>
+        )}
+
+        {/* Deposit balance + QR — only for clients */}
+        {user && user.role === "client" && (
           <div className="bg-white rounded-2xl border border-[#d0f0e0] p-6 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
             <div className="flex items-center justify-between mb-3">
               <div>
