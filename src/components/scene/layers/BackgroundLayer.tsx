@@ -109,7 +109,7 @@ export function BackgroundLayer() {
       <rect x="300" y="0" width="500" height="600" fill="#f5f0e8" />
 
       {/* === LOGO on red wall (large, centered) === */}
-      <g transform="translate(150, 140)">
+      <g transform="translate(194, 140)">
         {/* Heart — large */}
         <path
           d="M0,-26 C-10,-40 -34,-38 -34,-20 C-34,0 0,32 0,32 C0,32 34,0 34,-20 C34,-38 10,-40 0,-26Z"
