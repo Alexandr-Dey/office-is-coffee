@@ -14,7 +14,8 @@ const HAIR = "#1a1a1a";
 const APRON = "#27ae60";
 
 // Counter center = 400. Spots tightly around center.
-const SPOTS = [250, 320, 400, 480, 560, 630];
+// Aslan's spots — interleaved with Vitaliy's (200,320,440,560,680) to avoid overlap
+const SPOTS = [260, 380, 500, 620];
 
 function pickSpot(current: number): number {
   const others = SPOTS.filter(s => Math.abs(s - current) > 20);
@@ -23,7 +24,7 @@ function pickSpot(current: number): number {
 
 export function BaristaAslan({ orderStatus }: Props) {
   const [currentAction, setCurrentAction] = useState(ASLAN_IDLE_ACTIONS[0].id);
-  const [posX, setPosX] = useState(430);
+  const [posX, setPosX] = useState(380);
   const [tapCount, setTapCount] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
 
@@ -55,8 +56,8 @@ export function BaristaAslan({ orderStatus }: Props) {
   }, [state]);
 
   useEffect(() => {
-    if (state === "accepted") setPosX(440);
-    if (state === "ready") setPosX(440);
+    if (state === "accepted") setPosX(500);
+    if (state === "ready") setPosX(500);
   }, [state]);
 
   useEffect(() => {

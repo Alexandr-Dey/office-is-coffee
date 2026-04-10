@@ -16,27 +16,28 @@ const SKIN_SHADOW = "#d4a574";
 const HAIR = "#2c1810";
 const APRON = "#2980b9";
 
-// Counter center = 400. Spots tightly around center.
-const SPOTS = [250, 320, 400, 480, 560, 630];
+// Vitaliy's spots — interleaved with Aslan's to avoid overlap
+const SPOTS = [200, 320, 440, 560, 680];
 
 function pickSpot(current: number): number {
-  const others = SPOTS.filter(s => Math.abs(s - current) > 20);
-  return others[Math.floor(Math.random() * others.length)] ?? 400;
+  const others = SPOTS.filter(s => Math.abs(s - current) > 60);
+  return others[Math.floor(Math.random() * others.length)] ?? SPOTS[0];
 }
 
 export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props) {
   const [currentAction, setCurrentAction] = useState(VITALIY_IDLE_ACTIONS[0].id);
-  const [posX, setPosX] = useState(370);
+  const [posX, setPosX] = useState(320);
   const [tapCount, setTapCount] = useState(0);
   const [isAngry, setIsAngry] = useState(false);
   const [isGone, setIsGone] = useState(false);
 
   const isSad = streakDays === 0 && daysSinceOrder(lastOrderDate) >= 2;
   const state = isSad ? "sad" : orderStatus;
+  const canMove = state === "idle" || state === "sad";
 
   // Idle action cycle
   useEffect(() => {
-    if (state !== "idle") return;
+    if (!canMove) return;
     let timeout: ReturnType<typeof setTimeout>;
     const cycle = () => {
       const next = pickWeightedRandom(VITALIY_IDLE_ACTIONS);
@@ -45,23 +46,23 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     };
     timeout = setTimeout(cycle, 2000);
     return () => clearTimeout(timeout);
-  }, [state]);
+  }, [canMove]);
 
-  // Random movement
+  // Random movement — works in idle AND sad
   useEffect(() => {
-    if (state !== "idle") return;
+    if (!canMove) return;
     let timeout: ReturnType<typeof setTimeout>;
     const move = () => {
       setPosX(prev => pickSpot(prev));
       timeout = setTimeout(move, 6000 + Math.random() * 3000);
     };
-    timeout = setTimeout(move, 3000 + Math.random() * 3000);
+    timeout = setTimeout(move, 2000 + Math.random() * 2000);
     return () => clearTimeout(timeout);
-  }, [state]);
+  }, [canMove]);
 
   useEffect(() => {
-    if (state === "accepted") setPosX(370);
-    if (state === "ready") setPosX(400);
+    if (state === "accepted") setPosX(320);
+    if (state === "ready") setPosX(440);
   }, [state]);
 
   useEffect(() => {
@@ -96,18 +97,17 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     );
   }
 
-  // SVG native transform — reliable positioning. CSS transition for smooth movement.
   return (
     <g
       id="barista-vitaliy"
       onClick={handleTap}
-      style={{ cursor: "pointer", transition: "transform 1.5s ease-in-out" }}
+      style={{ cursor: "pointer", transition: "transform 2s ease-in-out" }}
       transform={`translate(${posX}, 275)`}
     >
       <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
         Виталий
       </text>
-      <VitaliyBody action={isAngry ? "angry" : state === "idle" ? currentAction : state} isSad={isSad} />
+      <VitaliyBody action={isAngry ? "angry" : canMove ? currentAction : state} isSad={isSad} />
     </g>
   );
 }
@@ -204,20 +204,20 @@ function VitaliyBody({ action, isSad }: { action: string; isSad: boolean }) {
         <ellipse cx="-8" cy="3" rx="4" ry="3" fill={HAIR} />
         <ellipse cx="-15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
         <ellipse cx="15" cy="10" rx="4" ry="5" fill={SKIN_SHADOW} />
-        {action === "angry" ? (
-          <g>
-            <line x1="-9" y1="4" x2="-3" y2="7" stroke="#222" strokeWidth="2" />
-            <line x1="9" y1="4" x2="3" y2="7" stroke="#222" strokeWidth="2" />
-            <rect x="-7" y="9" width="5" height="3.5" fill="#222" rx="1" />
-            <rect x="2" y="9" width="5" height="3.5" fill="#222" rx="1" />
-            <path d="M-5,20 Q0,17 5,20" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
-          </g>
-        ) : isSad ? (
+        {isSad ? (
           <g>
             <circle cx="-6" cy="9" r="3.5" fill="#FFF" />
             <circle cx="6" cy="9" r="3.5" fill="#FFF" />
             <circle cx="-7" cy="10" r="1.8" fill="#2A1810" />
             <circle cx="5" cy="10" r="1.8" fill="#2A1810" />
+            <path d="M-5,20 Q0,17 5,20" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
+          </g>
+        ) : action === "angry" ? (
+          <g>
+            <line x1="-9" y1="4" x2="-3" y2="7" stroke="#222" strokeWidth="2" />
+            <line x1="9" y1="4" x2="3" y2="7" stroke="#222" strokeWidth="2" />
+            <rect x="-7" y="9" width="5" height="3.5" fill="#222" rx="1" />
+            <rect x="2" y="9" width="5" height="3.5" fill="#222" rx="1" />
             <path d="M-5,20 Q0,17 5,20" stroke="#6B3E26" strokeWidth="1.5" fill="none" />
           </g>
         ) : (
