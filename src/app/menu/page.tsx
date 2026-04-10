@@ -15,19 +15,19 @@ import QuickOrdersBlock from "@/components/QuickOrdersBlock";
 
 /* ═══ CATEGORIES ═══ */
 const CATEGORIES = [
-  { id: "classic-coffee", name: "Кофе", icon: "\u2615", gradient: "from-[#1a7a44] to-[#2d9e5a]" },
-  { id: "author-coffee", name: "Авторский", icon: "\u2728", gradient: "from-[#d42b4f] to-[#e85d7a]" },
-  { id: "ice-coffee", name: "Айс кофе", icon: "\u2744\uFE0F", gradient: "from-[#0ea5e9] to-[#38bdf8]" },
-  { id: "cocoa", name: "Какао", icon: "\uD83C\uDF6B", gradient: "from-[#92400e] to-[#b45309]" },
-  { id: "home-tea", name: "Домашний чай", icon: "\uD83C\uDF75", gradient: "from-[#f59e0b] to-[#fbbf24]" },
-  { id: "author-tea", name: "Авторский чай", icon: "\uD83C\uDF3F", gradient: "from-[#be123c] to-[#e11d48]" },
-  { id: "matcha", name: "Матча", icon: "\uD83C\uDF35", gradient: "from-[#65a30d] to-[#84cc16]" },
-  { id: "ice-tea", name: "Айс ти", icon: "\uD83E\uDDCA", gradient: "from-[#06b6d4] to-[#22d3ee]" },
-  { id: "milkshakes", name: "Коктейли", icon: "\uD83E\uDD5B", gradient: "from-[#ec4899] to-[#f472b6]" },
-  { id: "fresh-juices", name: "Соки", icon: "\uD83C\uDF4A", gradient: "from-[#f97316] to-[#fb923c]" },
-  { id: "fresh-smoothies", name: "Смузи фреш", icon: "\uD83C\uDF53", gradient: "from-[#eab308] to-[#facc15]" },
-  { id: "milk-smoothies", name: "Смузи молоко", icon: "\uD83E\uDD5B", gradient: "from-[#a855f7] to-[#c084fc]" },
-  { id: "lemonades", name: "Лимонады", icon: "\uD83C\uDF4B", gradient: "from-[#14b8a6] to-[#2dd4bf]" },
+  { id: "classic-coffee", name: "Кофе", icon: "☕", gradient: "from-[#1a7a44] to-[#2d9e5a]" },
+  { id: "author-coffee", name: "Авторский", icon: "✨", gradient: "from-[#d42b4f] to-[#e85d7a]" },
+  { id: "ice-coffee", name: "Айс кофе", icon: "❄️", gradient: "from-[#0ea5e9] to-[#38bdf8]" },
+  { id: "cocoa", name: "Какао", icon: "🍫", gradient: "from-[#92400e] to-[#b45309]" },
+  { id: "home-tea", name: "Домашний чай", icon: "🍵", gradient: "from-[#f59e0b] to-[#fbbf24]" },
+  { id: "author-tea", name: "Авторский чай", icon: "🌿", gradient: "from-[#be123c] to-[#e11d48]" },
+  { id: "matcha", name: "Матча", icon: "🌵", gradient: "from-[#65a30d] to-[#84cc16]" },
+  { id: "ice-tea", name: "Айс ти", icon: "🧊", gradient: "from-[#06b6d4] to-[#22d3ee]" },
+  { id: "milkshakes", name: "Коктейли", icon: "🥛", gradient: "from-[#ec4899] to-[#f472b6]" },
+  { id: "fresh-juices", name: "Соки", icon: "🍊", gradient: "from-[#f97316] to-[#fb923c]" },
+  { id: "fresh-smoothies", name: "Смузи фреш", icon: "🍓", gradient: "from-[#eab308] to-[#facc15]" },
+  { id: "milk-smoothies", name: "Смузи молоко", icon: "🥛", gradient: "from-[#a855f7] to-[#c084fc]" },
+  { id: "lemonades", name: "Лимонады", icon: "🍋", gradient: "from-[#14b8a6] to-[#2dd4bf]" },
 ];
 
 type Size = "S" | "M" | "L";
@@ -137,7 +137,7 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
         <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
         <div className="flex items-start gap-4">
           <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${catGradient} flex items-center justify-center text-2xl text-white shrink-0`}>
-            {CATEGORIES.find(c => c.id === item.category)?.icon ?? "\u2615"}
+            {CATEGORIES.find(c => c.id === item.category)?.icon ?? "☕"}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -159,7 +159,7 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
                 <button key={s} onClick={() => setSz(s)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
                     sz === s ? "bg-brand-dark text-white shadow-md" : "bg-gray-100 text-brand-text/50"
-                  }`}>{s} — {item.sizes[s]}{"\u20B8"}</button>
+                  }`}>{s} — {item.sizes[s]}₸</button>
               ))}
             </div>
           </div>
@@ -175,7 +175,7 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
                     milk === i ? "bg-brand-mint/20 text-brand-dark border border-brand-mint" : "bg-gray-100 text-gray-500"
                   }`}>
                   {m.name}
-                  {m.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{m.surcharge}{"\u20B8"}</span>}
+                  {m.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{m.surcharge}₸</span>}
                 </button>
               ))}
             </div>
@@ -191,7 +191,7 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
                   syrup === i ? "bg-brand-mint/20 text-brand-dark border border-brand-mint" : "bg-gray-100 text-gray-500"
                 }`}>
                 {s.name}
-                {s.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{s.surcharge}{"\u20B8"}</span>}
+                {s.surcharge > 0 && <span className="text-xs opacity-60 ml-1">+{s.surcharge}₸</span>}
               </button>
             ))}
           </div>
@@ -202,7 +202,7 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
           onClick={() => {
             onAdd(
               item.name,
-              sz ?? "\u2014",
+              sz ?? "—",
               totalPrice,
               item.availableMilk ? MILKS[milk].name : undefined,
               SYRUPS[syrup].surcharge > 0 ? SYRUPS[syrup].name : undefined,
@@ -211,7 +211,7 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
           }}
           className="w-full mt-6 py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg shadow-lg"
         >
-          {"Добавить — "}{totalPrice}{"\u20B8"}
+          Добавить — {totalPrice}₸
         </motion.button>
       </motion.div>
     </motion.div>
@@ -233,7 +233,7 @@ function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped }: {
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (unavailable) return;
-    onAdd(item.name, sz ?? "\u2014", price, item.availableMilk ? MILKS[0].name : undefined);
+    onAdd(item.name, sz ?? "—", price, item.availableMilk ? MILKS[0].name : undefined);
     setAdded(true);
     setTimeout(() => setAdded(false), 700);
   };
@@ -265,7 +265,7 @@ function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped }: {
         </div>
       )}
       <div className="mt-auto flex items-center justify-between pt-2">
-        <span className="font-bold text-white">{"от "}{getMinPrice(item)}{" \u20B8"}</span>
+        <span className="font-bold text-white">от {getMinPrice(item)} ₸</span>
         {!unavailable && (
           <motion.button whileTap={{ scale: 0.85 }} onClick={handleQuickAdd}
             aria-label={`Добавить ${item.name} в корзину`}
@@ -284,7 +284,7 @@ function LoyaltyBanner({ count }: { count: number }) {
     <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
       <div className="flex gap-1">
         {Array.from({ length: 8 }, (_, i) => (
-          <span key={i} className={`text-lg ${i < count ? "" : "opacity-20"}`}>{i < count ? "\u2615" : "\u25CB"}</span>
+          <span key={i} className={`text-lg ${i < count ? "" : "opacity-20"}`}>{i < count ? "☕" : "○"}</span>
         ))}
       </div>
       <span className="text-[11px] text-brand-text/50">каждый 8-й бесплатный</span>
@@ -498,7 +498,7 @@ export default function MenuPage() {
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="mx-3 mt-3 bg-brand-dark text-white rounded-2xl px-4 py-3 flex items-center justify-between"
         >
-          <span className="text-sm">{"\uD83D\uDCCD Кофейня рядом!"}</span>
+          <span className="text-sm">📍 Кофейня рядом!</span>
           <button onClick={() => window.scrollTo({ top: 600, behavior: "smooth" })} className="text-sm font-bold bg-white/20 px-3 py-1 rounded-full">{"Быстрый заказ"}</button>
         </motion.div>
       )}
@@ -625,7 +625,7 @@ export default function MenuPage() {
                 disabled={!cafeOpen}
                 className="flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white font-bold rounded-full text-sm shadow-lg disabled:opacity-50">
                 <span>Оформить</span>
-                <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs">{totalPrice}{" \u20B8"}</span>
+                <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs">{totalPrice} ₸</span>
               </motion.button>
             </div>
           </motion.div>
