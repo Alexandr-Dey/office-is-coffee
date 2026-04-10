@@ -12,10 +12,10 @@ import {
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
 interface Order {
   id: string; name: string; items: OrderItem[]; total: number;
-  status: "new" | "pending" | "accepted" | "ready" | "paid"; comment?: string;
+  status: "new" | "pending" | "accepted" | "ready" | "paid" | "cancelled"; comment?: string;
   createdAt: Timestamp | null; estimatedMinutes?: number; acceptedAt?: number;
   rating?: number; baristaid?: string; paymentMethod?: "deposit" | "cash";
-  isFreeByLoyalty?: boolean;
+  isFreeByLoyalty?: boolean; cancelReason?: string;
 }
 
 function timeAgo(ts: Timestamp | null): string {
@@ -32,6 +32,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   accepted: { label: "Готовится", color: "bg-blue-100 text-blue-800" },
   ready: { label: "Готов", color: "bg-green-100 text-green-800" },
   paid: { label: "Оплачен", color: "bg-emerald-100 text-emerald-800" },
+  cancelled: { label: "Отменён", color: "bg-red-100 text-red-800" },
 };
 
 /* ═══ QUEUE VISUALIZATION ═══ */
@@ -96,8 +97,10 @@ function QueueScene({ activeCount, readyCount }: { activeCount: number; readyCou
 function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const [updating, setUpdating] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
-  const changeStatus = async (newStatus: "pending" | "accepted" | "ready" | "paid", minutes?: number) => {
+  const changeStatus = async (newStatus: "accepted" | "ready" | "paid", minutes?: number) => {
     setUpdating(true);
     try {
       const orderRef = doc(getFirebaseDb(), "orders", order.id);
@@ -147,6 +150,20 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
     setShowTimePicker(false);
   };
 
+  const cancelOrder = async () => {
+    setUpdating(true);
+    try {
+      await updateDoc(doc(getFirebaseDb(), "orders", order.id), {
+        status: "cancelled",
+        cancelReason: cancelReason.trim() || "Нет в наличии",
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: baristaId,
+      });
+    } catch { /* ignore */ }
+    setUpdating(false);
+    setShowCancel(false);
+  };
+
   const sl = STATUS_LABELS[order.status] ?? STATUS_LABELS.pending;
   const ratingEmoji = order.rating === 3 ? "😍" : order.rating === 2 ? "👍" : order.rating === 1 ? "😕" : null;
 
@@ -179,42 +196,101 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
       {order.comment && (
         <div className="bg-brand-bg rounded-xl px-3 py-2 text-xs text-brand-text/60 mb-3">💬 {order.comment}</div>
       )}
-      {order.paymentMethod === "cash" && order.status !== "paid" && (
+      {order.cancelReason && (
+        <div className="bg-red-50 rounded-xl px-3 py-2 text-xs text-red-600 mb-3">🚫 {order.cancelReason}</div>
+      )}
+      {order.paymentMethod === "cash" && !["paid", "cancelled"].includes(order.status) && (
         <div className="mb-2"><span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">💵 НАЛИЧНЫЕ</span></div>
       )}
+
+      {/* Cancel form */}
+      {showCancel && (
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+          className="border-t border-red-200 pt-3 mb-3">
+          <p className="text-xs text-red-600 font-bold mb-2">🚫 Причина отмены:</p>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {["Нет в наличии", "Закончились ингредиенты", "Оборудование сломалось"].map((r) => (
+              <button key={r} onClick={() => setCancelReason(r)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${cancelReason === r ? "bg-red-100 text-red-700 border border-red-300" : "bg-gray-100 text-gray-600"}`}>
+                {r}
+              </button>
+            ))}
+          </div>
+          <input type="text" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Или свой комментарий..."
+            className="w-full px-3 py-2 rounded-xl border border-red-200 text-sm outline-none focus:border-red-400 mb-2" />
+          <div className="flex gap-2">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={cancelOrder} disabled={updating}
+              className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+              Подтвердить отмену
+            </motion.button>
+            <button onClick={() => setShowCancel(false)}
+              className="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium">
+              Назад
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       <div className="flex items-center justify-between border-t border-[#d0f0e0] pt-3">
         <span className="font-bold text-brand-dark">{order.total}₸</span>
-        <div className="flex gap-2">
-          {(order.status === "new" || order.status === "pending") && !showTimePicker && (
-            <motion.button whileTap={{ scale: 0.95 }} disabled={updating} onClick={() => setShowTimePicker(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold min-h-[44px] disabled:opacity-50">
-              ✅ Принять
-            </motion.button>
+        <div className="flex gap-2 flex-wrap justify-end">
+          {/* New/Pending → Accept or Cancel */}
+          {(order.status === "new" || order.status === "pending") && !showTimePicker && !showCancel && (
+            <>
+              <motion.button whileTap={{ scale: 0.95 }} disabled={updating}
+                onClick={() => setShowTimePicker(true)}
+                className="px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                ✅ Принять
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.95 }}
+                onClick={() => { setShowCancel(true); setCancelReason("Нет в наличии"); }}
+                className="px-4 py-3 bg-red-500 text-white rounded-xl text-sm font-bold">
+                ✕
+              </motion.button>
+            </>
           )}
-          {showTimePicker && (
-            <div className="flex gap-1.5">
+
+          {/* Time picker */}
+          {showTimePicker && !showCancel && (
+            <div className="flex gap-2 flex-wrap">
               {[5, 10, 15, 20].map((m) => (
-                <motion.button key={m} whileTap={{ scale: 0.9 }} onClick={() => changeStatus("accepted", m)}
-                  className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold min-h-[44px]">
+                <motion.button key={m} whileTap={{ scale: 0.9 }} disabled={updating}
+                  onClick={() => changeStatus("accepted", m)}
+                  className="px-4 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
                   {m} мин
                 </motion.button>
               ))}
+              <button onClick={() => setShowTimePicker(false)}
+                className="px-3 py-3 bg-gray-100 text-gray-500 rounded-xl text-sm">
+                ←
+              </button>
             </div>
           )}
-          {order.status === "accepted" && (
-            <motion.button whileTap={{ scale: 0.95 }} disabled={updating} onClick={() => changeStatus("ready")}
-              className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold min-h-[44px] disabled:opacity-50">
+
+          {/* Accepted → Ready */}
+          {order.status === "accepted" && !showCancel && (
+            <motion.button whileTap={{ scale: 0.95 }} disabled={updating}
+              onClick={() => changeStatus("ready")}
+              className="px-5 py-3 bg-green-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
               ☕ Готово
             </motion.button>
           )}
+
+          {/* Ready → Paid */}
           {order.status === "ready" && (
-            <motion.button whileTap={{ scale: 0.95 }} disabled={updating} onClick={() => changeStatus("paid")}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold min-h-[44px] disabled:opacity-50">
+            <motion.button whileTap={{ scale: 0.95 }} disabled={updating}
+              onClick={() => changeStatus("paid")}
+              className="px-5 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
               {order.paymentMethod === "cash" ? "💵 Получил оплату" : "✓ Выдано"}
             </motion.button>
           )}
+
           {order.status === "paid" && (
             <span className="px-4 py-2 text-emerald-600 text-sm font-bold">✓ Завершён</span>
+          )}
+          {order.status === "cancelled" && (
+            <span className="px-4 py-2 text-red-500 text-sm font-bold">✕ Отменён</span>
           )}
         </div>
       </div>
@@ -255,8 +331,8 @@ export default function AdminPage() {
   const activeOrders = orders.filter((o) => ["new", "pending", "accepted", "ready"].includes(o.status));
   const readyOrders = orders.filter((o) => o.status === "ready");
   const waitingOrders = orders.filter((o) => ["new", "pending", "accepted"].includes(o.status));
-  const paidOrders = orders.filter((o) => o.status === "paid");
-  const displayed = filter === "active" ? activeOrders : paidOrders;
+  const doneOrders = orders.filter((o) => o.status === "paid" || o.status === "cancelled");
+  const displayed = filter === "active" ? activeOrders : doneOrders;
 
   if (authLoading || !user) {
     return (
@@ -297,7 +373,7 @@ export default function AdminPage() {
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
               filter === "paid" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
             }`}>
-            Завершённые ({paidOrders.length})
+            Завершённые ({doneOrders.length})
           </button>
         </div>
 

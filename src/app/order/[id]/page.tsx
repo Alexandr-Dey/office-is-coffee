@@ -13,13 +13,14 @@ interface OrderData {
   name: string;
   items: { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }[];
   total: number;
-  status: "new" | "pending" | "accepted" | "ready" | "paid";
+  status: "new" | "pending" | "accepted" | "ready" | "paid" | "cancelled";
   comment?: string;
   estimatedMinutes?: number;
   acceptedAt?: number;
   rating?: number;
   paymentMethod?: string;
   isFreeByLoyalty?: boolean;
+  cancelReason?: string;
 }
 
 const STATUS_TEXT: Record<string, { title: string; sub: string; emoji: string }> = {
@@ -28,6 +29,7 @@ const STATUS_TEXT: Record<string, { title: string; sub: string; emoji: string }>
   accepted: { title: "Виталий готовит твой кофе", sub: "Немного терпения...", emoji: "☕" },
   ready: { title: "Твой кофе готов!", sub: "Забери у стойки", emoji: "🎉" },
   paid: { title: "Приятного!", sub: "До встречи снова", emoji: "✅" },
+  cancelled: { title: "Заказ отменён", sub: "Извините за неудобства", emoji: "😔" },
 };
 
 function CountdownTimer({ estimatedMinutes, acceptedAt }: { estimatedMinutes: number; acceptedAt: number }) {
@@ -247,7 +249,16 @@ export default function OrderWaitPage() {
             )}
           </motion.div>
 
-          {(order.status === "ready" || order.status === "paid") && (
+          {/* Cancel reason */}
+          {order.status === "cancelled" && order.cancelReason && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="bg-red-50 border border-red-200 rounded-2xl p-4 mt-4 text-left">
+              <p className="text-sm font-bold text-red-700 mb-1">🚫 Причина отмены</p>
+              <p className="text-sm text-red-600">{order.cancelReason}</p>
+            </motion.div>
+          )}
+
+          {(order.status === "ready" || order.status === "paid" || order.status === "cancelled") && (
             <motion.a href="/menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
               className="inline-block mt-6 px-8 py-3 bg-brand-dark text-white font-bold rounded-2xl shadow-lg min-h-[44px]">
               Вернуться в меню
