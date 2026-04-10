@@ -75,6 +75,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => {
     setCart([]);
+    // Clear storage immediately (don't wait for effect)
+    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
   }, []);
 
   const totalItems = cart.reduce((s, i) => s + i.qty, 0);
