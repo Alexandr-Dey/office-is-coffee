@@ -179,10 +179,10 @@ function DrinkDetail({ item, catGradient, onAdd, onClose, isFavorite, onToggleFa
           {sizes && (
             <div className="mb-5">
               <p className="text-xs font-bold text-brand-text/50 uppercase tracking-wider mb-2">Размер</p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 overflow-visible">
                 {sizes.map((s) => (
                   <motion.button key={s} whileTap={{ scale: 0.95 }} onClick={() => setSz(s)}
-                    className={`flex-1 py-3 rounded-2xl text-sm font-bold transition-all ${
+                    className={`flex-1 min-w-0 py-3 rounded-2xl text-sm font-bold transition-all ${
                       sz === s
                         ? "bg-brand-dark text-white shadow-lg"
                         : "bg-white text-brand-text/60 border border-[#d0f0e0]"
@@ -428,7 +428,8 @@ function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories, favorites 
       <div className="px-3 mb-2">
         <h2 className="text-sm font-bold text-brand-text">⚡ Быстрый заказ</h2>
       </div>
-      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-3 pb-2">
+      <div className="relative">
+        <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-3 pb-2">
         {/* Repeat last order — bright card */}
         {recentOrders.map((order) => (
           <motion.button
@@ -466,6 +467,9 @@ function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories, favorites 
             </motion.button>
           );
         })}
+        </div>
+        {/* Scroll fade indicator */}
+        <div className="absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-brand-bg to-transparent pointer-events-none" />
       </div>
     </section>
   );
@@ -474,7 +478,7 @@ function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories, favorites 
 /* ═══ PAGE ═══ */
 export default function MenuPage() {
   const { user } = useAuth();
-  const { cart, addItem, removeItem, setItems, clearCart, totalItems, totalPrice } = useCart();
+  const { cart, addItem, removeItem, updateQty, setItems, clearCart, totalItems, totalPrice } = useCart();
   const [cat, setCat] = useState("classic-coffee");
   const [showCart, setShowCart] = useState(false);
   const [search, setSearch] = useState("");
@@ -821,14 +825,14 @@ export default function MenuPage() {
                         {item.syrup && ` · ${item.syrup}`}
                       </p>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-sm text-brand-dark">{item.price * item.qty}₸</p>
-                      {item.qty > 1 && <p className="text-[10px] text-brand-text/40">×{item.qty}</p>}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button onClick={() => updateQty(idx, -1)}
+                        className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-brand-text/60 font-bold text-sm">−</button>
+                      <span className="w-6 text-center text-sm font-bold text-brand-dark">{item.qty}</span>
+                      <button onClick={() => updateQty(idx, 1)}
+                        className="w-8 h-8 rounded-lg bg-brand-mint/20 flex items-center justify-center text-brand-dark font-bold text-sm">+</button>
                     </div>
-                    <button
-                      onClick={() => removeFromCart(item.name, item.size, item.milk, item.syrup)}
-                      className="text-red-400 hover:text-red-600 min-w-[36px] min-h-[36px] flex items-center justify-center flex-shrink-0"
-                    >✕</button>
+                    <p className="font-bold text-sm text-brand-dark flex-shrink-0 w-14 text-right">{item.price * item.qty}₸</p>
                   </div>
                 ))}
               </div>

@@ -7,6 +7,7 @@ interface CartContextValue {
   cart: CartItem[];
   addItem: (name: string, size: string, price: number, milk?: string, syrup?: string) => void;
   removeItem: (name: string, size: string, milk?: string, syrup?: string) => void;
+  updateQty: (index: number, delta: number) => void;
   setItems: (items: CartItem[]) => void;
   clearCart: () => void;
   totalItems: number;
@@ -69,6 +70,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size && (i.milk ?? "") === (milk ?? "") && (i.syrup ?? "") === (syrup ?? ""))));
   }, []);
 
+  const updateQty = useCallback((index: number, delta: number) => {
+    setCart((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      const newQty = next[index].qty + delta;
+      if (newQty <= 0) return next.filter((_, i) => i !== index);
+      next[index] = { ...next[index], qty: newQty };
+      return next;
+    });
+  }, []);
+
   const setItems = useCallback((items: CartItem[]) => {
     setCart(items);
   }, []);
@@ -84,7 +96,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <CartContext.Provider value={{ cart, addItem, removeItem, setItems, clearCart, totalItems, totalPrice }}>
+    <CartContext.Provider value={{ cart, addItem, removeItem, updateQty, setItems, clearCart, totalItems, totalPrice }}>
       {children}
     </CartContext.Provider>
   );

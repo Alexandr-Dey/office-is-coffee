@@ -35,7 +35,7 @@ const ratingEmoji: Record<number, string> = { 3: "😍", 2: "👍", 1: "😕" };
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { cart, removeItem, clearCart, setItems, totalItems, totalPrice } = useCart();
+  const { cart, removeItem, updateQty, clearCart, setItems, totalItems, totalPrice } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"active" | "history">("active");
@@ -116,11 +116,14 @@ export default function OrdersPage() {
                       </p>
                     )}
                   </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => updateQty(i, -1)}
+                      className="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center text-brand-text/60 font-bold text-xs">−</button>
+                    <span className="w-5 text-center text-xs font-bold text-brand-dark">{item.qty}</span>
+                    <button onClick={() => updateQty(i, 1)}
+                      className="w-7 h-7 rounded-md bg-brand-mint/20 flex items-center justify-center text-brand-dark font-bold text-xs">+</button>
+                  </div>
                   <span className="text-sm font-bold text-brand-dark flex-shrink-0">{item.price * item.qty}₸</span>
-                  <button
-                    onClick={() => removeItem(item.name, item.size, item.milk, item.syrup)}
-                    className="text-red-400 min-w-[36px] min-h-[36px] flex items-center justify-center flex-shrink-0"
-                  >✕</button>
                 </div>
               ))}
             </div>
