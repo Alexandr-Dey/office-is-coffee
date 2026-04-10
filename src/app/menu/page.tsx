@@ -131,35 +131,30 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[70] bg-black/40 flex items-end justify-center"
-      onClick={onClose}
+      className="fixed inset-0 z-[100] bg-white flex flex-col"
     >
-      <motion.div
-        initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }}
-        transition={{ type: "spring", damping: 25 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl w-full max-w-[480px] max-h-[85vh] flex flex-col"
-      >
-        <div className="p-6 pb-0 overflow-y-auto flex-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-1 bg-gray-300 rounded-full" />
-            <button onClick={onClose} className="text-brand-text/40 min-w-[44px] min-h-[44px] flex items-center justify-center text-lg">✕</button>
-          </div>
-          <div className="flex items-start gap-4">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#d0f0e0]">
+        <button onClick={onClose} className="text-brand-text/60 text-sm font-medium min-w-[44px] min-h-[44px] flex items-center">← Назад</button>
+        <h2 className="font-display text-lg font-bold text-brand-text">{item.name}</h2>
+        <div className="w-[44px]" />
+      </div>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-5">
+          <div className="flex items-start gap-4 mb-2">
             <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${catGradient} flex items-center justify-center text-2xl text-white shrink-0`}>
               {CATEGORIES.find(c => c.id === item.category)?.icon ?? "☕"}
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-display text-xl font-bold text-brand-text">{item.name}</h2>
-              {item.tags.includes("hit") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-brand-pink/10 text-brand-pink">{"Хит"}</span>}
-              {item.tags.includes("new") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-brand-mint/20 text-brand-dark">NEW</span>}
-              {item.tags.includes("season") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-100 text-orange-600">{"Сезон"}</span>}
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                {item.tags.includes("hit") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-brand-pink/10 text-brand-pink">Хит</span>}
+                {item.tags.includes("new") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-brand-mint/20 text-brand-dark">NEW</span>}
+                {item.tags.includes("season") && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-100 text-orange-600">Сезон</span>}
+              </div>
+              {item.ingredients && <p className="text-xs text-brand-text/50">{item.ingredients}</p>}
             </div>
-            {item.ingredients && <p className="text-xs text-brand-text/50 mt-1">{item.ingredients}</p>}
+            {item.radarData && <RadarChart profile={item.radarData} />}
           </div>
-          {item.radarData && <RadarChart profile={item.radarData} />}
-        </div>
 
         {sizes && (
           <div className="mt-4">
@@ -227,7 +222,6 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
             Добавить — {totalPrice}₸
           </motion.button>
         </div>
-      </motion.div>
     </motion.div>
   );
 }
