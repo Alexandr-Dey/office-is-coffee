@@ -6,75 +6,86 @@ export function BackgroundLayer() {
       {/* Red wall — left third */}
       <rect x="0" y="0" width="300" height="600" fill="#c0392b" />
 
-      {/* === WINDOW (left side, floor to ceiling) === */}
-      <g id="window-left">
-        {/* Window frame */}
-        <rect x="12" y="20" width="55" height="450" fill="#8b6f47" rx="3" />
-        {/* Glass — sky background (will be replaced by weather) */}
-        <rect x="16" y="24" width="47" height="442" fill="#87CEEB" rx="2" />
-        {/* Sky gradient overlay */}
+      {/* === WINDOW (left edge, goes off-screen left, floor to top) === */}
+      <g id="window-left" clipPath="url(#windowClip)">
         <defs>
+          <clipPath id="windowClip">
+            <rect x="-100" y="0" width="200" height="476" />
+          </clipPath>
           <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5BA3D9" />
-            <stop offset="60%" stopColor="#87CEEB" />
+            <stop offset="0%" stopColor="#4A90D9" />
+            <stop offset="50%" stopColor="#87CEEB" />
             <stop offset="100%" stopColor="#B8D4E3" />
           </linearGradient>
         </defs>
-        <rect x="16" y="24" width="47" height="442" fill="url(#skyGrad)" rx="2" />
+
+        {/* Window frame — extends left off-screen */}
+        <rect x="-60" y="0" width="150" height="476" fill="#8b6f47" rx="0" />
+        {/* Glass */}
+        <rect x="-56" y="4" width="142" height="468" fill="url(#skyGrad)" />
 
         {/* Clouds */}
-        <ellipse cx="30" cy="80" rx="12" ry="5" fill="#fff" opacity="0.7">
-          <animate attributeName="cx" values="30;50;30" dur="20s" repeatCount="indefinite" />
+        <ellipse cx="10" cy="60" rx="18" ry="7" fill="#fff" opacity="0.7">
+          <animate attributeName="cx" values="10;50;10" dur="22s" repeatCount="indefinite" />
         </ellipse>
-        <ellipse cx="45" cy="75" rx="8" ry="4" fill="#fff" opacity="0.5">
-          <animate attributeName="cx" values="45;25;45" dur="25s" repeatCount="indefinite" />
+        <ellipse cx="40" cy="50" rx="14" ry="5" fill="#fff" opacity="0.5">
+          <animate attributeName="cx" values="40;-10;40" dur="28s" repeatCount="indefinite" />
         </ellipse>
-        <ellipse cx="35" cy="160" rx="10" ry="4" fill="#fff" opacity="0.6">
-          <animate attributeName="cx" values="35;55;35" dur="18s" repeatCount="indefinite" />
+        <ellipse cx="20" cy="130" rx="16" ry="6" fill="#fff" opacity="0.6">
+          <animate attributeName="cx" values="20;60;20" dur="20s" repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="-10" cy="100" rx="12" ry="5" fill="#fff" opacity="0.4">
+          <animate attributeName="cx" values="-10;30;-10" dur="24s" repeatCount="indefinite" />
         </ellipse>
 
-        {/* Sun */}
-        <circle cx="50" cy="50" r="8" fill="#FFD93D" opacity="0.9">
-          <animate attributeName="opacity" values="0.9;0.7;0.9" dur="4s" repeatCount="indefinite" />
+        {/* Sun — top right of window */}
+        <circle cx="65" cy="40" r="12" fill="#FFD93D" opacity="0.85">
+          <animate attributeName="opacity" values="0.85;0.6;0.85" dur="5s" repeatCount="indefinite" />
         </circle>
-        {/* Sun rays */}
         {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
           <line
             key={angle}
-            x1={50 + 10 * Math.cos(angle * Math.PI / 180)}
-            y1={50 + 10 * Math.sin(angle * Math.PI / 180)}
-            x2={50 + 14 * Math.cos(angle * Math.PI / 180)}
-            y2={50 + 14 * Math.sin(angle * Math.PI / 180)}
+            x1={65 + 14 * Math.cos(angle * Math.PI / 180)}
+            y1={40 + 14 * Math.sin(angle * Math.PI / 180)}
+            x2={65 + 20 * Math.cos(angle * Math.PI / 180)}
+            y2={40 + 20 * Math.sin(angle * Math.PI / 180)}
             stroke="#FFD93D"
-            strokeWidth="1"
-            opacity="0.5"
+            strokeWidth="1.5"
+            opacity="0.4"
           >
-            <animate attributeName="opacity" values="0.5;0.2;0.5" dur="3s" repeatCount="indefinite" begin={`${angle / 360}s`} />
+            <animate attributeName="opacity" values="0.4;0.15;0.4" dur="3s" repeatCount="indefinite" begin={`${angle / 360}s`} />
           </line>
         ))}
 
-        {/* Distant buildings silhouette */}
-        <rect x="16" y="340" width="12" height="126" fill="#6B7280" opacity="0.3" />
-        <rect x="30" y="360" width="10" height="106" fill="#6B7280" opacity="0.25" />
-        <rect x="42" y="330" width="14" height="136" fill="#6B7280" opacity="0.2" />
-        <rect x="56" y="370" width="7" height="96" fill="#6B7280" opacity="0.15" />
+        {/* Distant buildings */}
+        <rect x="-50" y="300" width="20" height="172" fill="#6B7280" opacity="0.25" />
+        <rect x="-25" y="320" width="16" height="152" fill="#6B7280" opacity="0.2" />
+        <rect x="-5" y="280" width="22" height="192" fill="#6B7280" opacity="0.22" />
+        <rect x="20" y="310" width="14" height="162" fill="#6B7280" opacity="0.18" />
+        <rect x="38" y="340" width="18" height="132" fill="#6B7280" opacity="0.15" />
+        <rect x="60" y="320" width="12" height="152" fill="#6B7280" opacity="0.12" />
 
-        {/* Tree silhouette */}
-        <ellipse cx="25" cy="410" rx="10" ry="15" fill="#2d5a1e" opacity="0.3" />
-        <rect x="23" y="420" width="4" height="46" fill="#5C2E0E" opacity="0.2" />
+        {/* Trees */}
+        <ellipse cx="-30" cy="380" rx="14" ry="20" fill="#2d5a1e" opacity="0.25" />
+        <ellipse cx="10" cy="390" rx="12" ry="16" fill="#1a7a44" opacity="0.2" />
+        <ellipse cx="50" cy="395" rx="10" ry="14" fill="#2d5a1e" opacity="0.15" />
 
-        {/* Window divider (cross) */}
-        <line x1="39.5" y1="24" x2="39.5" y2="466" stroke="#8b6f47" strokeWidth="3" />
-        <line x1="16" y1="245" x2="63" y2="245" stroke="#8b6f47" strokeWidth="3" />
+        {/* Window divider — vertical */}
+        <line x1="30" y1="4" x2="30" y2="472" stroke="#8b6f47" strokeWidth="3" />
+        {/* Window divider — horizontal */}
+        <line x1="-56" y1="240" x2="86" y2="240" stroke="#8b6f47" strokeWidth="3" />
 
-        {/* Window sill */}
-        <rect x="8" y="466" width="63" height="6" fill="#8b6f47" rx="1" />
-        <rect x="10" y="470" width="59" height="3" fill="#6b5530" rx="1" />
+        {/* Glass reflections */}
+        <rect x="-50" y="10" width="8" height="100" fill="#fff" opacity="0.06" rx="1" />
+        <rect x="35" y="10" width="6" height="80" fill="#fff" opacity="0.08" rx="1" />
+        <rect x="-50" y="250" width="8" height="60" fill="#fff" opacity="0.05" rx="1" />
 
-        {/* Glass reflection */}
-        <rect x="18" y="26" width="6" height="80" fill="#fff" opacity="0.08" rx="1" />
-        <rect x="18" y="250" width="6" height="60" fill="#fff" opacity="0.06" rx="1" />
+        {/* Right frame edge (visible part) */}
+        <rect x="82" y="0" width="6" height="476" fill="#8b6f47" />
       </g>
+      {/* Window sill */}
+      <rect x="-60" y="470" width="152" height="7" fill="#8b6f47" />
+      <rect x="-60" y="475" width="152" height="3" fill="#6b5530" />
       {/* Subtle brick texture */}
       {Array.from({ length: 12 }).map((_, row) =>
         Array.from({ length: 4 }).map((_, col) => (
