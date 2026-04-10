@@ -449,8 +449,8 @@ export default function MenuPage() {
   };
 
   const repeatOrder = (items: CartItem[]) => { setCart(items); };
-  const removeFromCart = (name: string, size: string, milk?: string) => {
-    setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size && (i.milk ?? "") === (milk ?? ""))));
+  const removeFromCart = (name: string, size: string, milk?: string, syrup?: string) => {
+    setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size && (i.milk ?? "") === (milk ?? "") && (i.syrup ?? "") === (syrup ?? ""))));
   };
 
   const totalItems = cart.reduce((s, i) => s + i.qty, 0);
@@ -591,18 +591,18 @@ export default function MenuPage() {
             className="fixed bottom-20 left-3 right-3 max-w-lg mx-auto bg-white rounded-2xl shadow-2xl border border-[#d0f0e0] p-4 z-50">
             <h3 className="font-bold text-brand-dark mb-2">{"Твой заказ"}</h3>
             <div className="space-y-1 max-h-40 overflow-y-auto">
-              {cart.map((i) => (
-                <div key={`${i.name}_${i.size}_${i.milk}`} className="flex items-center justify-between text-sm">
+              {cart.map((i, idx) => (
+                <div key={`${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}_${idx}`} className="flex items-center justify-between text-sm">
                   <div className="flex-1">
                     <span className="font-medium text-brand-text">{i.name}</span>
-                    {i.size !== "\u2014" && <span className="text-brand-text/40 text-xs ml-1">({i.size})</span>}
+                    {i.size !== "—" && <span className="text-brand-text/40 text-xs ml-1">({i.size})</span>}
                     {i.milk && <span className="text-brand-mint text-xs ml-1">{i.milk}</span>}
                     {i.syrup && <span className="text-amber-500 text-xs ml-1">{i.syrup}</span>}
-                    {i.qty > 1 && <span className="text-brand-pink text-xs font-bold ml-1">{"\u00D7"}{i.qty}</span>}
+                    {i.qty > 1 && <span className="text-brand-pink text-xs font-bold ml-1">×{i.qty}</span>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-brand-dark">{i.price * i.qty}{" \u20B8"}</span>
-                    <button onClick={() => removeFromCart(i.name, i.size, i.milk)} className="text-brand-pink/50 hover:text-brand-pink text-xs">{"\u2715"}</button>
+                    <span className="font-bold text-brand-dark">{i.price * i.qty} ₸</span>
+                    <button onClick={() => removeFromCart(i.name, i.size, i.milk, i.syrup)} className="text-brand-pink/50 hover:text-brand-pink text-xs min-w-[44px] min-h-[44px] flex items-center justify-center">✕</button>
                   </div>
                 </div>
               ))}
