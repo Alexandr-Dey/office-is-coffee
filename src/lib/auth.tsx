@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInAnonymously,
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from "firebase/auth";
@@ -34,6 +35,7 @@ interface AuthContextValue {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInAsGuest: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -42,6 +44,7 @@ const AuthContext = createContext<AuthContextValue>({
   firebaseUser: null,
   loading: true,
   signInWithGoogle: async () => {},
+  signInAsGuest: async () => {},
   signOut: async () => {},
 });
 
@@ -132,6 +135,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInAsGuest = async (name: string) => {
+    const auth = getFirebaseAuth();
+    const result = await signInAnonymously(auth);
+    const db = getFirebaseDb();
+    const userRef = doc(db, "users", result.user.uid);
+    await setDoc(userRef, {
+      displayName: name.trim() || "Гость",
+      email: null,
+      photoURL: null,
+      role: "client" as Role,
+      loyaltyCount: 0,
+      streak: 0,
+      lastOrderDate: null,
+      pushToken: null,
+      geolocationAllowed: false,
+      favoriteItem: null,
+      onboardingDone: false,
+      createdAt: new Date().toISOString(),
+    }, { merge: true });
+    trackEvent("User Signed Up", { method: "guest" });
+    identifyUser(result.user.uid, { $name: name.trim() || "Гость" });
+  };
+
   const signOut = async () => {
     const auth = getFirebaseAuth();
     await firebaseSignOut(auth);
@@ -140,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, firebaseUser, loading, signInWithGoogle, signOut }}
+      value={{ user, firebaseUser, loading, signInWithGoogle, signInAsGuest, signOut }}
     >
       {children}
     </AuthContext.Provider>
