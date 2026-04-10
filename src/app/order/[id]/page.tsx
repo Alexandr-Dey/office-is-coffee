@@ -7,6 +7,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { useToast } from "@/components/Toast";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
+import GameWrapper from "@/components/game/GameWrapper";
 import { trackEvent } from "@/lib/mixpanel";
 
 interface OrderData {
@@ -219,6 +220,9 @@ export default function OrderWaitPage() {
               );
             })}
           </div>
+
+          {/* Mini game while waiting */}
+          <GameWrapper orderStatus={order.status} orderId={orderId} />
 
           {/* Order details */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
