@@ -19,6 +19,38 @@ interface DepositHistoryEntry {
 import { QRCodeSVG } from "qrcode.react";
 import { CAFE_ADDRESS } from "@/lib/constants";
 
+const WISDOMS = [
+  "Дают — бери, не дают — отбери",
+  "Одна ошибка и ты ошибся",
+  "Школа не сцепление, можно и кинуть",
+  "Если жизнь — это вызов, то я перезвоню",
+  "Не знаешь, как поступить — поступи как знаешь",
+  "Взял нож — режь, взял дошик — ешь",
+  "Если заблудился в лесу, иди домой",
+  "В жизни всегда есть две дороги: одна — первая, а другая — вторая",
+  "Никогда не сдавайтесь, идите к своей цели! А если будет сложно — сдавайтесь",
+  "Настоящий мужчина, как ковёр тёти Зины — с каждым годом лысеет",
+  "Не будьте эгоистами, в первую очередь думайте о себе!",
+  "Жи-ши пиши от души",
+  "Без подошвы тапочки — это просто тряпочки",
+  "Если тебе где-то не рады в рваных носках, то и в целых туда идти не стоит",
+  "Если закрыть глаза, становится темно",
+  "Тут — это вам не там",
+];
+
+function WisdomOfTheDay() {
+  // Same wisdom all day, changes at midnight Almaty time
+  const day = Math.floor((Date.now() + 5 * 3600000) / 86400000);
+  const idx = day % WISDOMS.length;
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      <p className="text-xs text-brand-text/40 mb-2">🧠 Мудрость дня</p>
+      <p className="text-sm text-brand-text font-medium italic">&ldquo;{WISDOMS[idx]}&rdquo;</p>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -200,6 +232,9 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* Wisdom of the day */}
+        <WisdomOfTheDay />
 
         {/* Geo permission */}
         {!geoPermission && !showGeoPrompt && (
