@@ -38,16 +38,90 @@ const WISDOMS = [
   "Тут — это вам не там",
 ];
 
+function getAlmatyDay(): number {
+  return Math.floor((Date.now() + 5 * 3600000) / 86400000);
+}
+
+function getWisdomState(): { seen: number[]; current: number; day: number } {
+  try {
+    const raw = localStorage.getItem("oic_wisdom");
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return { seen: [], current: -1, day: 0 };
+}
+
+function saveWisdomState(state: { seen: number[]; current: number; day: number }) {
+  localStorage.setItem("oic_wisdom", JSON.stringify(state));
+}
+
+function pickTodayWisdom(): number {
+  const today = getAlmatyDay();
+  const state = getWisdomState();
+
+  // Already picked today
+  if (state.day === today && state.current >= 0) return state.current;
+
+  // Get unseen indices
+  let unseen = WISDOMS.map((_, i) => i).filter(i => !state.seen.includes(i));
+
+  // All seen — reset cycle
+  if (unseen.length === 0) {
+    unseen = WISDOMS.map((_, i) => i);
+    state.seen = [];
+  }
+
+  // Pick random from unseen (seeded by uid hash would be ideal, but random is fine since it's per-device)
+  const pick = unseen[Math.floor(Math.random() * unseen.length)];
+  state.seen.push(pick);
+  state.current = pick;
+  state.day = today;
+  saveWisdomState(state);
+  return pick;
+}
+
 function WisdomOfTheDay() {
-  // Same wisdom all day, changes at midnight Almaty time
-  const day = Math.floor((Date.now() + 5 * 3600000) / 86400000);
-  const idx = day % WISDOMS.length;
+  const [idx, setIdx] = useState(-1);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    setIdx(pickTodayWisdom());
+    // Check if already revealed today
+    try {
+      const r = localStorage.getItem("oic_wisdom_revealed");
+      if (r === String(getAlmatyDay())) setRevealed(true);
+    } catch { /* ignore */ }
+  }, []);
+
+  const reveal = () => {
+    setRevealed(true);
+    localStorage.setItem("oic_wisdom_revealed", String(getAlmatyDay()));
+  };
+
+  if (idx < 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+    <motion.div
+      whileTap={!revealed ? { scale: 0.97 } : undefined}
+      onClick={!revealed ? reveal : undefined}
+      className={`bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4 ${!revealed ? "cursor-pointer" : ""}`}
+      style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
+    >
       <p className="text-xs text-brand-text/40 mb-2">🧠 Мудрость дня</p>
-      <p className="text-sm text-brand-text font-medium italic">&ldquo;{WISDOMS[idx]}&rdquo;</p>
-    </div>
+      {revealed ? (
+        <motion.p
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-sm text-brand-text font-medium italic"
+        >
+          &ldquo;{WISDOMS[idx]}&rdquo;
+        </motion.p>
+      ) : (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-brand-text/60">Нажми чтобы узнать...</p>
+          <span className="text-lg">🎁</span>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
