@@ -10,7 +10,7 @@ export function ObjectsLayer({ orderStatus }: Props) {
   const isWorking = orderStatus === "accepted";
 
   return (
-    <g id="objects">
+    <g id="objects" style={{ pointerEvents: "none" }}>
       {/* ═══ ZONE 1: COFFEE (100-300) ═══ */}
 
       {/* Coffee machine — large, centered in zone 1 */}

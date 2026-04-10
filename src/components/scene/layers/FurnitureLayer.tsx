@@ -3,8 +3,9 @@
 export function FurnitureLayer() {
   // Counter: x=100..700 (600px wide), y=340..475 (135px tall)
   // Zone 1 (Coffee): 100-300 | Zone 2 (Cash): 300-500 | Zone 3 (Pickup): 500-700
+  // pointer-events: none so baristas underneath remain clickable
   return (
-    <g id="furniture">
+    <g id="furniture" style={{ pointerEvents: "none" }}>
       {/* Counter top surface */}
       <rect x="100" y="340" width="600" height="12" fill="url(#counterTop)" rx="3" />
       <rect x="100" y="340" width="600" height="2" fill="#3ecf82" opacity="0.25" rx="1" />

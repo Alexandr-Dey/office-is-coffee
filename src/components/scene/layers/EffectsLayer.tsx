@@ -10,7 +10,7 @@ interface Props {
 
 export function EffectsLayer({ orderStatus }: Props) {
   return (
-    <g id="effects">
+    <g id="effects" style={{ pointerEvents: "none" }}>
       <Steam active={orderStatus === "accepted"} />
       <AnimatePresence>
         {orderStatus !== "idle" && <OrderBubble status={orderStatus} />}

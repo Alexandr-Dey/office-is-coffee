@@ -62,7 +62,7 @@ export default function CoffeeScene({
       <EffectsLayer orderStatus={status} />
 
       {/* Warm ambient overlay */}
-      <rect x="0" y="0" width="800" height="600" fill="url(#warmLight)" />
+      <rect x="0" y="0" width="800" height="600" fill="url(#warmLight)" style={{ pointerEvents: "none" }} />
     </svg>
   );
 }
