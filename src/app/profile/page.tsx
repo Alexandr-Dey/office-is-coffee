@@ -138,6 +138,8 @@ export default function ProfilePage() {
   const [depositHistory, setDepositHistory] = useState<DepositHistoryEntry[]>([]);
   const [bonus, setBonus] = useState<BonusData | null>(null);
   const [heartsToday, setHeartsToday] = useState(0);
+  const [cookiesCount, setCookiesCount] = useState(0);
+  const [pendingCookie, setPendingCookie] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -147,6 +149,8 @@ export default function ProfilePage() {
         setStreak(snap.data().streak ?? 0);
         setLoyaltyCount(snap.data().loyaltyCount ?? 0);
         setGeoPermission(snap.data().geolocationAllowed ?? false);
+        setCookiesCount(snap.data().cookiesCount ?? 0);
+        setPendingCookie(snap.data().pendingCookie ?? false);
       }
     }, () => {}));
     unsubs.push(onSnapshot(doc(getFirebaseDb(), "deposits", user.uid), (snap) => {
@@ -283,6 +287,26 @@ export default function ProfilePage() {
             </>
           )}
         </div>
+
+        {/* Cookies */}
+        {user && user.role === "client" && (
+          <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-brand-text/50">🍪 Мои печеньки</p>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-brand-dark">Собрано: {cookiesCount}</span>
+                {pendingCookie && (
+                  <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full">Ожидает 🟡</span>
+                )}
+              </div>
+            </div>
+            {pendingCookie ? (
+              <p className="text-xs text-yellow-600">Скажи баристе «у меня есть печенька» при заказе</p>
+            ) : (
+              <p className="text-xs text-brand-text/40">Найди печеньку в меню каждый день →</p>
+            )}
+          </div>
+        )}
 
         {/* Barista bonuses */}
         {user && (user.role === "barista" || user.role === "ceo") && bonus && (

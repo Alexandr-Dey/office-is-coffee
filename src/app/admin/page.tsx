@@ -12,7 +12,7 @@ import { getFirebaseAuth } from "@/lib/firebase";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
 interface Order {
-  id: string; name: string; items: OrderItem[]; total: number;
+  id: string; name: string; userId?: string; items: OrderItem[]; total: number;
   status: "new" | "pending" | "accepted" | "ready" | "paid" | "cancelled"; comment?: string;
   createdAt: Timestamp | null; estimatedMinutes?: number; acceptedAt?: number;
   rating?: number; baristaid?: string; paymentMethod?: "deposit" | "cash";
@@ -98,6 +98,14 @@ function QueueScene({ activeCount, readyCount }: { activeCount: number; readyCou
 function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const [updating, setUpdating] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [hasCookie, setHasCookie] = useState(false);
+
+  useEffect(() => {
+    if (!order.userId || order.status !== "ready") return;
+    getDoc(doc(getFirebaseDb(), "users", order.userId)).then(snap => {
+      if (snap.exists() && snap.data().pendingCookie) setHasCookie(true);
+    }).catch(() => {});
+  }, [order.status, order.userId]);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState("");
@@ -229,6 +237,23 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
               Назад
             </button>
           </div>
+        </motion.div>
+      )}
+
+      {/* Cookie banner */}
+      {hasCookie && order.status === "ready" && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="bg-[#faeeda] rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between">
+          <span className="text-sm font-bold text-[#8B6914]">🍪 У клиента есть печенька!</span>
+          <motion.button whileTap={{ scale: 0.95 }}
+            onClick={async () => {
+              if (!order.userId) return;
+              await updateDoc(doc(getFirebaseDb(), "users", order.userId), { pendingCookie: false }).catch(() => {});
+              setHasCookie(false);
+            }}
+            className="px-3 py-1.5 bg-[#1a7a44] text-white text-xs font-bold rounded-lg">
+            Выдал ✓
+          </motion.button>
         </motion.div>
       )}
 

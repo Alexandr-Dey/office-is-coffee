@@ -12,6 +12,10 @@ import type { MenuItem, CartItem } from "@/lib/types";
 import { trackEvent } from "@/lib/mixpanel";
 import { useToast } from "@/components/Toast";
 import QuickOrdersBlock from "@/components/QuickOrdersBlock";
+import CookieButton from "@/components/CookieButton";
+import { getDailyCookie, isCookieCollectedToday } from "@/lib/dailyCookie";
+import { COOKIE_FACTS, type CookieFact } from "@/lib/cookieFacts";
+import { doc as firestoreDoc, updateDoc } from "firebase/firestore";
 
 /* ═══ CATEGORIES ═══ */
 const CATEGORIES = [
@@ -219,10 +223,11 @@ function DrinkDetail({ item, catGradient, onAdd, onClose }: {
 }
 
 /* ═══ DRINK CARD ═══ */
-function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped }: {
+function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped, cookieData }: {
   item: MenuItem; gradient: string; catIcon: string; idx: number; stopped?: boolean;
   onAdd: (name: string, size: string, price: number, milk?: string) => void;
   onDetail: () => void;
+  cookieData?: { fact: CookieFact; collected: boolean; onCollect: () => void } | null;
 }) {
   const sizes = getSizes(item);
   const [sz] = useState<Size | null>(getDefault(item));
@@ -245,9 +250,12 @@ function DrinkCard({ item, gradient, catIcon, onAdd, onDetail, idx, stopped }: {
       transition={{ delay: idx * 0.04 }}
       onClick={unavailable ? undefined : onDetail}
       aria-label={`${item.name}, от ${getMinPrice(item)} ₸`}
-      className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow ${unavailable ? "opacity-50 cursor-not-allowed" : ""} bg-gradient-to-br ${gradient} text-white`}
+      className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow relative ${unavailable ? "opacity-50 cursor-not-allowed" : ""} bg-gradient-to-br ${gradient} text-white`}
       style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
     >
+      {cookieData && (
+        <CookieButton fact={cookieData.fact} collected={cookieData.collected} onCollect={cookieData.onCollect} />
+      )}
       <div className="text-3xl mb-2">{catIcon}</div>
       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
         <span className="font-semibold text-sm">{item.name}</span>
@@ -354,6 +362,8 @@ export default function MenuPage() {
   const [lastOrderDate, setLastOrderDate] = useState<string | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuLoading, setMenuLoading] = useState(true);
+  const [cookieCollected, setCookieCollected] = useState(false);
+  const [lastCookieDate, setLastCookieDate] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
   /* Load menu from Firestore */
@@ -388,6 +398,9 @@ export default function MenuPage() {
         setLoyaltyCount(snap.data().loyaltyCount ?? 0);
         setStreakDays(snap.data().streak ?? 0);
         setLastOrderDate(snap.data().lastOrderDate ?? null);
+        const lcd = snap.data().lastCookieDate ?? null;
+        setLastCookieDate(lcd);
+        setCookieCollected(isCookieCollectedToday(lcd));
       }
     }, () => {});
     return () => unsub();
@@ -437,6 +450,24 @@ export default function MenuPage() {
   }, [cat]);
 
   const { showToast } = useToast();
+
+  const dailyCookie = getDailyCookie(menuItems);
+  const dailyFact = dailyCookie ? COOKIE_FACTS.find(f => f.id === dailyCookie.factId) : null;
+
+  const handleCollectCookie = async () => {
+    if (!user || !dailyCookie || cookieCollected) return;
+    setCookieCollected(true);
+    const db = getFirebaseDb();
+    const userRef = firestoreDoc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+    const currentCount = snap.exists() ? snap.data()?.cookiesCount ?? 0 : 0;
+    await updateDoc(userRef, {
+      lastCookieDate: dailyCookie.date,
+      cookiesCount: currentCount + 1,
+      pendingCookie: true,
+    }).catch(() => {});
+    showToast("🍪 Печенька в профиле!", "success");
+  };
   const addToCart = (name: string, size: string, price: number, milk?: string, syrup?: string) => {
     trackEvent("Item Added to Cart", { name, size, price, milk, syrup });
     showToast(`${name} добавлен в корзину`, "success");
@@ -562,6 +593,11 @@ export default function MenuPage() {
                   stopped={stopList.includes(item.name) || stopList.includes(item.id)}
                   onAdd={addToCart}
                   onDetail={() => setDetailItem({ item, gradient: currentCat.gradient })}
+                  cookieData={dailyCookie && dailyFact && item.id === dailyCookie.menuItemId ? {
+                    fact: dailyFact,
+                    collected: cookieCollected,
+                    onCollect: handleCollectCookie,
+                  } : null}
                 />
               ))}
               {currentItems.length === 0 && (
