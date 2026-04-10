@@ -51,7 +51,32 @@ export default function OrdersPage() {
     const unsub = onSnapshot(q, (snap) => {
       setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) })));
       setLoading(false);
-    }, () => setLoading(false));
+    }, (err) => {
+      console.error("Orders query error:", err.message);
+      // Fallback: if index missing, try without orderBy
+      if (err.message.includes("index")) {
+        import("firebase/firestore").then(({ getDocs }) => {
+          const fallbackQ = query(
+            collection(getFirebaseDb(), "orders"),
+            fbWhere("userId", "==", user!.uid),
+            limit(30),
+          );
+          getDocs(fallbackQ).then((snap) => {
+            const list = snap.docs
+              .map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) }))
+              .sort((a, b) => {
+                const ta = a.createdAt?.toMillis?.() ?? 0;
+                const tb = b.createdAt?.toMillis?.() ?? 0;
+                return tb - ta;
+              });
+            setOrders(list);
+            setLoading(false);
+          }).catch(() => setLoading(false));
+        });
+      } else {
+        setLoading(false);
+      }
+    });
     return () => unsub();
   }, [user, authLoading]);
 
