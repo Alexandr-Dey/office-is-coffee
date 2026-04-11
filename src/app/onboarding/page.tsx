@@ -490,7 +490,7 @@ export default function OnboardingPage() {
                 </p>
               </motion.div>
 
-              <div className="space-y-2.5 mb-5">
+              <div className="space-y-2.5 mb-4">
                 <Feature
                   icon="☕"
                   title="Заказ в пару тапов"
@@ -498,32 +498,36 @@ export default function OnboardingPage() {
                   gradient="linear-gradient(135deg, #d42b4f, #e85d7a)"
                 />
                 <Feature
-                  icon="🔥"
-                  title="Стрик и лояльность"
-                  desc="Каждый 8-й напиток — бесплатно!"
+                  icon="❤️"
+                  title="Тапай баристов"
+                  desc="Нажми на баристу в сцене — полетят сердечки!"
+                  gradient="linear-gradient(135deg, #ec4899, #f472b6)"
+                />
+                <Feature
+                  icon="🍪"
+                  title="Печенька дня"
+                  desc="Каждый день прячется в одном напитке — найди и забери"
                   gradient="linear-gradient(135deg, #f59e0b, #fbbf24)"
                 />
                 <Feature
-                  icon="💳"
-                  title="Депозит"
-                  desc="Пополни баланс и плати мгновенно"
+                  icon="🎮"
+                  title="Мини-игра"
+                  desc="Match-3 с кофейными элементами пока ждёшь заказ"
+                  gradient="linear-gradient(135deg, #a855f7, #c084fc)"
+                />
+                <Feature
+                  icon="🌤"
+                  title="Живая сцена"
+                  desc="Баристы двигаются, погода за окном меняется в реальном времени"
                   gradient="linear-gradient(135deg, #3b82f6, #60a5fa)"
                 />
                 <Feature
-                  icon="📡"
-                  title="Real-time статус"
-                  desc="Видишь когда заказ готов"
+                  icon="⭐"
+                  title="Избранное и повтор"
+                  desc="Добавь любимые напитки и заказывай в один тап"
                   gradient="linear-gradient(135deg, #1a7a44, #2d9e5a)"
                 />
-                <Feature
-                  icon="🎨"
-                  title="Живая сцена"
-                  desc="Pixel-art кофейня оживает"
-                  gradient="linear-gradient(135deg, #a855f7, #c084fc)"
-                />
               </div>
-
-              <LoyaltyPreview />
             </motion.div>
           )}
 
@@ -675,21 +679,24 @@ export default function OnboardingPage() {
                 Выбери свой первый напиток — мы уже ждём.
               </motion.p>
 
-              {/* Loyalty hint */}
+              {/* Tips */}
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="mt-6 flex items-center gap-3 bg-white rounded-2xl px-5 py-3.5 shadow-sm border border-[#f0e8e0]"
+                className="mt-6 space-y-2 w-full max-w-[300px]"
               >
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#3ecf82]/30 to-[#1a7a44]/15 flex items-center justify-center text-xl">
-                  ⭐
+                <div className="flex items-center gap-2.5 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-[#f0e8e0]">
+                  <span className="text-lg">🍪</span>
+                  <p className="text-[11px] text-gray-500">Ищи печеньку в меню каждый день</p>
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-[#0f3a20]">0 из 7</p>
-                  <p className="text-[11px] text-gray-500">
-                    Каждый 8-й напиток бесплатно!
-                  </p>
+                <div className="flex items-center gap-2.5 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-[#f0e8e0]">
+                  <span className="text-lg">❤️</span>
+                  <p className="text-[11px] text-gray-500">Тапай баристов — им приятно</p>
+                </div>
+                <div className="flex items-center gap-2.5 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-[#f0e8e0]">
+                  <span className="text-lg">🎮</span>
+                  <p className="text-[11px] text-gray-500">Играй в Match-3 пока ждёшь заказ</p>
                 </div>
               </motion.div>
 
