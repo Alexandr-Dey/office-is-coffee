@@ -405,10 +405,16 @@ exports.trackPushOpened = onCall(async (request) => {
   const { pushLogId } = request.data;
   if (!pushLogId) throw new HttpsError("invalid-argument", "pushLogId required");
 
+  console.log(`trackPushOpened: user ${uid}, pushLogId ${pushLogId}`);
+
   const logRef = db.collection("push_log").doc(pushLogId);
   const logSnap = await logRef.get();
-  if (!logSnap.exists) return { ok: false };
+  if (!logSnap.exists) {
+    console.log(`trackPushOpened: push_log ${pushLogId} not found`);
+    return { ok: false };
+  }
 
   await logRef.update({ openedCount: FieldValue.increment(1) });
+  console.log(`trackPushOpened: incremented openedCount for ${pushLogId}`);
   return { ok: true };
 });

@@ -98,14 +98,17 @@ export async function sendManualPush(tokens: string[], title: string, body: stri
   const app = getApps()[0];
   if (!app) throw new Error("Firebase not initialized");
   const functions = getFunctions(app);
-  const fn = httpsCallable<{ tokens: string[]; title: string; body: string }, { sent: number }>(functions, "sendManualPush");
+  const fn = httpsCallable<
+    { tokens: string[]; title: string; body: string },
+    { pushLogId: string; deliveredCount: number; deadTokensFound: number }
+  >(functions, "sendManualPush");
 
   // FCM limit: 500 per batch
   let totalSent = 0;
   for (let i = 0; i < tokens.length; i += 500) {
     const batch = tokens.slice(i, i + 500);
     const result = await fn({ tokens: batch, title, body });
-    totalSent += result.data.sent;
+    totalSent += result.data.deliveredCount;
   }
   return totalSent;
 }

@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { ToastProvider } from "@/components/Toast";
 import BottomNav from "@/components/BottomNav";
+import PushTracker from "@/components/PushTracker";
 
 export const metadata: Metadata = {
   title: "Love is Coffee — Кофейня для команд",
@@ -39,6 +40,7 @@ export default function RootLayout({
           <AuthProvider>
             <CartProvider>
               <ToastProvider>
+                <PushTracker />
                 {children}
                 <BottomNav />
               </ToastProvider>

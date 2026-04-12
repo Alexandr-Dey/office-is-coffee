@@ -501,11 +501,6 @@ export default function MenuPage() {
   const [lastCookieDate, setLastCookieDate] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  /* Track push opened */
-  useEffect(() => {
-    import("@/lib/push").then(({ trackPushOpened: track }) => track()).catch(() => {});
-  }, []);
-
   /* Ensure push token is fresh on every visit */
   useEffect(() => {
     if (!user) return;
