@@ -543,94 +543,100 @@ export default function OnboardingPage() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 flex flex-col items-center justify-center px-6"
+              className="absolute inset-0 overflow-y-auto px-5 pt-2 pb-4"
             >
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 className="text-center mb-6"
               >
-                <span className="text-4xl">🔔</span>
+                <span className="text-4xl">⚡</span>
                 <h2 className="font-display text-[22px] font-extrabold text-[#d42b4f] mt-3">
-                  Пара настроек
+                  Два важных шага
                 </h2>
-                <p className="text-xs text-gray-500 mt-1 max-w-[260px] mx-auto">
-                  Чтобы не пропустить когда кофе готов
+                <p className="text-xs text-gray-500 mt-1 max-w-[280px] mx-auto">
+                  Разреши и не пропустишь ни одного кофе
                 </p>
               </motion.div>
 
-              <div className="w-full max-w-sm space-y-4">
-                {/* Geo */}
+              <div className="w-full space-y-4">
+                {/* Push — BIG card */}
                 <motion.div
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="bg-white rounded-2xl p-4 border border-[#f0e8e0] shadow-sm"
+                  className={`rounded-2xl p-5 border-2 ${pushAsked ? "bg-green-50 border-green-200" : "bg-gradient-to-br from-[#d42b4f] to-[#e85d7a] border-transparent"}`}
+                  style={!pushAsked ? { boxShadow: "0 8px 24px rgba(212,43,79,0.25)" } : {}}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#1a7a44]/10 flex items-center justify-center text-lg shrink-0">
-                      📍
+                  {pushAsked ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">✅</span>
+                      <div>
+                        <p className="font-bold text-green-700">Уведомления включены</p>
+                        <p className="text-xs text-green-600">Мы сообщим когда кофе будет готов</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-[#0f3a20]">Геолокация</p>
-                      <p className="text-[11px] text-gray-500 leading-tight mt-0.5">
-                        Покажем расстояние до кофейни
-                      </p>
-                    </div>
-                    {!geoAsked ? (
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleGeo(true)}
-                        className="px-4 py-2 rounded-xl bg-[#1a7a44] text-white text-xs font-bold shrink-0"
-                      >
-                        OK
-                      </motion.button>
-                    ) : (
-                      <span className="text-[#3ecf82] text-sm font-bold">✓</span>
-                    )}
-                  </div>
-                </motion.div>
-
-                {/* Push */}
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-white rounded-2xl p-4 border border-[#f0e8e0] shadow-sm"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#d42b4f]/10 flex items-center justify-center text-lg shrink-0">
-                      🔔
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-[#0f3a20]">Уведомления</p>
-                      <p className="text-[11px] text-gray-500 leading-tight mt-0.5">
-                        Узнаешь когда кофе готов
-                      </p>
-                    </div>
-                    {!pushAsked ? (
+                  ) : (
+                    <>
+                      <div className="text-center mb-4">
+                        <span className="text-5xl block mb-2">🔔</span>
+                        <p className="font-extrabold text-xl text-white">Узнай когда кофе готов</p>
+                        <p className="text-sm text-white/80 mt-1">Пришлём уведомление — не нужно проверять</p>
+                      </div>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handlePush(true)}
-                        className="px-4 py-2 rounded-xl bg-[#d42b4f] text-white text-xs font-bold shrink-0"
+                        className="w-full py-4 rounded-2xl bg-white text-[#d42b4f] font-extrabold text-lg shadow-md min-h-[56px]"
                       >
-                        OK
+                        Разрешить уведомления
                       </motion.button>
-                    ) : (
-                      <span className="text-[#3ecf82] text-sm font-bold">✓</span>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </motion.div>
 
-                {/* Skip both note */}
+                {/* Geo — BIG card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className={`rounded-2xl p-5 border-2 ${geoAsked ? "bg-green-50 border-green-200" : "bg-gradient-to-br from-[#1a7a44] to-[#2d9e5a] border-transparent"}`}
+                  style={!geoAsked ? { boxShadow: "0 8px 24px rgba(26,122,68,0.25)" } : {}}
+                >
+                  {geoAsked ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">✅</span>
+                      <div>
+                        <p className="font-bold text-green-700">Геолокация включена</p>
+                        <p className="text-xs text-green-600">Покажем когда кофейня рядом</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-center mb-4">
+                        <span className="text-5xl block mb-2">📍</span>
+                        <p className="font-extrabold text-xl text-white">Кофейня рядом?</p>
+                        <p className="text-sm text-white/80 mt-1">Покажем расстояние и напомним зайти</p>
+                      </div>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleGeo(true)}
+                        className="w-full py-4 rounded-2xl bg-white text-[#1a7a44] font-extrabold text-lg shadow-md min-h-[56px]"
+                      >
+                        Разрешить геолокацию
+                      </motion.button>
+                    </>
+                  )}
+                </motion.div>
+
+                {/* Skip note */}
                 {!geoAsked && !pushAsked && (
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                    className="text-center text-[11px] text-gray-400"
+                    transition={{ delay: 0.5 }}
+                    className="text-center text-[11px] text-gray-400 mt-2"
                   >
-                    Можно разрешить позже в настройках
+                    Можно включить позже в профиле
                   </motion.p>
                 )}
               </div>
