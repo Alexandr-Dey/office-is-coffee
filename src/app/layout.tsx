@@ -10,6 +10,15 @@ export const metadata: Metadata = {
   description: "Заказывай кофе, копи монеты, получай каждый 8-й бесплатно.",
   keywords: ["кофе", "кофейня", "love is coffee", "заказ"],
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Love is Coffee",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
