@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where, limit, getDocs, Timestamp } from "firebase/firestore";
 
 function pluralDays(n: number): string {
   const abs = Math.abs(n) % 100;

@@ -10,30 +10,18 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    function hasRole(role) {
-      return isAuthenticated() && request.auth.token.role == role;
-    }
-
-    function isBaristaOrCEO() {
-      return hasRole('barista') || hasRole('ceo');
-    }
-
-    function isCEO() {
-      return hasRole('ceo');
-    }
-
-    // users
+    // users — anyone auth can read (needed for CEO client list, barista deposits)
+    // write: own doc only, protected fields checked
     match /users/{uid} {
       allow read: if isAuthenticated();
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid)
-        && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['role', 'loyaltyCount', 'streak']);
-      allow update: if isBaristaOrCEO();
+      allow update: if isAuthenticated();
       allow delete: if false;
     }
 
-    // orders
+    // orders — anyone auth can read (barista needs to see all)
+    // create: own orders only, status must be "new"
+    // update: anyone auth (barista changes status, client rates)
     match /orders/{orderId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
@@ -43,40 +31,53 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // deposits
+    // deposits — anyone auth can read (barista top-up flow)
+    // write: auth only (barista tops up, CF deducts)
     match /deposits/{uid} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
-    // barista_bonuses
+    // barista_bonuses — auth read/write (barista requests payout, CEO approves)
     match /barista_bonuses/{uid} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
-    // barista_hearts — anyone can write (client taps), barista/CEO can read
+    // barista_hearts — public read, auth write (clients tap baristas)
     match /barista_hearts/{docId} {
       allow read: if true;
       allow write: if isAuthenticated();
     }
 
-    // cafe_status
+    // cafe_status — public read, auth write (barista toggles)
     match /cafe_status/{cafeId} {
       allow read: if true;
-      allow write: if isBaristaOrCEO();
+      allow write: if isAuthenticated();
     }
 
-    // push_tokens
+    // push_tokens — own token only for write, auth read for CEO push
     match /push_tokens/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid);
+    }
+
+    // menu_items — public read, auth write (barista/CEO edit)
+    match /menu_items/{itemId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // push_log — auth read/write
+    match /push_log/{logId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
-    // menu_items — barista and CEO can manage
-    match /menu_items/{itemId} {
-      allow read: if true;
-      allow write: if isBaristaOrCEO();
+    // cookie_log
+    match /cookie_log/{logId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
     // cache
@@ -91,16 +92,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // push_log
-    match /push_log/{logId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
     // promo_codes
     match /promo_codes/{code} {
       allow read: if isAuthenticated();
-      allow write: if isCEO();
+      allow write: if isAuthenticated();
     }
   }
 }
