@@ -125,6 +125,107 @@ function WisdomOfTheDay() {
   );
 }
 
+function BaristaGuide() {
+  const [open, setOpen] = useState(false);
+
+  const sections = [
+    {
+      title: "📋 Заказы",
+      items: [
+        "Новые заказы появляются автоматически",
+        "Нажми время (5/10/15/20 мин) чтобы принять",
+        "«☕ Готово» — когда напиток готов",
+        "«💵 Получил оплату» или «✓ Выдано» — завершить",
+        "Красная кнопка ✕ — отменить заказ с причиной",
+        "Кнопка «🟢 Открыто / 🔴 Закрыто» — статус кофейни",
+      ],
+    },
+    {
+      title: "📝 Меню",
+      items: [
+        "Вкладка «Стоп» — выключай то, что закончилось",
+        "Отдельно: альтернативное молоко (овсяное, кокосовое, миндальное)",
+        "Вкладка «Популярное» — выбирай что показывать клиентам первым",
+        "Вкладка «Все» — редактирование позиций, поиск, добавление",
+      ],
+    },
+    {
+      title: "💳 Депозиты",
+      items: [
+        "Найди клиента по номеру телефона или UID",
+        "Введи сумму и нажми «Пополнить»",
+        "Клиент увидит баланс в профиле",
+      ],
+    },
+    {
+      title: "💰 Бонусы",
+      items: [
+        "+5₸ за каждый выданный заказ (кроме бесплатных по лояльности)",
+        "Бонусы копятся автоматически",
+        "Нажми «Запросить выплату» — CEO увидит и одобрит",
+      ],
+    },
+    {
+      title: "🍪 Печенька дня",
+      items: [
+        "Если клиент говорит «у меня есть печенька» — проверь заказ",
+        "На карточке готового заказа появится баннер 🍪",
+        "Нажми «Выдал ✓» после выдачи печеньки",
+      ],
+    },
+    {
+      title: "❤️ Лайки",
+      items: [
+        "Клиенты тапают на баристов в сцене — летят сердечки",
+        "Количество сердечек за день видно в профиле",
+      ],
+    },
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] mb-4 overflow-hidden" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full p-4 flex items-center justify-between min-h-[44px]"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg">📖</span>
+          <span className="font-bold text-sm text-brand-text">Инструкция баристы</span>
+        </div>
+        <span className={`text-brand-text/40 transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
+      </button>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="px-4 pb-4"
+        >
+          <div className="space-y-4">
+            {sections.map((sec) => (
+              <div key={sec.title}>
+                <p className="font-bold text-sm text-brand-dark mb-1.5">{sec.title}</p>
+                <ul className="space-y-1">
+                  {sec.items.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-brand-text/60">
+                      <span className="text-brand-mint mt-0.5">•</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 bg-brand-bg rounded-xl p-3">
+            <p className="text-[10px] text-brand-text/40 text-center">
+              Есть вопросы? Спроси CEO или напиши в чат команды
+            </p>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -295,6 +396,11 @@ export default function ProfilePage() {
             </>
           )}
         </div>
+
+        {/* Barista Guide */}
+        {user && (user.role === "barista" || user.role === "ceo") && (
+          <BaristaGuide />
+        )}
 
         {/* Cookies */}
         {user && user.role === "client" && (
