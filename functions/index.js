@@ -16,7 +16,11 @@ function getAlmatyDate(date) {
 
 async function sendPush(uid, title, body, data) {
   const tokenSnap = await db.collection("push_tokens").doc(uid).get();
-  if (!tokenSnap.exists || !tokenSnap.data().token) return;
+  if (!tokenSnap.exists || !tokenSnap.data().token) {
+    console.log(`sendPush: no token for ${uid}`);
+    return;
+  }
+  console.log(`sendPush: sending to ${uid} — "${title}"`);
   await getMessaging().send({
     token: tokenSnap.data().token,
     notification: { title, body },
@@ -53,6 +57,7 @@ async function getBaristaTokens() {
 exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
   const data = event.data?.data();
   if (!data) return;
+  console.log(`New order ${event.params.orderId} from ${data.userId}: ${data.items?.length ?? 0} items, total ${data.total}`);
   const orderId = event.params.orderId;
   const orderRef = event.data.ref;
   const userId = data.userId;
@@ -146,6 +151,8 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
   const orderId = event.params.orderId;
   const userId = after.userId;
   const clientName = after.name || "Клиент";
+
+  console.log(`Order ${orderId}: ${before.status} → ${after.status} (user: ${userId}, name: ${clientName})`);
 
   /* ── accepted → push client ── */
   if (after.status === "accepted") {
