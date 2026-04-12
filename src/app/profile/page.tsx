@@ -125,6 +125,82 @@ function WisdomOfTheDay() {
   );
 }
 
+function PushStatus({ uid }: { uid: string }) {
+  const [status, setStatus] = useState<"loading" | "granted" | "denied" | "off">("loading");
+  const [toggling, setToggling] = useState(false);
+
+  useEffect(() => {
+    if (!("Notification" in window)) { setStatus("denied"); return; }
+    if (Notification.permission === "granted") {
+      // Check if token exists in Firestore
+      import("firebase/firestore").then(({ getDoc, doc: docRef }) => {
+        const db = getFirebaseDb();
+        getDoc(docRef(db, "push_tokens", uid)).then(snap => {
+          setStatus(snap.exists() && snap.data().token ? "granted" : "off");
+        }).catch(() => setStatus("off"));
+      });
+    } else if (Notification.permission === "denied") {
+      setStatus("denied");
+    } else {
+      setStatus("off");
+    }
+  }, [uid]);
+
+  const handleToggle = async () => {
+    if (status === "denied") return;
+    setToggling(true);
+    if (status === "granted") {
+      // Deactivate — delete token from Firestore
+      try {
+        const { deleteDoc, doc: docRef } = await import("firebase/firestore");
+        await deleteDoc(docRef(getFirebaseDb(), "push_tokens", uid));
+        setStatus("off");
+      } catch { /* ignore */ }
+    } else {
+      // Activate — request permission + save token
+      try {
+        const { requestPushPermission } = await import("@/lib/push");
+        const ok = await requestPushPermission(uid);
+        setStatus(ok ? "granted" : "denied");
+      } catch {
+        setStatus("denied");
+      }
+    }
+    setToggling(false);
+  };
+
+  if (status === "loading") return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4 mb-4 flex items-center justify-between" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      <div className="flex items-center gap-3">
+        <span className="text-lg">{status === "granted" ? "🔔" : status === "denied" ? "🔕" : "🔇"}</span>
+        <div>
+          <p className="text-sm font-bold text-brand-text">Push-уведомления</p>
+          <p className="text-[10px] text-brand-text/40">
+            {status === "granted" && "Активны — ты получаешь уведомления"}
+            {status === "off" && "Выключены — включи чтобы знать когда кофе готов"}
+            {status === "denied" && "Заблокированы в браузере — разреши в настройках"}
+          </p>
+        </div>
+      </div>
+      {status !== "denied" && (
+        <button
+          onClick={handleToggle}
+          disabled={toggling}
+          className={`w-12 h-7 rounded-full transition-colors flex items-center px-0.5 ${
+            status === "granted" ? "bg-brand-mint" : "bg-gray-200"
+          } ${toggling ? "opacity-50" : ""}`}
+        >
+          <div className={`w-6 h-6 rounded-full bg-white shadow transition-transform ${
+            status === "granted" ? "translate-x-5" : ""
+          }`} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function BaristaGuide() {
   const [open, setOpen] = useState(false);
 
@@ -501,6 +577,9 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* Push notification status */}
+        {user && <PushStatus uid={user.uid} />}
 
         {/* Wisdom of the day */}
         <WisdomOfTheDay />
