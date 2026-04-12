@@ -22,9 +22,19 @@ function loadCart(): CartItem[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Validate each item has required fields
+    return parsed.filter((i: Record<string, unknown>) =>
+      typeof i.name === "string" && typeof i.size === "string" &&
+      typeof i.price === "number" && typeof i.qty === "number" &&
+      i.qty > 0 && i.price >= 0
+    );
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return [];
+  }
 }
 
 function saveCart(cart: CartItem[]) {

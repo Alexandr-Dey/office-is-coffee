@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { CookieFact } from "@/lib/cookieFacts";
 
@@ -13,11 +13,14 @@ interface CookieButtonProps {
 export default function CookieButton({ fact, collected, onCollect }: CookieButtonProps) {
   const [showSheet, setShowSheet] = useState(false);
   const [justCollected, setJustCollected] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => { return () => { clearTimeout(timerRef.current); }; }, []);
 
   const handleCollect = () => {
     onCollect();
     setJustCollected(true);
-    setTimeout(() => setShowSheet(false), 1400);
+    timerRef.current = setTimeout(() => setShowSheet(false), 1400);
   };
 
   return (
@@ -72,8 +75,8 @@ export default function CookieButton({ fact, collected, onCollect }: CookieButto
 
               {/* Fact */}
               <div className="bg-[#f5f0e8] rounded-xl p-4 mb-4">
-                <p className="text-sm text-[#0f3a20] leading-relaxed">{fact.text}</p>
-                <p className="text-[10px] text-[#0f3a20]/40 mt-2">{fact.source}</p>
+                <p className="text-sm text-[#0f3a20] leading-relaxed">{fact?.text ?? "Интересный факт о кофе"}</p>
+                <p className="text-[10px] text-[#0f3a20]/40 mt-2">{fact?.source ?? ""}</p>
               </div>
 
               {/* Real cookie notice */}

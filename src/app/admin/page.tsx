@@ -111,6 +111,7 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const [error, setError] = useState("");
 
   const changeStatus = async (newStatus: "accepted" | "ready" | "paid", minutes?: number) => {
+    if (updating) return; // Prevent double-click
     setUpdating(true);
     setError("");
     try {
@@ -135,6 +136,7 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   };
 
   const cancelOrder = async () => {
+    if (updating) return;
     setUpdating(true);
     setError("");
     try {

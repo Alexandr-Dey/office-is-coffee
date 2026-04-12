@@ -130,9 +130,9 @@ function hasValidMoves(board: Gem[][]): boolean {
   return false;
 }
 
-function shuffleBoard(board: Gem[][]): Gem[][] {
+function shuffleBoard(board: Gem[][], depth = 0): Gem[][] {
+  if (depth > 10) return createBoard(); // Safety: prevent infinite recursion
   let b = copyBoard(board);
-  // Fisher-Yates on flat array
   const flat = b.flat();
   for (let i = flat.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -144,13 +144,12 @@ function shuffleBoard(board: Gem[][]): Gem[][] {
       b[r][c] = { ...flat[idx], id: `${r}-${c}`, key: nextKey() };
       idx++;
     }
-  // Remove accidental matches
   let matches = findMatches(b);
   while (matches.size > 0) {
     b = removeAndDrop(b, matches);
     matches = findMatches(b);
   }
-  if (!hasValidMoves(b)) return shuffleBoard(b);
+  if (!hasValidMoves(b)) return shuffleBoard(b, depth + 1);
   return b;
 }
 
