@@ -25,8 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className="font-sans antialiased bg-brand-bg text-brand-text">
-        <div className="mx-auto max-w-[480px] min-h-screen bg-brand-bg shadow-[0_0_40px_rgba(0,0,0,0.08)] relative">
+      <body className="font-sans antialiased bg-neutral-100 text-brand-text">
+        <div className="mx-auto max-w-[480px] min-h-screen bg-brand-bg shadow-[0_0_40px_rgba(0,0,0,0.08)] relative" id="app-shell">
           <AuthProvider>
             <CartProvider>
               <ToastProvider>

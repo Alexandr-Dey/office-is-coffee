@@ -8,9 +8,7 @@ export interface DailyCookie {
 }
 
 function getAlmatyDate(): string {
-  const d = new Date();
-  const utc5 = new Date(d.getTime() + 5 * 60 * 60 * 1000);
-  return utc5.toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("sv", { timeZone: "Asia/Almaty" });
 }
 
 function hashCode(str: string): number {

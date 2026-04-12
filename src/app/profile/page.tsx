@@ -167,11 +167,19 @@ export default function ProfilePage() {
           setBonus({ totalBonus: d.totalBonus ?? 0, pendingPayout: d.pendingPayout ?? 0, payoutRequested: d.payoutRequested ?? false });
         }
       }, () => {}));
-      // Hearts today
+      // Hearts today — load both barista heart counts
       const today = new Date().toISOString().slice(0, 10);
-      const baristaKey = user.displayName?.toLowerCase().includes("аслан") ? "aslan" : "vitaliy";
-      getDoc(doc(getFirebaseDb(), "barista_hearts", `${baristaKey}_${today}`)).then((snap) => {
-        if (snap.exists()) setHeartsToday(snap.data().count ?? 0);
+      Promise.all([
+        getDoc(doc(getFirebaseDb(), "barista_hearts", `vitaliy_${today}`)),
+        getDoc(doc(getFirebaseDb(), "barista_hearts", `aslan_${today}`)),
+      ]).then(([vSnap, aSnap]) => {
+        const vCount = vSnap.exists() ? vSnap.data().count ?? 0 : 0;
+        const aCount = aSnap.exists() ? aSnap.data().count ?? 0 : 0;
+        // Show total hearts for the barista (pick by name match or show total)
+        const name = user.displayName?.toLowerCase() ?? "";
+        if (name.includes("аслан") || name.includes("aslan")) setHeartsToday(aCount);
+        else if (name.includes("виталий") || name.includes("vitaliy")) setHeartsToday(vCount);
+        else setHeartsToday(vCount + aCount); // CEO sees total
       }).catch(() => {});
     }
     return () => unsubs.forEach(u => u());

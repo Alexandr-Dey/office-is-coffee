@@ -188,7 +188,11 @@ export default function OrderWaitPage() {
       <div className="pt-4 pb-24 px-4">
         <div className="max-w-[480px] mx-auto text-center">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex justify-center mb-6">
-            <CoffeeScene orderStatus={order.status as BaristaState} />
+            <CoffeeScene orderStatus={
+              (["idle", "pending", "accepted", "ready"] as const).includes(order.status as BaristaState)
+                ? order.status as BaristaState
+                : "idle"
+            } />
           </motion.div>
 
           <AnimatePresence mode="wait">

@@ -81,7 +81,7 @@ export default function OrdersPage() {
   }, [user, authLoading]);
 
   const repeatOrder = (items: OrderItem[]) => {
-    setItems(items.map(i => ({ name: i.name, size: i.size, price: i.price, qty: i.qty, milk: i.milk })));
+    setItems(items.map(i => ({ name: i.name, size: i.size, price: i.price, qty: i.qty, milk: i.milk, syrup: i.addons?.[0] })));
     sessionStorage.setItem("oic_is_repeat", "true");
     router.push("/order");
   };

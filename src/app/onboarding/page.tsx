@@ -199,6 +199,7 @@ export default function OnboardingPage() {
             }).catch(() => {});
         },
         () => {},
+        { timeout: 10000 },
       );
     }
   };
@@ -212,9 +213,9 @@ export default function OnboardingPage() {
 
   const handleDone = async () => {
     if (user) {
-      await updateDoc(doc(getFirebaseDb(), "users", user.uid), {
-        onboardingDone: true,
-      }).catch(() => {});
+      try {
+        await updateDoc(doc(getFirebaseDb(), "users", user.uid), { onboardingDone: true });
+      } catch { /* ignore */ }
     }
     trackEvent("Onboarding Completed", { stepsCompleted: STEPS.length });
     confetti({
@@ -222,7 +223,8 @@ export default function OnboardingPage() {
       spread: 70,
       colors: ["#d42b4f", "#e85d7a", "#1a7a44", "#3ecf82", "#f59e0b"],
     });
-    setTimeout(() => router.replace("/menu"), 800);
+    // Wait for confetti then navigate — no setTimeout race
+    setTimeout(() => router.replace("/menu"), 600);
   };
 
   /* Swipe support */

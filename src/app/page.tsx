@@ -19,6 +19,7 @@ export default function Home() {
   const [signingIn, setSigningIn] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [showGuest, setShowGuest] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     if (loading || !user) return;
@@ -35,19 +36,26 @@ export default function Home() {
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
+    setAuthError("");
     try {
       await signInWithGoogle();
-    } catch {
+    } catch (e) {
+      setAuthError("Ошибка входа. Попробуйте ещё раз.");
+      console.error("Google sign-in error:", e);
       setSigningIn(false);
     }
   };
 
   const handleGuestSignIn = async () => {
-    if (!guestName.trim()) return;
+    const trimmed = guestName.trim();
+    if (!trimmed) return;
     setSigningIn(true);
+    setAuthError("");
     try {
-      await signInAsGuest(guestName.trim());
-    } catch {
+      await signInAsGuest(trimmed);
+    } catch (e) {
+      setAuthError("Не удалось войти. Проверьте соединение.");
+      console.error("Guest sign-in error:", e);
       setSigningIn(false);
     }
   };
@@ -85,6 +93,8 @@ export default function Home() {
           </motion.p>
 
           <motion.div variants={fadeUp} className="space-y-3">
+            {authError && <p className="text-sm text-red-500 text-center mb-2">{authError}</p>}
+
             {/* Google Sign In */}
             <motion.button
               onClick={handleGoogleSignIn}
