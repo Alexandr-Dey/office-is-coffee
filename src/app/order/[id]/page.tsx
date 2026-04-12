@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import GameWrapper from "@/components/game/GameWrapper";
 import { trackEvent } from "@/lib/mixpanel";
+import { useAuth } from "@/lib/auth";
 
 interface OrderData {
   name: string;
@@ -121,6 +122,15 @@ export default function OrderWaitPage() {
   const prevStatus = useRef<string | null>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout>>();
   const { showToast } = useToast();
+  const { user } = useAuth();
+
+  // Request push permission on order wait page — best time to ask
+  useEffect(() => {
+    if (!user?.uid) return;
+    import("@/lib/push").then(({ requestPushPermission }) => {
+      requestPushPermission(user.uid).catch(() => {});
+    });
+  }, [user?.uid]);
 
   useEffect(() => {
     if (!orderId) return;
