@@ -119,17 +119,28 @@ export default function OrderWaitPage() {
   const [order, setOrder] = useState<OrderData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [pushState, setPushState] = useState<"unknown" | "prompt" | "granted" | "denied">("unknown");
   const prevStatus = useRef<string | null>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout>>();
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  // Request push permission on order wait page — best time to ask
+  // Check push permission state
   useEffect(() => {
-    if (!user?.uid) return;
-    import("@/lib/push").then(({ requestPushPermission }) => {
-      requestPushPermission(user.uid).catch(() => {});
-    });
+    if (!("Notification" in window)) { setPushState("denied"); return; }
+    if (Notification.permission === "granted") {
+      setPushState("granted");
+      // Silently ensure token is saved
+      if (user?.uid) {
+        import("@/lib/push").then(({ ensurePushToken }) => {
+          ensurePushToken(user.uid).catch(() => {});
+        });
+      }
+    } else if (Notification.permission === "denied") {
+      setPushState("denied");
+    } else {
+      setPushState("prompt");
+    }
   }, [user?.uid]);
 
   useEffect(() => {
@@ -197,6 +208,43 @@ export default function OrderWaitPage() {
 
       <div className="pt-4 pb-24 px-4">
         <div className="max-w-[480px] mx-auto text-center">
+
+          {/* Push permission banner */}
+          <AnimatePresence>
+            {pushState === "prompt" && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-4 bg-gradient-to-r from-brand-dark to-brand-mid rounded-2xl p-4 text-white text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl mt-0.5">🔔</span>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm">Узнай когда кофе готов</p>
+                    <p className="text-xs text-white/70 mt-0.5">Мы пришлём уведомление — не нужно проверять вручную</p>
+                  </div>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={async () => {
+                    if (!user?.uid) return;
+                    try {
+                      const { requestPushPermission } = await import("@/lib/push");
+                      const ok = await requestPushPermission(user.uid);
+                      setPushState(ok ? "granted" : "denied");
+                      if (ok) showToast("🔔 Уведомления включены!", "success");
+                    } catch {
+                      setPushState("denied");
+                    }
+                  }}
+                  className="w-full mt-3 py-2.5 bg-white text-brand-dark font-bold rounded-xl text-sm"
+                >
+                  Включить уведомления
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex justify-center mb-6">
             <CoffeeScene orderStatus={
               (["idle", "pending", "accepted", "ready"] as const).includes(order.status as BaristaState)
