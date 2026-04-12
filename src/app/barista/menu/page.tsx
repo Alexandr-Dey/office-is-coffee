@@ -53,8 +53,8 @@ export default function BaristaMenuPage() {
     await setDoc(doc(getFirebaseDb(), "menu_items", itemId), { featured: !current }, { merge: true }).catch(() => {});
   };
 
-  const toggleStop = async (name: string) => {
-    const newList = stopList.includes(name) ? stopList.filter(s => s !== name) : [...stopList, name];
+  const toggleStop = async (identifier: string) => {
+    const newList = stopList.includes(identifier) ? stopList.filter(s => s !== identifier) : [...stopList, identifier];
     setStopList(newList);
     await setDoc(doc(getFirebaseDb(), "cafe_status", "aksay_main"), { stopList: newList }, { merge: true }).catch(() => {});
   };
@@ -152,13 +152,13 @@ export default function BaristaMenuPage() {
             <h3 className="text-xs font-bold text-brand-text/60 uppercase tracking-wider mb-2">☕ Напитки</h3>
             <div className="space-y-2">
               {items.map((item) => {
-                const stopped = stopList.includes(item.name) || stopList.includes(item.id);
+                const stopped = stopList.includes(item.id);
                 return (
                   <div key={item.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-[#d0f0e0]">
                     <span className={`text-sm font-medium ${stopped ? "text-red-400 line-through" : "text-brand-text"}`}>
                       {item.name}
                     </span>
-                    <button onClick={() => toggleStop(item.name)}
+                    <button onClick={() => toggleStop(item.id)}
                       className={`w-12 h-7 rounded-full transition-colors flex items-center px-0.5 ${stopped ? "bg-red-400" : "bg-brand-mint"}`}>
                       <div className={`w-6 h-6 rounded-full bg-white shadow transition-transform ${stopped ? "" : "translate-x-5"}`} />
                     </button>

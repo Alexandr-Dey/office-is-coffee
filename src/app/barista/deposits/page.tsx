@@ -56,7 +56,10 @@ export default function BaristaDepositsPage() {
       setFoundUser({ ...foundUser, balance: foundUser.balance + amt });
       setAmount("");
       setTimeout(() => setSuccess(false), 3000);
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error("Deposit topup error:", e);
+      setSuccess(false);
+    }
   };
 
   if (loading) {

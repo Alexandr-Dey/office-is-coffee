@@ -749,7 +749,7 @@ export default function MenuPage() {
                   <DrinkCard
                     key={item.id} item={item} catIcon={itemCat.icon} idx={idx}
                     gradient={itemCat.gradient}
-                    stopped={stopList.includes(item.name) || stopList.includes(item.id)}
+                    stopped={stopList.includes(item.id) || stopList.includes(item.name)}
                     onAdd={addToCart}
                     onDetail={() => setDetailItem({ item, gradient: itemCat.gradient })}
                     cookieData={dailyCookie && dailyFact && item.id === dailyCookie.menuItemId ? {

@@ -246,8 +246,8 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
       <div className="flex items-center justify-between border-t border-[#d0f0e0] pt-3">
         <span className="font-bold text-brand-dark">{order.total}₸</span>
         <div className="flex gap-2 flex-wrap justify-end">
-          {/* New/Pending → Accept or Cancel */}
-          {(order.status === "new" || order.status === "pending") && !showTimePicker && !showCancel && (
+          {/* New → show Accept button */}
+          {order.status === "new" && !showTimePicker && !showCancel && (
             <>
               <motion.button whileTap={{ scale: 0.95 }} disabled={updating}
                 onClick={() => setShowTimePicker(true)}
@@ -262,8 +262,8 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
             </>
           )}
 
-          {/* Time picker */}
-          {showTimePicker && !showCancel && (
+          {/* Pending → show time picker directly */}
+          {(order.status === "pending" || showTimePicker) && !showCancel && order.status !== "accepted" && order.status !== "ready" && order.status !== "paid" && order.status !== "cancelled" && (
             <div className="flex gap-2 flex-wrap">
               {[5, 10, 15, 20].map((m) => (
                 <motion.button key={m} whileTap={{ scale: 0.9 }} disabled={updating}
@@ -272,10 +272,15 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
                   {m} мин
                 </motion.button>
               ))}
-              <button onClick={() => setShowTimePicker(false)}
-                className="px-3 py-3 bg-gray-100 text-gray-500 rounded-xl text-sm">
-                ←
-              </button>
+              {order.status === "new" && (
+                <button onClick={() => setShowTimePicker(false)}
+                  className="px-3 py-3 bg-gray-100 text-gray-500 rounded-xl text-sm">←</button>
+              )}
+              {!showCancel && (
+                <motion.button whileTap={{ scale: 0.95 }}
+                  onClick={() => { setShowCancel(true); setCancelReason("Нет в наличии"); }}
+                  className="px-3 py-3 bg-red-500 text-white rounded-xl text-sm font-bold">✕</motion.button>
+              )}
             </div>
           )}
 

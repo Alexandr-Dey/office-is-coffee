@@ -6,7 +6,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireCEO } from "@/lib/auth";
 import { useToast } from "@/components/Toast";
 import PushAnalytics from "@/components/ceo/PushAnalytics";
-import { collection, getDocs, doc, updateDoc, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc, updateDoc, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
 
 interface BaristaBonus {
   id: string;
@@ -44,20 +44,15 @@ export default function CEOPage() {
       const bonusSnap = await getDocs(collection(db, "barista_bonuses"));
       const raw = bonusSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BaristaBonus, "id">) }));
 
-      // Resolve names
+      // Resolve names — simple direct doc read
       const withNames = await Promise.all(
         raw.map(async (b) => {
           try {
-            const userSnap = await getDocs(
-              query(collection(db, "users"), where("__name__", "==", b.id), limit(1))
-            );
-            // Try direct doc read
-            const userDoc = await import("firebase/firestore").then(({ getDoc, doc: docRef }) =>
-              getDoc(docRef(db, "users", b.id))
-            );
-            return { ...b, name: userDoc.exists() ? userDoc.data().displayName : b.id };
+            const userDoc = await getDoc(doc(db, "users", b.id));
+            const name = userDoc.exists() ? (userDoc.data().displayName ?? `Бариста ${b.id.slice(0, 6)}`) : b.id;
+            return { ...b, name };
           } catch {
-            return b;
+            return { ...b, name: b.id.slice(0, 12) };
           }
         })
       );
@@ -81,7 +76,7 @@ export default function CEOPage() {
       let todayOrders = 0;
 
       for (const o of orders) {
-        if (o.status === "paid" || o.status === "ready" || o.status === "accepted" || o.status === "new" || o.status === "pending") {
+        if (o.status === "paid") {
           const amount = o.total ?? 0;
           totalRevenue += amount;
           totalOrders++;
