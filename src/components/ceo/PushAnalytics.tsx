@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import { useToast } from "@/components/Toast";
 
 interface PushLogEntry {
   id: string;
@@ -21,6 +22,20 @@ interface PushLogEntry {
 
 export default function PushAnalytics() {
   const [logs, setLogs] = useState<PushLogEntry[]>([]);
+  const { showToast } = useToast();
+
+  const deleteLog = async (logId: string) => {
+    await deleteDoc(doc(getFirebaseDb(), "push_log", logId)).catch(() => {});
+  };
+
+  const clearAll = async () => {
+    if (!confirm("Удалить всю историю пушей?")) return;
+    const db = getFirebaseDb();
+    const batch = writeBatch(db);
+    logs.forEach(l => batch.delete(doc(db, "push_log", l.id)));
+    await batch.commit().catch(() => {});
+    showToast("История очищена", "success");
+  };
 
   useEffect(() => {
     const q = query(collection(getFirebaseDb(), "push_log"), orderBy("sentAt", "desc"), limit(20));
@@ -51,7 +66,14 @@ export default function PushAnalytics() {
 
   return (
     <div className="mt-6">
-      <h3 className="font-bold text-brand-text text-sm mb-3">📊 Аналитика пушей (7 дней)</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-brand-text text-sm">📊 Аналитика пушей (7 дней)</h3>
+        {logs.length > 0 && (
+          <button onClick={clearAll} className="text-[10px] text-red-400 font-medium min-h-[44px] flex items-center">
+            Очистить всё
+          </button>
+        )}
+      </div>
 
       {/* Top metrics */}
       <div className="grid grid-cols-2 gap-2 mb-2">
@@ -112,8 +134,10 @@ export default function PushAnalytics() {
           <h4 className="text-xs font-bold text-brand-text/50 mb-2">История рассылок</h4>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {logs.map(l => (
-              <div key={l.id} className="bg-white rounded-xl border border-[#d0f0e0] p-3">
-                <div className="flex items-start justify-between mb-1">
+              <div key={l.id} className="bg-white rounded-xl border border-[#d0f0e0] p-3 relative group">
+                <button onClick={() => deleteLog(l.id)}
+                  className="absolute top-2 right-2 text-red-300 hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity min-w-[28px] min-h-[28px] flex items-center justify-center">✕</button>
+                <div className="flex items-start justify-between mb-1 pr-6">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-brand-text truncate">{l.title}</p>
                     <p className="text-[10px] text-brand-text/40 truncate">{l.body}</p>
