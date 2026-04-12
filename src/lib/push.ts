@@ -58,15 +58,10 @@ async function saveFcmToken(uid: string): Promise<boolean> {
     updatedAt: new Date().toISOString(),
   });
 
-  // Handle foreground messages (idempotent — Firebase deduplicates listeners)
-  onMessage(messaging, (payload) => {
-    const { title, body } = payload.notification || {};
-    if (title && Notification.permission === "granted") {
-      new Notification(title, {
-        body: body || "",
-        icon: "/icon-192.png",
-      });
-    }
+  // Handle foreground messages — DON'T show native Notification
+  // (SW already handles background; foreground = app is open, no need for OS notification)
+  onMessage(messaging, () => {
+    // Intentionally empty — real-time Firestore listeners update UI directly
   });
 
   return true;
