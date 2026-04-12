@@ -42,59 +42,55 @@ function getAlmatyDay(): number {
   return Math.floor((Date.now() + 5 * 3600000) / 86400000);
 }
 
-function getWisdomState(): { seen: number[]; current: number; day: number } {
+function getWisdomKey(uid: string) { return `oic_wisdom_${uid}`; }
+function getRevealedKey(uid: string) { return `oic_wisdom_revealed_${uid}`; }
+
+function getWisdomState(uid: string): { seen: number[]; current: number; day: number } {
   try {
-    const raw = localStorage.getItem("oic_wisdom");
+    const raw = localStorage.getItem(getWisdomKey(uid));
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
   return { seen: [], current: -1, day: 0 };
 }
 
-function saveWisdomState(state: { seen: number[]; current: number; day: number }) {
-  localStorage.setItem("oic_wisdom", JSON.stringify(state));
+function saveWisdomState(uid: string, state: { seen: number[]; current: number; day: number }) {
+  localStorage.setItem(getWisdomKey(uid), JSON.stringify(state));
 }
 
-function pickTodayWisdom(): number {
+function pickTodayWisdom(uid: string): number {
   const today = getAlmatyDay();
-  const state = getWisdomState();
+  const state = getWisdomState(uid);
 
-  // Already picked today
   if (state.day === today && state.current >= 0) return state.current;
 
-  // Get unseen indices
   let unseen = WISDOMS.map((_, i) => i).filter(i => !state.seen.includes(i));
+  if (unseen.length === 0) { unseen = WISDOMS.map((_, i) => i); state.seen = []; }
 
-  // All seen — reset cycle
-  if (unseen.length === 0) {
-    unseen = WISDOMS.map((_, i) => i);
-    state.seen = [];
-  }
-
-  // Pick random from unseen (seeded by uid hash would be ideal, but random is fine since it's per-device)
-  const pick = unseen[Math.floor(Math.random() * unseen.length)];
+  // Seed random by uid + day for consistent-per-user randomness
+  const seed = uid.split("").reduce((s, c) => s + c.charCodeAt(0), 0) + today;
+  const pick = unseen[seed % unseen.length];
   state.seen.push(pick);
   state.current = pick;
   state.day = today;
-  saveWisdomState(state);
+  saveWisdomState(uid, state);
   return pick;
 }
 
-function WisdomOfTheDay() {
+function WisdomOfTheDay({ uid }: { uid: string }) {
   const [idx, setIdx] = useState(-1);
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
-    setIdx(pickTodayWisdom());
-    // Check if already revealed today
+    setIdx(pickTodayWisdom(uid));
     try {
-      const r = localStorage.getItem("oic_wisdom_revealed");
+      const r = localStorage.getItem(getRevealedKey(uid));
       if (r === String(getAlmatyDay())) setRevealed(true);
     } catch { /* ignore */ }
-  }, []);
+  }, [uid]);
 
   const reveal = () => {
     setRevealed(true);
-    localStorage.setItem("oic_wisdom_revealed", String(getAlmatyDay()));
+    localStorage.setItem(getRevealedKey(uid), String(getAlmatyDay()));
   };
 
   if (idx < 0) return null;
@@ -582,7 +578,7 @@ export default function ProfilePage() {
         {user && <PushStatus uid={user.uid} />}
 
         {/* Wisdom of the day */}
-        <WisdomOfTheDay />
+        {user && <WisdomOfTheDay uid={user.uid} />}
 
         {/* Geo permission — hide while loading (null) */}
         {geoPermission === false && !showGeoPrompt && (
