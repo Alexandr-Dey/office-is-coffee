@@ -45,6 +45,11 @@ export default function OrderPage() {
 
   const handleConfirm = async () => {
     if (cart.length === 0) return;
+    if (!name.trim()) {
+      setOrderError("Укажи своё имя — бариста позовёт когда готово ☕");
+      return;
+    }
+    setOrderError("");
     setSending(true);
     try {
       const userId = user?.uid ?? "anonymous";
@@ -100,7 +105,14 @@ export default function OrderPage() {
       router.push(`/order/${docRef.id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Ошибка";
-      setOrderError(msg.includes("Insufficient") ? "Недостаточно средств на депозите" : "Ошибка при создании заказа");
+      if (msg.includes("Insufficient")) {
+        setOrderError("Недостаточно средств на депозите");
+      } else if (msg.includes("permission")) {
+        setOrderError("Нет прав для создания заказа. Попробуй перелогиниться.");
+      } else {
+        setOrderError(`Не удалось создать заказ: ${msg}`);
+      }
+      console.error("Order error:", err);
       setSending(false);
     }
   };
@@ -169,9 +181,12 @@ export default function OrderPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-6" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-brand-text/70 mb-1">Имя</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Как тебя зовут?"
-                className="w-full px-4 py-3 rounded-xl border border-[#d0f0e0] focus:border-brand-mint focus:ring-1 focus:ring-brand-mint outline-none text-sm text-brand-text bg-brand-bg" />
+              <label className="block text-sm font-medium text-brand-text/70 mb-1">Имя <span className="text-red-400">*</span></label>
+              <input type="text" value={name} onChange={(e) => { setName(e.target.value); if (orderError.includes("имя")) setOrderError(""); }} placeholder="Как тебя зовут?"
+                className={`w-full px-4 py-3 rounded-xl border outline-none text-sm text-brand-text bg-brand-bg transition-colors ${
+                  orderError.includes("имя") ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-400" : "border-[#d0f0e0] focus:border-brand-mint focus:ring-1 focus:ring-brand-mint"
+                }`} />
+              {orderError.includes("имя") && <p className="text-xs text-red-400 mt-1">Бариста позовёт тебя по имени</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-brand-text/70 mb-1">Комментарий <span className="text-brand-text/30">необязательно</span></label>
