@@ -124,17 +124,25 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
       }
     });
 
-    // Track order after push (within 2 hours)
+    // Track order after push (within 24 hours of push sent)
     const userSnap2 = await db.collection("users").doc(userId).get();
     if (userSnap2.exists) {
       const ud = userSnap2.data();
       if (ud.lastPushSentAt && ud.lastPushId) {
         const pushTime = new Date(ud.lastPushSentAt).getTime();
-        const twoHours = 2 * 60 * 60 * 1000;
-        if (Date.now() - pushTime < twoHours) {
-          await db.collection("push_log").doc(ud.lastPushId).update({
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        if (Date.now() - pushTime < twentyFourHours) {
+          const pushLogRef = db.collection("push_log").doc(ud.lastPushId);
+          const pushLogSnap = await pushLogRef.get();
+          const existingOrderers = pushLogSnap.exists ? (pushLogSnap.data().orderedUids || []) : [];
+          const isUnique = !existingOrderers.includes(userId);
+
+          await pushLogRef.update({
             ordersAfterCount: FieldValue.increment(1),
+            ...(isUnique ? { uniqueOrderers: FieldValue.increment(1), orderedUids: FieldValue.arrayUnion(userId) } : {}),
           }).catch(() => {});
+
+          console.log(`Order after push: user ${userId}, pushLog ${ud.lastPushId}, unique: ${isUnique}`);
         }
       }
     }
@@ -326,6 +334,8 @@ exports.sendManualPush = onCall(async (request) => {
     deliveredCount: 0,
     openedCount: 0,
     ordersAfterCount: 0,
+    uniqueOrderers: 0,
+    orderedUids: [],
     deadTokensFound: 0,
   });
   const pushLogId = logRef.id;

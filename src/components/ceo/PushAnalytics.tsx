@@ -16,6 +16,7 @@ interface PushLogEntry {
   openedCount: number;
   ordersAfterCount: number;
   deadTokensFound: number;
+  uniqueOrderers: number;
 }
 
 export default function PushAnalytics() {
@@ -37,10 +38,11 @@ export default function PushAnalytics() {
   const totalOpened = recent.reduce((s, l) => s + l.openedCount, 0);
   const totalDead = recent.reduce((s, l) => s + l.deadTokensFound, 0);
   const totalOrders = recent.reduce((s, l) => s + l.ordersAfterCount, 0);
+  const totalUniqueOrderers = recent.reduce((s, l) => s + (l.uniqueOrderers ?? 0), 0);
 
   const deliveryPct = totalSent > 0 ? Math.round((totalDelivered / totalSent) * 100) : 0;
   const openPct = totalDelivered > 0 ? Math.round((totalOpened / totalDelivered) * 100) : 0;
-  const orderPct = totalOpened > 0 ? Math.round((totalOrders / totalOpened) * 100) : 0;
+  const uniqueOrderPct = totalOpened > 0 ? Math.round((totalUniqueOrderers / totalOpened) * 100) : 0;
 
   const segmentLabels: Record<string, string> = {
     sleeping: "😴 Спящие", streakRisk: "🔥 Стрик", almostFree: "🎁 Бесплатный",
@@ -52,7 +54,7 @@ export default function PushAnalytics() {
       <h3 className="font-bold text-brand-text text-sm mb-3">📊 Аналитика пушей (7 дней)</h3>
 
       {/* Top metrics */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-2">
         <div className="bg-white rounded-xl border border-[#d0f0e0] p-2.5 text-center">
           <p className="text-lg font-bold text-brand-dark">{totalSent}</p>
           <p className="text-[9px] text-brand-text/40">Отправлено</p>
@@ -61,6 +63,8 @@ export default function PushAnalytics() {
           <p className="text-lg font-bold text-green-600">{totalDelivered}</p>
           <p className="text-[9px] text-brand-text/40">Доставлено</p>
         </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-white rounded-xl border border-[#d0f0e0] p-2.5 text-center">
           <p className="text-lg font-bold text-blue-600">{totalOpened}</p>
           <p className="text-[9px] text-brand-text/40">Открыто</p>
@@ -69,14 +73,18 @@ export default function PushAnalytics() {
           <p className="text-lg font-bold text-brand-dark">{totalOrders}</p>
           <p className="text-[9px] text-brand-text/40">Заказов</p>
         </div>
+        <div className="bg-white rounded-xl border border-[#d0f0e0] p-2.5 text-center">
+          <p className="text-lg font-bold text-amber-600">{totalUniqueOrderers}</p>
+          <p className="text-[9px] text-brand-text/40">Уник. клиентов</p>
+        </div>
       </div>
 
-      {/* Progress bars */}
+      {/* Progress bars — percentages based on unique clients */}
       <div className="space-y-2 mb-4">
         {[
           { label: "Доставка", pct: deliveryPct, color: "bg-green-500" },
           { label: "Открытия", pct: openPct, color: "bg-blue-500" },
-          { label: "Заказы", pct: orderPct, color: "bg-brand-dark" },
+          { label: "Конверсия в заказ (уник.)", pct: uniqueOrderPct, color: "bg-amber-500" },
         ].map(bar => (
           <div key={bar.label}>
             <div className="flex justify-between text-[10px] mb-0.5">
@@ -119,7 +127,7 @@ export default function PushAnalytics() {
                   <span className="px-1.5 py-0.5 bg-brand-bg rounded text-[9px]">📨 {l.recipientCount}</span>
                   <span className="px-1.5 py-0.5 bg-green-50 rounded text-[9px] text-green-600">✓ {l.deliveredCount}</span>
                   {l.openedCount > 0 && <span className="px-1.5 py-0.5 bg-blue-50 rounded text-[9px] text-blue-600">👁 {l.openedCount}</span>}
-                  {l.ordersAfterCount > 0 && <span className="px-1.5 py-0.5 bg-brand-mint/20 rounded text-[9px] text-brand-dark">☕ {l.ordersAfterCount}</span>}
+                  {l.ordersAfterCount > 0 && <span className="px-1.5 py-0.5 bg-brand-mint/20 rounded text-[9px] text-brand-dark">☕ {l.ordersAfterCount} ({l.uniqueOrderers ?? 0} уник.)</span>}
                   {l.deadTokensFound > 0 && <span className="px-1.5 py-0.5 bg-red-50 rounded text-[9px] text-red-500">💀 {l.deadTokensFound}</span>}
                 </div>
               </div>
