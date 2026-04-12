@@ -142,8 +142,12 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
             ...(isUnique ? { uniqueOrderers: FieldValue.increment(1), orderedUids: FieldValue.arrayUnion(userId) } : {}),
           }).catch(() => {});
 
-          console.log(`Order after push: user ${userId}, pushLog ${ud.lastPushId}, unique: ${isUnique}`);
+          console.log(`Order after push: user ${userId}, pushLog ${ud.lastPushId}, unique: ${isUnique}, orders: +1`);
+        } else {
+          console.log(`Order NOT after push: user ${userId}, pushTime ${ud.lastPushSentAt}, diff: ${((Date.now() - new Date(ud.lastPushSentAt).getTime()) / 3600000).toFixed(1)}h`);
         }
+      } else {
+        console.log(`No lastPushId for user ${userId}`);
       }
     }
   }
@@ -383,26 +387,32 @@ exports.sendManualPush = onCall(async (request) => {
   // Update log with results
   await logRef.update({ deliveredCount: totalDelivered, deadTokensFound: totalDead });
 
-  // Update each recipient's lastPush
-  const tokenUserMap = new Map();
+  // Update each recipient's lastPush — use push_tokens doc IDs (uid = doc ID)
   const pushTokensSnap = await db.collection("push_tokens").get();
+  const tokenToUid = new Map();
   for (const d of pushTokensSnap.docs) {
-    if (d.data().token) tokenUserMap.set(d.data().token, d.id);
+    if (d.data().token) tokenToUid.set(d.data().token, d.id);
   }
+
   const batch = db.batch();
   let batchCount = 0;
+  const updatedUids = new Set();
   for (const token of tokens) {
-    const uid = tokenUserMap.get(token);
-    if (uid) {
+    const uid = tokenToUid.get(token);
+    if (uid && !updatedUids.has(uid)) {
+      updatedUids.add(uid);
       batch.update(db.collection("users").doc(uid), {
         lastPushSentAt: new Date().toISOString(),
         lastPushId: pushLogId,
       });
       batchCount++;
-      if (batchCount >= 499) break; // Firestore batch limit
+      if (batchCount >= 499) break;
     }
   }
-  if (batchCount > 0) await batch.commit();
+  if (batchCount > 0) {
+    await batch.commit();
+    console.log(`sendManualPush: updated lastPushId for ${batchCount} users`);
+  }
 
   return { pushLogId, deliveredCount: totalDelivered, deadTokensFound: totalDead };
 });
