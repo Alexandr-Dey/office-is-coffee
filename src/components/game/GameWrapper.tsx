@@ -19,6 +19,15 @@ export default function GameWrapper({ orderStatus, orderId }: GameWrapperProps) 
   const scoreSaved = useRef(false);
   const sessionId = useRef(orderId);
 
+  // Reset when order changes
+  useEffect(() => {
+    if (sessionId.current !== orderId) {
+      sessionId.current = orderId;
+      scoreSaved.current = false;
+      setScore(0);
+    }
+  }, [orderId]);
+
   // Load high score
   useEffect(() => {
     if (!user?.uid) return;
