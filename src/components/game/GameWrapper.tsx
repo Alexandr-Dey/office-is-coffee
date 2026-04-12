@@ -63,7 +63,19 @@ export default function GameWrapper({ orderStatus, orderId }: GameWrapperProps) 
             transition={{ type: "spring", damping: 20 }}
           >
             <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-              <p className="text-center text-xs text-brand-text/50 mb-3">Пока ждёшь кофе — поиграй!</p>
+              <div className="text-center mb-3">
+                <p className="text-xs text-brand-text/50">Пока ждёшь кофе — поиграй!</p>
+                <details className="mt-1">
+                  <summary className="text-[10px] text-brand-dark cursor-pointer">Как играть?</summary>
+                  <div className="text-[10px] text-brand-text/50 mt-1.5 text-left bg-brand-bg rounded-lg p-2.5 space-y-1">
+                    <p>☕ Нажми на элемент, потом на соседний — они поменяются</p>
+                    <p>✨ Собери 3+ одинаковых в ряд — они исчезнут</p>
+                    <p>🔥 Цепочки дают больше очков: x2, x3, x4...</p>
+                    <p>🎯 Цель: 500 очков за 20 ходов</p>
+                    <p>🏆 Рекорд сохраняется в профиле</p>
+                  </div>
+                </details>
+              </div>
 
               {/* HUD */}
               <div className="grid grid-cols-4 gap-2 mb-3">
