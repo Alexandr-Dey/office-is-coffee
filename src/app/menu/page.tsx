@@ -136,7 +136,7 @@ function DrinkDetail({ item, catGradient, onAdd, onClose, isFavorite, onToggleFa
     <motion.div
       initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
       transition={{ type: "spring", damping: 25 }}
-      className="fixed inset-0 z-[100] bg-brand-bg flex flex-col"
+      className="fixed inset-0 z-[100] bg-brand-bg flex flex-col mx-auto max-w-[480px] left-0 right-0"
     >
       {/* Hero header */}
       <div className={`bg-gradient-to-br ${catGradient} px-5 pt-4 pb-8 relative`}>
@@ -376,7 +376,11 @@ function QuickOrderStrip({ menuItems, onRepeat, onDetail, categories, favorites 
     getDocs(q).then((snap) => {
       const docs = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => ((b as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0 - (((a as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0));
+        .sort((a, b) => {
+          const ta = ((a as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0;
+          const tb = ((b as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0;
+          return tb - ta;
+        });
 
       const seen = new Set<string>();
       const unique: RecentOrder[] = [];
@@ -501,6 +505,12 @@ export default function MenuPage() {
   useEffect(() => {
     import("@/lib/push").then(({ trackPushOpened: track }) => track()).catch(() => {});
   }, []);
+
+  /* Ensure push token is fresh on every visit */
+  useEffect(() => {
+    if (!user) return;
+    import("@/lib/push").then(({ ensurePushToken }) => ensurePushToken(user.uid)).catch(() => {});
+  }, [user]);
 
   /* Load menu from Firestore */
   useEffect(() => {
@@ -781,8 +791,8 @@ export default function MenuPage() {
             exit={{ scale: 0, opacity: 0 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowCart(true)}
-            className="fixed bottom-[80px] right-4 z-[60] w-14 h-14 bg-brand-dark text-white rounded-full shadow-xl flex items-center justify-center"
-            style={{ maxWidth: "calc((480px - 100%) / 2 + 100% - 16px)" }}
+            className="fixed bottom-[80px] z-[60] w-14 h-14 bg-brand-dark text-white rounded-full shadow-xl flex items-center justify-center"
+            style={{ right: "max(16px, calc(50% - 240px + 16px))" }}
           >
             <span className="text-xl">🛒</span>
             <span className="absolute -top-1 -right-1 bg-brand-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">

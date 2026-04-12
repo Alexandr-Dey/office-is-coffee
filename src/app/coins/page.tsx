@@ -46,16 +46,20 @@ export default function CoinsPage() {
       limit(8)
     );
     getDocs(q).then((snap) => {
-      setHistory(snap.docs.map(d => {
-        const data = d.data();
-        return {
-          name: (data.items ?? []).map((i: { name: string }) => i.name).join(", "),
-          date: data.createdAt instanceof Timestamp
-            ? data.createdAt.toDate().toLocaleDateString("ru", { day: "numeric", month: "short" })
-            : "",
-          total: data.total ?? 0,
-        };
-      }));
+      const sorted = snap.docs
+        .map(d => d.data())
+        .sort((a, b) => {
+          const ta = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
+          const tb = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
+          return tb - ta;
+        });
+      setHistory(sorted.map(data => ({
+        name: (data.items ?? []).map((i: { name: string }) => i.name).join(", "),
+        date: data.createdAt instanceof Timestamp
+          ? data.createdAt.toDate().toLocaleDateString("ru", { day: "numeric", month: "short" })
+          : "",
+        total: data.total ?? 0,
+      })));
     }).catch(() => {});
 
     return () => unsub();

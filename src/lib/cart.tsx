@@ -43,14 +43,20 @@ function saveCart(cart: CartItem[]) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  // Initialize from localStorage synchronously to avoid flash
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    return loadCart();
+  });
+  const [loaded, setLoaded] = useState(() => typeof window !== "undefined");
 
-  // Load from localStorage on mount
+  // Fallback: ensure loaded on client mount
   useEffect(() => {
-    setCart(loadCart());
-    setLoaded(true);
-  }, []);
+    if (!loaded) {
+      setCart(loadCart());
+      setLoaded(true);
+    }
+  }, [loaded]);
 
   // Save to localStorage on change (skip initial empty state)
   useEffect(() => {

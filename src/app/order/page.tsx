@@ -49,6 +49,10 @@ export default function OrderPage() {
       setOrderError("Укажи своё имя — бариста позовёт когда готово ☕");
       return;
     }
+    if (payMethod === "deposit" && !user) {
+      setOrderError("Для оплаты депозитом нужно войти через Google");
+      return;
+    }
     setOrderError("");
     setSending(true);
     try {

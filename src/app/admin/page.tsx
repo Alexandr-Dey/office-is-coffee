@@ -6,7 +6,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireBarista } from "@/lib/auth";
 import {
   collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, getDoc,
-  Timestamp, increment, arrayUnion, limit, runTransaction,
+  Timestamp, increment, arrayUnion, limit,
 } from "firebase/firestore";
 import { getFirebaseAuth } from "@/lib/firebase";
 
@@ -125,27 +125,7 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
       if (newStatus === "paid") updates.paidAt = new Date().toISOString();
       await updateDoc(orderRef, updates);
 
-      if (newStatus === "ready" && !order.isFreeByLoyalty) {
-        const bonusBarista = order.baristaid || baristaId;
-        const bonusRef = doc(getFirebaseDb(), "barista_bonuses", bonusBarista);
-        await runTransaction(getFirebaseDb(), async (tx) => {
-          const bonusSnap = await tx.get(bonusRef);
-          if (bonusSnap.exists()) {
-            const hist = bonusSnap.data().history || [];
-            if (hist.some((h: { orderId: string }) => h.orderId === order.id)) return;
-            tx.update(bonusRef, {
-              totalBonus: increment(5), pendingPayout: increment(5),
-              history: arrayUnion({ orderId: order.id, amount: 5, date: new Date().toISOString() }),
-            });
-          } else {
-            tx.set(bonusRef, {
-              totalBonus: 5, pendingPayout: 5,
-              history: [{ orderId: order.id, amount: 5, date: new Date().toISOString() }],
-            });
-          }
-        });
-        await updateDoc(doc(getFirebaseDb(), "orders", order.id), { baristaBonus: 5 }).catch(() => {});
-      }
+      // Bonus is handled by Cloud Function onOrderReady — no client-side bonus logic needed
     } catch (e) {
       console.error("changeStatus error:", e);
       setError(e instanceof Error ? e.message : "Ошибка обновления заказа");
