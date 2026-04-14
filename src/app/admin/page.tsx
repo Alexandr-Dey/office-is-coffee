@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireBarista } from "@/lib/auth";
@@ -316,6 +316,76 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   );
 }
 
+/* ═══ PUSH GATE — barista must enable push ═══ */
+function BaristaPushGate({ uid, children }: { uid: string; children: ReactNode }) {
+  const [pushStatus, setPushStatus] = useState<"loading" | "granted" | "prompt" | "denied">("loading");
+  const [requesting, setRequesting] = useState(false);
+
+  useEffect(() => {
+    if (!("Notification" in window)) { setPushStatus("denied"); return; }
+    if (Notification.permission === "granted") {
+      // Silently ensure token
+      import("@/lib/push").then(({ ensurePushToken }) => {
+        ensurePushToken(uid).catch(() => {});
+      });
+      setPushStatus("granted");
+    } else if (Notification.permission === "denied") {
+      setPushStatus("denied");
+    } else {
+      setPushStatus("prompt");
+    }
+  }, [uid]);
+
+  const handleEnable = async () => {
+    setRequesting(true);
+    try {
+      const { requestPushPermission } = await import("@/lib/push");
+      const ok = await requestPushPermission(uid);
+      setPushStatus(ok ? "granted" : "denied");
+    } catch {
+      setPushStatus("denied");
+    }
+    setRequesting(false);
+  };
+
+  if (pushStatus === "loading") return null;
+  if (pushStatus === "granted") return <>{children}</>;
+
+  return (
+    <main className="min-h-screen bg-brand-bg flex items-center justify-center px-5">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-sm">
+        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-brand-dark to-brand-mid flex items-center justify-center text-4xl mx-auto mb-6"
+          style={{ boxShadow: "0 8px 24px rgba(26,122,68,0.3)" }}>
+          🔔
+        </div>
+        <h2 className="font-display text-2xl font-bold text-brand-dark mb-2">Включи уведомления</h2>
+        <p className="text-sm text-brand-text/60 mb-6">
+          {pushStatus === "denied"
+            ? "Уведомления заблокированы в браузере. Разреши их в настройках сайта и обнови страницу."
+            : "Ты будешь получать уведомления о новых заказах. Без них можно пропустить заказ клиента."}
+        </p>
+        {pushStatus === "prompt" && (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleEnable}
+            disabled={requesting}
+            className="w-full py-4 bg-brand-dark text-white font-bold rounded-2xl text-lg disabled:opacity-50 min-h-[56px]"
+            style={{ boxShadow: "0 6px 20px rgba(26,122,68,0.25)" }}
+          >
+            {requesting ? "Подключаем..." : "Разрешить уведомления"}
+          </motion.button>
+        )}
+        {pushStatus === "denied" && (
+          <button onClick={() => window.location.reload()}
+            className="w-full py-3 bg-gray-100 text-brand-text font-bold rounded-xl text-sm min-h-[44px]">
+            Обновить страницу
+          </button>
+        )}
+      </motion.div>
+    </main>
+  );
+}
+
 /* ═══ PAGE ═══ */
 export default function AdminPage() {
   const { user, loading: authLoading } = useRequireBarista();
@@ -323,7 +393,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<"active" | "paid">("active");
   const [cafeOpen, setCafeOpen] = useState(true);
 
-  // Force token refresh to ensure Custom Claims (role) are up to date
+  // Force token refresh
   useEffect(() => {
     getFirebaseAuth().currentUser?.getIdToken(true).catch(() => {});
   }, []);
@@ -369,6 +439,7 @@ export default function AdminPage() {
   }
 
   return (
+    <BaristaPushGate uid={user.uid}>
     <main className="min-h-screen bg-brand-bg pb-20">
       <div className="sticky top-0 z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
         <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
@@ -416,5 +487,6 @@ export default function AdminPage() {
         )}
       </div>
     </main>
+    </BaristaPushGate>
   );
 }
