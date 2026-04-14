@@ -340,19 +340,22 @@ export default function ProfilePage() {
           setBonus({ totalBonus: d.totalBonus ?? 0, pendingPayout: d.pendingPayout ?? 0, payoutRequested: d.payoutRequested ?? false });
         }
       }, () => {}));
-      // Hearts today — load both barista heart counts
+      // Hearts today — load by baristaCharacter field or show total for CEO
       const today = new Date().toISOString().slice(0, 10);
-      Promise.all([
-        getDoc(doc(getFirebaseDb(), "barista_hearts", `vitaliy_${today}`)),
-        getDoc(doc(getFirebaseDb(), "barista_hearts", `aslan_${today}`)),
-      ]).then(([vSnap, aSnap]) => {
-        const vCount = vSnap.exists() ? vSnap.data().count ?? 0 : 0;
-        const aCount = aSnap.exists() ? aSnap.data().count ?? 0 : 0;
-        // Show total hearts for the barista (pick by name match or show total)
-        const name = user.displayName?.toLowerCase() ?? "";
-        if (name.includes("аслан") || name.includes("aslan")) setHeartsToday(aCount);
-        else if (name.includes("виталий") || name.includes("vitaliy")) setHeartsToday(vCount);
-        else setHeartsToday(vCount + aCount); // CEO sees total
+      getDoc(doc(getFirebaseDb(), "users", user.uid)).then(async (userSnap) => {
+        const character = userSnap.exists() ? userSnap.data().baristaCharacter : null;
+        if (character === "vitaliy" || character === "aslan") {
+          // Specific barista — show their hearts
+          const snap = await getDoc(doc(getFirebaseDb(), "barista_hearts", `${character}_${today}`));
+          setHeartsToday(snap.exists() ? snap.data().count ?? 0 : 0);
+        } else {
+          // CEO or unassigned — show total
+          const [vSnap, aSnap] = await Promise.all([
+            getDoc(doc(getFirebaseDb(), "barista_hearts", `vitaliy_${today}`)),
+            getDoc(doc(getFirebaseDb(), "barista_hearts", `aslan_${today}`)),
+          ]);
+          setHeartsToday((vSnap.exists() ? vSnap.data().count ?? 0 : 0) + (aSnap.exists() ? aSnap.data().count ?? 0 : 0));
+        }
       }).catch(() => {});
     }
     return () => unsubs.forEach(u => u());

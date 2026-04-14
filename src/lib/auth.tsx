@@ -21,6 +21,26 @@ import { trackEvent, identifyUser } from "@/lib/mixpanel";
 
 export type Role = "client" | "barista" | "ceo";
 
+/* ─────────────────────────────────────────────
+   Email → роль маппинг.
+   При первом входе через Google эти пользователи
+   автоматически получат роль `barista` и привязку
+   к персонажу в сцене (characterName).
+   ───────────────────────────────────────────── */
+const ROLE_ASSIGNMENTS: Record<
+  string,
+  { role: Role; characterName?: string }
+> = {
+  "aslan.mussilim0018@inbox.ru": { role: "barista", characterName: "Аслан" },
+  "vladislavryakin1985@gmail.com": { role: "barista" },
+  "alolha18@gmail.com": { role: "barista", characterName: "Виталий" },
+};
+
+function getAssignmentByEmail(email: string | null | undefined) {
+  if (!email) return null;
+  return ROLE_ASSIGNMENTS[email.toLowerCase()] ?? null;
+}
+
 export interface AppUser {
   uid: string;
   displayName: string;
@@ -28,6 +48,7 @@ export interface AppUser {
   role: Role;
   photoURL: string | null;
   onboardingDone: boolean;
+  characterName?: string;
 }
 
 interface AuthContextValue {
@@ -70,15 +91,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const db = getFirebaseDb();
       const userRef = doc(db, "users", fbUser.uid);
 
+      // Check email-based role assignment (baristas, CEO, etc.)
+      const assignment = getAssignmentByEmail(fbUser.email);
+
       // Check if user doc exists, create if not
       const snap = await getDoc(userRef).catch(() => null);
       if (!snap || !snap.exists()) {
-        // First login — create user doc with default role
+        // First login — create user doc (with assigned role if applicable)
         await setDoc(userRef, {
           displayName: fbUser.displayName ?? "Гость",
           email: fbUser.email ?? null,
           photoURL: fbUser.photoURL ?? null,
-          role: "client" as Role,
+          role: assignment?.role ?? ("client" as Role),
+          ...(assignment?.characterName
+            ? { characterName: assignment.characterName }
+            : {}),
           loyaltyCount: 0,
           streak: 0,
           lastOrderDate: null,
@@ -88,6 +115,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           onboardingDone: false,
           createdAt: new Date().toISOString(),
         }).catch(() => {});
+      } else if (assignment) {
+        // Existing user but email is in assignments — sync role/character
+        const data = snap.data();
+        const needsUpdate =
+          data.role !== assignment.role ||
+          (assignment.characterName && data.characterName !== assignment.characterName);
+        if (needsUpdate) {
+          await setDoc(
+            userRef,
+            {
+              role: assignment.role,
+              ...(assignment.characterName
+                ? { characterName: assignment.characterName }
+                : {}),
+            },
+            { merge: true },
+          ).catch(() => {});
+        }
       }
 
       // Listen to user doc for real-time role/profile updates
@@ -101,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: (data.role as Role) ?? "client",
             photoURL: fbUser.photoURL ?? null,
             onboardingDone: data.onboardingDone ?? false,
+            characterName: data.characterName ?? undefined,
           });
         }
         setLoading(false);
