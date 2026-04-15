@@ -1,7 +1,7 @@
-export const CAFE_LAT = 43.2220;
-export const CAFE_LNG = 76.8512;
+export const CAFE_LAT = 43.2378;
+export const CAFE_LNG = 76.9450;
 export const CAFE_RADIUS_M = 300;
-export const CAFE_ADDRESS = "ул. Момышулы 14, Аксай";
+export const CAFE_ADDRESS = "ул. Назарбаева 226, БанкЦентрКредит";
 export const CAFE_TIMEZONE = "Asia/Almaty";
 
 export function getAlmatyDate(): string {
