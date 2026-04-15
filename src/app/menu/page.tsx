@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, getDoc, where, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, getDoc, where as fbWhere, updateDoc } from "firebase/firestore";
 import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants";
 import { trackEvent } from "@/lib/mixpanel";
+import type { CartItem } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 import { useCart } from "@/lib/cart";
 import {
@@ -117,6 +118,106 @@ function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
   );
 }
 
+/* ═══ QUICK ORDER STRIP ═══ */
+interface RecentOrder {
+  key: string;
+  label: string;
+  sub: string;
+  items: Array<{ itemId?: string; name: string; size: string; basePrice?: number; totalPrice?: number; price?: number; qty: number; modifiers?: { id: string; name: string; price: number }[]; category?: string }>;
+  total: number;
+}
+
+function QuickOrderStrip({ onRepeat, onDetail }: {
+  onRepeat: (items: CartItem[]) => void;
+  onDetail: (item: MenuItem) => void;
+}) {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(getFirebaseDb(), "orders"),
+      fbWhere("userId", "==", user.uid),
+      fbWhere("status", "==", "paid"),
+      limit(15)
+    );
+    getDocs(q).then((snap) => {
+      const docs = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = ((a as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0;
+          const tb = ((b as Record<string, unknown>).createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0;
+          return tb - ta;
+        });
+
+      const seen = new Set<string>();
+      const unique: RecentOrder[] = [];
+      for (const data of docs) {
+        const d = data as Record<string, unknown>;
+        const items = d.items as RecentOrder["items"];
+        if (!items || items.length === 0) continue;
+        const key = items.map(i => `${i.name}_${i.size}`).sort().join("|");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const label = items.length === 1
+          ? `${items[0].name} (${items[0].size})`.trim()
+          : `${items[0].name} +${items.length - 1}`;
+        const mods = items[0].modifiers;
+        const sub = mods && mods.length > 0 ? mods.map(m => m.name).join(", ") : "";
+        unique.push({ key, label, sub, items, total: (d.total as number) ?? 0 });
+        if (unique.length >= 3) break;
+      }
+      setRecentOrders(unique);
+    }).catch(() => {});
+  }, [user]);
+
+  if (recentOrders.length === 0) return null;
+
+  const handleRepeat = (order: RecentOrder) => {
+    const cartItems: CartItem[] = order.items.map(i => {
+      const mods = i.modifiers ?? [];
+      const cartKey = `${i.itemId ?? i.name}__${i.size}__${mods.map(m => m.id).sort().join(',')}`;
+      return {
+        itemId: i.itemId ?? i.name,
+        name: i.name,
+        category: i.category ?? '',
+        size: i.size,
+        basePrice: i.basePrice ?? i.totalPrice ?? i.price ?? 0,
+        modifiers: mods,
+        totalPrice: i.totalPrice ?? i.price ?? 0,
+        qty: i.qty,
+        cartKey,
+      };
+    });
+    onRepeat(cartItems);
+    router.push("/order");
+  };
+
+  return (
+    <section className="mt-2 px-3" aria-label="Быстрый заказ">
+      <h2 className="text-sm font-bold text-brand-text mb-2">⚡ Быстрый заказ</h2>
+      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2">
+        {recentOrders.map((order) => (
+          <motion.button
+            key={order.key}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleRepeat(order)}
+            className="flex-shrink-0 w-40 rounded-2xl p-3 text-left bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-white"
+            style={{ boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}
+          >
+            <span className="text-lg">🔁</span>
+            <p className="text-xs font-bold truncate mt-1">{order.label}</p>
+            {order.sub && <p className="text-[10px] text-white/70 truncate">{order.sub}</p>}
+            <p className="text-sm font-bold mt-1">{formatPrice(order.total)} →</p>
+          </motion.button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ═══ PAGE ═══ */
 export default function MenuPage() {
   const { user } = useAuth();
@@ -207,8 +308,8 @@ export default function MenuPage() {
     if (!user) return;
     const q = query(
       collection(getFirebaseDb(), "orders"),
-      where("userId", "==", user.uid),
-      where("status", "in", ["new", "pending", "accepted", "ready"]),
+      fbWhere("userId", "==", user.uid),
+      fbWhere("status", "in", ["new", "pending", "accepted", "ready"]),
       orderBy("createdAt", "desc"),
       limit(1)
     );
@@ -297,6 +398,12 @@ export default function MenuPage() {
       <div className="px-3 -mt-1">
         <LoyaltyBanner count={loyaltyCount} />
       </div>
+
+      {/* Quick order */}
+      <QuickOrderStrip
+        onRepeat={(items) => setItems(items)}
+        onDetail={(item) => openDetail(item)}
+      />
 
       {/* Search */}
       <div className="px-3 mt-4">
