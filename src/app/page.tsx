@@ -40,6 +40,12 @@ export default function Home() {
     try {
       await signInWithGoogle();
     } catch (e) {
+      const code = (e as { code?: string }).code ?? "";
+      // Пользователь закрыл окно — не ошибка, молча сбрасываем
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        setSigningIn(false);
+        return;
+      }
       setAuthError("Ошибка входа. Попробуйте ещё раз.");
       console.error("Google sign-in error:", e);
       setSigningIn(false);
