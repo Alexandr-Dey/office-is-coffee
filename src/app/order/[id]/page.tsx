@@ -11,9 +11,25 @@ import GameWrapper from "@/components/game/GameWrapper";
 import { trackEvent } from "@/lib/mixpanel";
 import { useAuth } from "@/lib/auth";
 
+interface OrderItem {
+  name: string;
+  size: string;
+  qty: number;
+  // New fields
+  itemId?: string;
+  category?: string;
+  basePrice?: number;
+  modifiers?: { id: string; name: string; price: number }[];
+  totalPrice?: number;
+  // Legacy fields
+  price?: number;
+  milk?: string;
+  addons?: string[];
+}
+
 interface OrderData {
   name: string;
-  items: { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }[];
+  items: OrderItem[];
   total: number;
   status: "new" | "pending" | "accepted" | "ready" | "paid" | "cancelled";
   comment?: string;
@@ -290,22 +306,33 @@ export default function OrderWaitPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="bg-white rounded-2xl border border-[#d0f0e0] p-5 text-left" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
             <h3 className="font-bold text-brand-text mb-2">Детали заказа</h3>
-            {order.items.map((it, i) => (
-              <div key={i} className="flex justify-between text-sm py-1.5">
-                <div className="text-brand-text/70">
-                  <span>{it.name}</span>
-                  {it.size && it.size !== "—" && <span className="text-brand-text/40"> ({it.size})</span>}
-                  {it.milk && it.milk !== "Стандарт" && it.milk !== "standard" && (
-                    <span className="text-brand-mint"> · {it.milk}</span>
-                  )}
-                  {it.addons && it.addons.length > 0 && (
-                    <span className="text-amber-500"> · {it.addons.join(", ")}</span>
-                  )}
-                  {it.qty > 1 && <span className="font-bold"> ×{it.qty}</span>}
+            {order.items.map((it, i) => {
+              const itemPrice = it.totalPrice ?? it.price ?? 0;
+              const modNames = it.modifiers && it.modifiers.length > 0
+                ? it.modifiers.map(m => m.name).join(", ")
+                : null;
+              // Legacy compat
+              const legacyMods = !modNames && (it.milk || (it.addons && it.addons.length > 0));
+              return (
+                <div key={i} className="flex justify-between text-sm py-1.5">
+                  <div className="text-brand-text/70">
+                    <span>{it.name}</span>
+                    {it.size && it.size !== "—" && <span className="text-brand-text/40"> ({it.size})</span>}
+                    {modNames && (
+                      <span className="block text-xs text-brand-text/40 mt-0.5">+ {modNames}</span>
+                    )}
+                    {legacyMods && it.milk && it.milk !== "Стандарт" && (
+                      <span className="text-brand-mint"> · {it.milk}</span>
+                    )}
+                    {legacyMods && it.addons && it.addons.length > 0 && (
+                      <span className="text-amber-500"> · {it.addons.join(", ")}</span>
+                    )}
+                    {it.qty > 1 && <span className="font-bold"> ×{it.qty}</span>}
+                  </div>
+                  <span className="font-bold text-brand-text">{isFree ? "0" : itemPrice * it.qty}₸</span>
                 </div>
-                <span className="font-bold text-brand-text">{isFree ? "0" : it.price * it.qty}₸</span>
-              </div>
-            ))}
+              );
+            })}
             <div className="border-t border-[#d0f0e0] mt-2 pt-2 flex justify-between">
               <span className="font-bold text-brand-text">Итого</span>
               <span className="font-bold text-brand-dark text-lg">{isFree ? "0 (бесплатно 🎉)" : `${order.total}₸`}</span>

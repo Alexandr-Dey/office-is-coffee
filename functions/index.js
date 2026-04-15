@@ -88,21 +88,19 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
     });
   }
 
-  // Update loyalty count + streak
+  // Update loyalty count + streak (new logic: count coffee items, free = cheapest coffee basePrice)
+  const coffeeCategories = ['coffee_classic', 'coffee_author', 'ice_coffee'];
   if (userId && userId !== "anonymous") {
     const userRef = db.collection("users").doc(userId);
     await db.runTransaction(async (tx) => {
       const userSnap = await tx.get(userRef);
       if (!userSnap.exists) return;
       const userData = userSnap.data();
+      const items = data.items || [];
 
-      // Loyalty
-      let lc = (userData.loyaltyCount || 0) + 1;
-      let isFree = false;
-      if (lc >= 8) {
-        isFree = true;
-        lc = 0;
-      }
+      // Count coffee items (by category + countsForLoyalty is determined client-side by category)
+      const coffeeItems = items.filter((i) => coffeeCategories.includes(i.category));
+      const coffeeQty = coffeeItems.reduce((sum, i) => sum + (i.qty || 1), 0);
 
       // Streak
       const today = getAlmatyDate();
@@ -112,15 +110,38 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
       if (lastOrder === yesterday) newStreak = (userData.streak || 0) + 1;
       else if (lastOrder === today) newStreak = userData.streak || 1;
 
+      // Loyalty: increment by coffeeQty (or 1 if no coffee items — backward compat)
+      const loyaltyIncrement = coffeeQty > 0 ? coffeeQty : (items.length > 0 ? 1 : 0);
+      let lc = (userData.loyaltyCount || 0) + loyaltyIncrement;
+      let discount = 0;
+
+      if (lc >= 8 && coffeeItems.length > 0) {
+        // Free = cheapest coffee item's basePrice only
+        const cheapest = coffeeItems.reduce((min, i) =>
+          (i.basePrice || i.totalPrice || i.price || 0) < (min.basePrice || min.totalPrice || min.price || 0) ? i : min
+        );
+        discount = cheapest.basePrice || cheapest.totalPrice || cheapest.price || 0;
+        lc = lc - 8; // Carry over remainder
+      } else if (lc >= 8) {
+        // No coffee in this order but loyalty reached 8 — defer free coffee
+        // Don't reset, wait for order with coffee
+        lc = Math.min(lc, 8); // Cap at 8, free will apply next order with coffee
+      }
+
       tx.update(userRef, {
         loyaltyCount: lc,
         streak: newStreak,
         lastOrderDate: today,
       });
 
-      // Mark order as free if loyalty triggered
-      if (isFree) {
-        tx.update(orderRef, { isFreeByLoyalty: true, total: 0 });
+      // Apply discount to order
+      if (discount > 0) {
+        const newTotal = Math.max(0, (data.total || 0) - discount);
+        tx.update(orderRef, {
+          isFreeByLoyalty: true,
+          loyaltyDiscount: discount,
+          total: newTotal,
+        });
       }
     });
 
@@ -417,7 +438,39 @@ exports.sendManualPush = onCall(async (request) => {
   return { pushLogId, deliveredCount: totalDelivered, deadTokensFound: totalDead };
 });
 
-/* ═══ 7. TRACK PUSH OPENED ═══ */
+/* ═══ 7. MIGRATE STOP LIST — one-time callable ═══ */
+exports.migrateStopList = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Not authenticated");
+  if (request.auth.token.role !== "barista" && request.auth.token.role !== "ceo") {
+    throw new HttpsError("permission-denied", "Only barista/ceo");
+  }
+
+  const ref = db.collection("cafe_status").doc("aksay_main");
+  const snap = await ref.get();
+  if (!snap.exists) {
+    await ref.set({ isOpen: true, stopList: { items: [], modifiers: [] } });
+    return { migrated: true, from: "empty" };
+  }
+
+  const data = snap.data();
+  const sl = data.stopList;
+
+  // Already migrated
+  if (sl && typeof sl === "object" && !Array.isArray(sl)) {
+    return { migrated: false, reason: "already_object" };
+  }
+
+  // Migrate from array to object
+  const items = Array.isArray(sl) ? sl : [];
+  await ref.update({
+    stopList: { items, modifiers: [] },
+  });
+
+  return { migrated: true, itemsCount: items.length };
+});
+
+/* ═══ 8. TRACK PUSH OPENED ═══ */
 exports.trackPushOpened = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Not authenticated");

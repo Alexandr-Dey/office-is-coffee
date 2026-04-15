@@ -35,7 +35,7 @@ const ratingEmoji: Record<number, string> = { 3: "😍", 2: "👍", 1: "😕" };
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { cart, removeItem, updateQty, clearCart, setItems, totalItems, totalPrice } = useCart();
+  const { cart, removeCartItem, updateQty, clearCart, setItems, totalItems, totalPrice } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"active" | "history">("active");
@@ -81,7 +81,25 @@ export default function OrdersPage() {
   }, [user, authLoading]);
 
   const repeatOrder = (items: OrderItem[]) => {
-    setItems(items.map(i => ({ name: i.name, size: i.size, price: i.price, qty: i.qty, milk: i.milk, syrup: i.addons?.[0] })));
+    const cartItems = items.map(i => {
+      const modifiers = i.addons?.map(a => ({ id: a, name: a, price: 0 })) ?? [];
+      if (i.milk && i.milk !== "Стандарт") {
+        modifiers.unshift({ id: i.milk, name: i.milk, price: 0 });
+      }
+      const cartKey = `${i.name}__${i.size}__${modifiers.map(m => m.id).sort().join(',')}`;
+      return {
+        itemId: i.name,
+        name: i.name,
+        category: '',
+        size: i.size,
+        basePrice: i.price,
+        modifiers,
+        totalPrice: i.price,
+        qty: i.qty,
+        cartKey,
+      };
+    });
+    setItems(cartItems);
     sessionStorage.setItem("oic_is_repeat", "true");
     router.push("/order");
   };
@@ -103,16 +121,15 @@ export default function OrdersPage() {
             </div>
             <div className="space-y-2 mb-3">
               {cart.map((item, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={item.cartKey} className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-brand-text truncate">
-                      {item.name} {item.size !== "—" ? `(${item.size})` : ""}
+                      {item.name} ({item.size})
                       {item.qty > 1 && ` ×${item.qty}`}
                     </p>
-                    {(item.milk || item.syrup) && (
-                      <p className="text-[10px] text-brand-text/40">
-                        {item.milk && item.milk !== "Стандарт" && item.milk}
-                        {item.syrup && ` · ${item.syrup}`}
+                    {item.modifiers.length > 0 && (
+                      <p className="text-[10px] text-brand-text/40 truncate">
+                        + {item.modifiers.map(m => m.name).join(", ")}
                       </p>
                     )}
                   </div>
@@ -123,7 +140,7 @@ export default function OrdersPage() {
                     <button onClick={() => updateQty(i, 1)}
                       className="w-7 h-7 rounded-md bg-brand-mint/20 flex items-center justify-center text-brand-dark font-bold text-xs">+</button>
                   </div>
-                  <span className="text-sm font-bold text-brand-dark flex-shrink-0">{item.price * item.qty}₸</span>
+                  <span className="text-sm font-bold text-brand-dark flex-shrink-0">{item.totalPrice * item.qty}₸</span>
                 </div>
               ))}
             </div>

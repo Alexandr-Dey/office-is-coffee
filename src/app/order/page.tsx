@@ -10,6 +10,7 @@ import { useCart } from "@/lib/cart";
 import confetti from "canvas-confetti";
 import { trackEvent } from "@/lib/mixpanel";
 import type { CartItem } from "@/lib/types";
+import { formatPrice } from "@/lib/menu";
 
 export default function OrderPage() {
   const { user } = useAuth();
@@ -41,7 +42,7 @@ export default function OrderPage() {
     return () => unsub();
   }, [user]);
 
-  const total = isFree ? 0 : cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const total = isFree ? 0 : cart.reduce((s, i) => s + i.totalPrice * i.qty, 0);
 
   const handleConfirm = async () => {
     if (cart.length === 0) return;
@@ -63,12 +64,14 @@ export default function OrderPage() {
         name: name || "Гость",
         userId,
         items: cart.map((i) => ({
+          itemId: i.itemId,
           name: i.name,
+          category: i.category,
           size: i.size,
-          price: i.price,
+          basePrice: i.basePrice,
+          modifiers: i.modifiers,
+          totalPrice: i.totalPrice,
           qty: i.qty,
-          milk: i.milk ?? null,
-          addons: i.syrup ? [i.syrup] : [],
         })),
         comment: comment.trim(),
         total,
@@ -163,22 +166,25 @@ export default function OrderPage() {
             className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-6" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
             <h2 className="font-display text-lg font-bold text-brand-text mb-3">Твой заказ</h2>
             <div className="space-y-2 divide-y divide-[#d0f0e0]">
-              {cart.map((item, idx) => (
-                <div key={`${item.name}_${item.size}_${item.milk ?? ""}_${item.syrup ?? ""}_${idx}`} className="flex justify-between py-2 text-sm">
+              {cart.map((item) => (
+                <div key={item.cartKey} className="flex justify-between py-2 text-sm">
                   <div>
                     <span className="font-medium text-brand-text">{item.name}</span>
-                    {item.size !== "—" && <span className="ml-1 text-brand-text/40 text-xs">({item.size})</span>}
-                    {item.milk && <span className="ml-1 text-brand-mint text-xs">{item.milk}</span>}
-                    {item.syrup && <span className="ml-1 text-amber-500 text-xs">{item.syrup}</span>}
+                    <span className="ml-1 text-brand-text/40 text-xs">({item.size})</span>
+                    {item.modifiers.length > 0 && (
+                      <span className="block text-xs text-brand-text/40 mt-0.5">
+                        + {item.modifiers.map(m => m.name).join(", ")}
+                      </span>
+                    )}
                     {item.qty > 1 && <span className="ml-1 text-brand-pink font-bold text-xs">×{item.qty}</span>}
                   </div>
-                  <span className="font-bold text-brand-text">{isFree ? "0" : item.price * item.qty} ₸</span>
+                  <span className="font-bold text-brand-text">{isFree ? "0₸" : formatPrice(item.totalPrice * item.qty)}</span>
                 </div>
               ))}
             </div>
             <div className="border-t border-[#d0f0e0] mt-3 pt-3 flex justify-between">
               <span className="font-bold text-brand-text">Итого</span>
-              <span className="font-bold text-brand-dark text-lg">{total} ₸</span>
+              <span className="font-bold text-brand-dark text-lg">{formatPrice(total)}</span>
             </div>
           </motion.div>
 
@@ -231,7 +237,7 @@ export default function OrderPage() {
             className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all min-h-[44px] ${
               sending ? "bg-brand-mid/50 text-white cursor-wait" : "bg-brand-dark text-white hover:shadow-xl disabled:opacity-50"
             }`}>
-            {sending ? "Отправляем..." : !cafeOpen ? "Кофейня закрыта" : isFree ? "Забрать бесплатно 🎉" : `Подтвердить заказ · ${total} ₸`}
+            {sending ? "Отправляем..." : !cafeOpen ? "Кофейня закрыта" : isFree ? "Забрать бесплатно 🎉" : `Подтвердить заказ · ${formatPrice(total)}`}
           </motion.button>
           {orderError && <p className="text-red-500 text-sm text-center mt-3 font-medium">{orderError}</p>}
         </div>

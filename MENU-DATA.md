@@ -59,7 +59,7 @@
   "id": "cappuccino",
   "category": "classic-coffee",
   "name": "Капучино",
-  "sizes": { "S": 850, "M": 1050, "L": 1150 },
+  "sizes": { "S": 900, "M": 1100, "L": 1200 },
   "availableMilk": true,
   "tags": [],
   "radarData": { "acidity": 2, "sweetness": 3, "bitterness": 3, "body": 4, "aroma": 4 },
@@ -73,7 +73,7 @@
   "id": "latte",
   "category": "classic-coffee",
   "name": "Латте",
-  "sizes": { "M": 900, "L": 1050 },
+  "sizes": { "M": 900, "L": 1100 },
   "availableMilk": true,
   "tags": [],
   "radarData": { "acidity": 1, "sweetness": 4, "bitterness": 2, "body": 3, "aroma": 3 },
@@ -87,7 +87,7 @@
   "id": "flat-white",
   "category": "classic-coffee",
   "name": "Флэт уайт",
-  "sizes": { "S": 1000, "M": 1150, "L": 1250 },
+  "sizes": { "S": 1000, "M": 1200, "L": 1300 },
   "availableMilk": true,
   "tags": [],
   "radarData": { "acidity": 2, "sweetness": 2, "bitterness": 4, "body": 5, "aroma": 4 },
@@ -101,7 +101,7 @@
   "id": "americano",
   "category": "classic-coffee",
   "name": "Американо",
-  "sizes": { "S": 750, "M": 850, "L": 950 },
+  "sizes": { "S": 800, "M": 900, "L": 1000 },
   "availableMilk": false,
   "tags": [],
   "radarData": { "acidity": 3, "sweetness": 1, "bitterness": 4, "body": 2, "aroma": 3 },
@@ -115,7 +115,7 @@
   "id": "espresso",
   "category": "classic-coffee",
   "name": "Эспрессо",
-  "sizes": { "S": 450, "M": 550 },
+  "sizes": { "S": 500, "M": 600 },
   "availableMilk": false,
   "tags": [],
   "radarData": { "acidity": 3, "sweetness": 1, "bitterness": 5, "body": 5, "aroma": 5 },
@@ -133,7 +133,7 @@
   "id": "irish-coffee",
   "category": "author-coffee",
   "name": "Айриш кофе",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 201
@@ -146,7 +146,7 @@
   "id": "raf-classic",
   "category": "author-coffee",
   "name": "Раф классика",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": ["hit"],
   "sortOrder": 202
@@ -159,7 +159,7 @@
   "id": "raf-honey",
   "category": "author-coffee",
   "name": "Раф медовый",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": ["hit"],
   "sortOrder": 203
@@ -172,7 +172,7 @@
   "id": "raf-banana-caramel",
   "category": "author-coffee",
   "name": "Раф банан-карамель",
-  "sizes": { "M": 1350, "L": 1450 },
+  "sizes": { "M": 1400, "L": 1500 },
   "availableMilk": true,
   "tags": ["hit"],
   "sortOrder": 204
@@ -185,7 +185,7 @@
   "id": "mocha",
   "category": "author-coffee",
   "name": "Мокко",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 205
@@ -198,7 +198,7 @@
   "id": "mocha-white-chocolate",
   "category": "author-coffee",
   "name": "Мокко белый шоколад",
-  "sizes": { "M": 1350, "L": 1450 },
+  "sizes": { "M": 1400, "L": 1500 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 206
@@ -211,7 +211,7 @@
   "id": "latte-halva",
   "category": "author-coffee",
   "name": "Латте халва",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 207
@@ -224,7 +224,7 @@
   "id": "pumpkin-spice-latte",
   "category": "author-coffee",
   "name": "Тыквенно-пряный латте",
-  "sizes": { "M": 1350, "L": 1450 },
+  "sizes": { "M": 1400, "L": 1500 },
   "availableMilk": true,
   "tags": ["season"],
   "activeFrom": "09-01",
@@ -243,7 +243,7 @@
   "id": "ice-americano",
   "category": "ice-coffee",
   "name": "Айс американо",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 301
@@ -256,7 +256,7 @@
   "id": "ice-cappuccino",
   "category": "ice-coffee",
   "name": "Айс капучино",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 302
@@ -269,7 +269,7 @@
   "id": "ice-latte",
   "category": "ice-coffee",
   "name": "Айс латте",
-  "sizes": { "M": 1150, "L": 1250 },
+  "sizes": { "M": 1200, "L": 1300 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 303
@@ -282,7 +282,7 @@
   "id": "frappuccino",
   "category": "ice-coffee",
   "name": "Фраппучино",
-  "sizes": { "M": 1350, "L": 1450 },
+  "sizes": { "M": 1400, "L": 1500 },
   "availableMilk": true,
   "tags": ["hit"],
   "sortOrder": 304
@@ -295,7 +295,7 @@
   "id": "banana-coffee",
   "category": "ice-coffee",
   "name": "Банановый кофе",
-  "sizes": { "M": 1350, "L": 1450 },
+  "sizes": { "M": 1400, "L": 1500 },
   "availableMilk": true,
   "tags": ["hit"],
   "sortOrder": 305
@@ -308,7 +308,7 @@
   "id": "bumble-bee",
   "category": "ice-coffee",
   "name": "Бамбл би",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 306
@@ -321,7 +321,7 @@
   "id": "espresso-tonic",
   "category": "ice-coffee",
   "name": "Эспрессо тоник",
-  "sizes": { "M": 1150, "L": 1250 },
+  "sizes": { "M": 1200, "L": 1300 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 307
@@ -338,7 +338,7 @@
   "id": "cocoa",
   "category": "cocoa",
   "name": "Какао",
-  "sizes": { "M": 1050, "L": 1150 },
+  "sizes": { "M": 1100, "L": 1200 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 401
@@ -351,7 +351,7 @@
   "id": "hot-chocolate",
   "category": "cocoa",
   "name": "Горячий шоколад",
-  "sizes": { "M": 1150, "L": 1250 },
+  "sizes": { "M": 1200, "L": 1300 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 402
@@ -369,7 +369,7 @@
   "category": "home-tea",
   "name": "Нарядный",
   "ingredients": "апельсин, лимон, мята",
-  "sizes": { "M": 850, "L": 950 },
+  "sizes": { "M": 900, "L": 1000 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 501
@@ -383,7 +383,7 @@
   "category": "home-tea",
   "name": "Имбирный",
   "ingredients": "имбирь, мёд, лимон, апельсин",
-  "sizes": { "M": 850, "L": 950 },
+  "sizes": { "M": 900, "L": 1000 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 502
@@ -397,7 +397,7 @@
   "category": "home-tea",
   "name": "Облепиховый",
   "ingredients": "облепиха, сироп маракуйя, чай",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 503
@@ -411,7 +411,7 @@
   "category": "home-tea",
   "name": "Малиновый",
   "ingredients": "малина, мята, апельсин, лимон",
-  "sizes": { "M": 1050, "L": 1150 },
+  "sizes": { "M": 1100, "L": 1200 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 504
@@ -425,7 +425,7 @@
   "category": "home-tea",
   "name": "Ягодный",
   "ingredients": "смородина, клюква, лимон",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 505
@@ -443,7 +443,7 @@
   "category": "author-tea",
   "name": "Чай латте",
   "ingredients": "чай со взбитым молоком и корицей",
-  "sizes": { "M": 550, "L": 650 },
+  "sizes": { "M": 600, "L": 700 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 601
@@ -457,7 +457,7 @@
   "category": "author-tea",
   "name": "Грог",
   "ingredients": "чай, имбирь, корица, кардамон, апельсин, лимон, мёд",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 602
@@ -471,7 +471,7 @@
   "category": "author-tea",
   "name": "Глинтвейн",
   "ingredients": "апельсин, лимон, мята, вишнёвый сок, гвоздика, корица",
-  "sizes": { "M": 1050, "L": 1150 },
+  "sizes": { "M": 1100, "L": 1200 },
   "availableMilk": false,
   "tags": ["hit", "season"],
   "activeFrom": "11-01",
@@ -487,7 +487,7 @@
   "category": "author-tea",
   "name": "Марокканский",
   "ingredients": "апельсин, лимон, мята, чай, гвоздика, корица",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 604
@@ -501,7 +501,7 @@
   "category": "author-tea",
   "name": "Чай тары",
   "ingredients": "тары, молоко, мёд",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 605
@@ -515,7 +515,7 @@
   "category": "author-tea",
   "name": "Мандариновый",
   "ingredients": "мандарин, лимон, мята",
-  "sizes": { "M": 1150, "L": 1250 },
+  "sizes": { "M": 1200, "L": 1300 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 606
@@ -529,7 +529,7 @@
   "category": "author-tea",
   "name": "Пряная смородина",
   "ingredients": "смородина, гвоздика, корица",
-  "sizes": { "M": 1050, "L": 1150 },
+  "sizes": { "M": 1100, "L": 1200 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 607
@@ -543,7 +543,7 @@
   "category": "author-tea",
   "name": "Малина-имбирь",
   "ingredients": "малина, имбирь, лимон, апельсин",
-  "sizes": { "M": 1350, "L": 1450 },
+  "sizes": { "M": 1400, "L": 1500 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 608
@@ -560,7 +560,7 @@
   "id": "green-matcha",
   "category": "matcha",
   "name": "Зелёная матча",
-  "sizes": { "M": 1150, "L": 1250 },
+  "sizes": { "M": 1200, "L": 1300 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 701
@@ -573,7 +573,7 @@
   "id": "blue-matcha",
   "category": "matcha",
   "name": "Голубая матча",
-  "sizes": { "M": 1150, "L": 1250 },
+  "sizes": { "M": 1200, "L": 1300 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 702
@@ -590,7 +590,7 @@
   "id": "ice-tea-berry",
   "category": "ice-tea",
   "name": "Ягодный",
-  "sizes": { "M": 750, "L": 850 },
+  "sizes": { "M": 800, "L": 900 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 801
@@ -603,7 +603,7 @@
   "id": "ice-tea-mango",
   "category": "ice-tea",
   "name": "Манго",
-  "sizes": { "M": 750, "L": 850 },
+  "sizes": { "M": 800, "L": 900 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 802
@@ -616,7 +616,7 @@
   "id": "ice-tea-passion-fruit",
   "category": "ice-tea",
   "name": "Маракуйя",
-  "sizes": { "M": 750, "L": 850 },
+  "sizes": { "M": 800, "L": 900 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 803
@@ -629,7 +629,7 @@
   "id": "ice-tea-pomegranate",
   "category": "ice-tea",
   "name": "Гранатовый",
-  "sizes": { "M": 750, "L": 850 },
+  "sizes": { "M": 800, "L": 900 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 804
@@ -642,7 +642,7 @@
   "id": "ice-tea-raspberry",
   "category": "ice-tea",
   "name": "Малиновый",
-  "sizes": { "M": 750, "L": 850 },
+  "sizes": { "M": 800, "L": 900 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 805
@@ -655,7 +655,7 @@
   "id": "ice-tea-cherry",
   "category": "ice-tea",
   "name": "Вишнёвый",
-  "sizes": { "M": 750, "L": 850 },
+  "sizes": { "M": 800, "L": 900 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 806
@@ -672,7 +672,7 @@
   "id": "milkshake-banana",
   "category": "milkshakes",
   "name": "Банановый",
-  "sizes": { "M": 1350, "L": 1450 },
+  "sizes": { "M": 1400, "L": 1500 },
   "availableMilk": true,
   "tags": ["hit"],
   "sortOrder": 901
@@ -685,7 +685,7 @@
   "id": "milkshake-strawberry",
   "category": "milkshakes",
   "name": "Клубничный",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 902
@@ -698,7 +698,7 @@
   "id": "milkshake-chocolate",
   "category": "milkshakes",
   "name": "Шоколадный",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 903
@@ -711,7 +711,7 @@
   "id": "milkshake-vanilla",
   "category": "milkshakes",
   "name": "Ванильный",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 904
@@ -728,7 +728,7 @@
   "id": "juice-orange",
   "category": "fresh-juices",
   "name": "Апельсин",
-  "sizes": { "M": 1750, "L": 1950 },
+  "sizes": { "M": 1800, "L": 2000 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1001
@@ -741,7 +741,7 @@
   "id": "juice-grapefruit",
   "category": "fresh-juices",
   "name": "Грейпфрут",
-  "sizes": { "M": 1750, "L": 1950 },
+  "sizes": { "M": 1800, "L": 2000 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1002
@@ -767,7 +767,7 @@
   "id": "juice-orange-grapefruit",
   "category": "fresh-juices",
   "name": "Апельсин-грейпфрут",
-  "sizes": { "M": 1750, "L": 2050 },
+  "sizes": { "M": 1800, "L": 2100 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1004
@@ -780,7 +780,7 @@
   "id": "juice-orange-apple",
   "category": "fresh-juices",
   "name": "Апельсин-яблоко",
-  "sizes": { "M": 1550, "L": 1750 },
+  "sizes": { "M": 1600, "L": 1800 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1005
@@ -793,7 +793,7 @@
   "id": "juice-apple-grapefruit",
   "category": "fresh-juices",
   "name": "Яблоко-грейпфрут",
-  "sizes": { "M": 1550, "L": 1850 },
+  "sizes": { "M": 1600, "L": 1900 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1006
@@ -811,7 +811,7 @@
   "category": "fresh-smoothies",
   "name": "Фруктовый микс",
   "ingredients": "банан, киви, фреш апельсиновый, фреш яблочный",
-  "sizes": { "M": 1750, "L": 1950 },
+  "sizes": { "M": 1800, "L": 2000 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 1101
@@ -825,7 +825,7 @@
   "category": "fresh-smoothies",
   "name": "Яблоко-малина",
   "ingredients": "малина, банан, фреш яблочный",
-  "sizes": { "M": 1550, "L": 1750 },
+  "sizes": { "M": 1600, "L": 1800 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 1102
@@ -839,7 +839,7 @@
   "category": "fresh-smoothies",
   "name": "Смородина-банан",
   "ingredients": "смородина, банан, фреш апельсиновый",
-  "sizes": { "M": 1550, "L": 1750 },
+  "sizes": { "M": 1600, "L": 1800 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1103
@@ -853,7 +853,7 @@
   "category": "fresh-smoothies",
   "name": "Щавель-ананас",
   "ingredients": "щавель, ананас",
-  "sizes": { "M": 950, "L": 1150 },
+  "sizes": { "M": 1000, "L": 1200 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1104
@@ -871,7 +871,7 @@
   "category": "milk-smoothies",
   "name": "Ягодный микс",
   "ingredients": "смородина, клюква, молоко, сливки",
-  "sizes": { "M": 1450, "L": 1650 },
+  "sizes": { "M": 1500, "L": 1700 },
   "availableMilk": true,
   "tags": [],
   "sortOrder": 1201
@@ -885,7 +885,7 @@
   "category": "milk-smoothies",
   "name": "Клубника-банан",
   "ingredients": "клубника, банан, молоко, сливки",
-  "sizes": { "M": 1450, "L": 1650 },
+  "sizes": { "M": 1500, "L": 1700 },
   "availableMilk": true,
   "tags": ["hit"],
   "sortOrder": 1202
@@ -902,7 +902,7 @@
   "id": "lemonade-homemade",
   "category": "lemonades",
   "name": "Домашний",
-  "sizes": { "M": 850, "L": 950 },
+  "sizes": { "M": 900, "L": 1000 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1301
@@ -915,7 +915,7 @@
   "id": "lemonade-mojito",
   "category": "lemonades",
   "name": "Мохито",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1302
@@ -928,7 +928,7 @@
   "id": "lemonade-watermelon-kiwi",
   "category": "lemonades",
   "name": "Арбуз-киви",
-  "sizes": { "M": 950, "L": 1050 },
+  "sizes": { "M": 1000, "L": 1100 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1303
@@ -941,7 +941,7 @@
   "id": "lemonade-apple-passion",
   "category": "lemonades",
   "name": "Яблоко-маракуйя",
-  "sizes": { "M": 1050, "L": 1150 },
+  "sizes": { "M": 1100, "L": 1200 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 1304
@@ -954,7 +954,7 @@
   "id": "lemonade-berry-boom",
   "category": "lemonades",
   "name": "Ягодный бум",
-  "sizes": { "M": 1050, "L": 1150 },
+  "sizes": { "M": 1100, "L": 1200 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1305
@@ -967,7 +967,7 @@
   "id": "lemonade-orange",
   "category": "lemonades",
   "name": "Апельсин",
-  "sizes": { "M": 1050, "L": 1150 },
+  "sizes": { "M": 1100, "L": 1200 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 1306
@@ -980,7 +980,7 @@
   "id": "lemonade-lime-raspberry",
   "category": "lemonades",
   "name": "Лайм-малина",
-  "sizes": { "M": 1150, "L": 1250 },
+  "sizes": { "M": 1200, "L": 1300 },
   "availableMilk": false,
   "tags": ["hit"],
   "sortOrder": 1307
@@ -993,7 +993,7 @@
   "id": "lemonade-kiwi-aloe",
   "category": "lemonades",
   "name": "Киви-алоэ",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1308
@@ -1006,7 +1006,7 @@
   "id": "lemonade-strawberry-caramel",
   "category": "lemonades",
   "name": "Клубника-карамель",
-  "sizes": { "M": 1250, "L": 1350 },
+  "sizes": { "M": 1300, "L": 1400 },
   "availableMilk": false,
   "tags": [],
   "sortOrder": 1309
@@ -1078,7 +1078,7 @@ migrate().catch(console.error);
 После запуска скрипта проверить:
 - [ ] В Firestore Console видны все 13 категорий через фильтр
 - [ ] Всего ~60+ документов в `menu_items`
-- [ ] Цены на капучино S/M/L = 850/1050/1150
+- [ ] Цены на капучино S/M/L = 900/1100/1200
 - [ ] `availableMilk: true` у всех кроме американо, эспрессо, соков, лимонадов, айс ти
 - [ ] `tags: ["hit"]` у 15+ позиций (согласно фото)
 - [ ] Сезонные (`tags: ["season"]`) — Глинтвейн, Тыквенно-пряный латте

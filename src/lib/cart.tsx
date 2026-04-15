@@ -2,11 +2,12 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { CartItem } from "./types";
+import { makeCartKey, type Size } from "./menu";
 
 interface CartContextValue {
   cart: CartItem[];
-  addItem: (name: string, size: string, price: number, milk?: string, syrup?: string) => void;
-  removeItem: (name: string, size: string, milk?: string, syrup?: string) => void;
+  addCartItem: (item: Omit<CartItem, 'qty' | 'cartKey'> & { qty?: number }) => void;
+  removeCartItem: (cartKey: string) => void;
   updateQty: (index: number, delta: number) => void;
   setItems: (items: CartItem[]) => void;
   clearCart: () => void;
@@ -25,11 +26,11 @@ function loadCart(): CartItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Validate each item has required fields
     return parsed.filter((i: Record<string, unknown>) =>
-      typeof i.name === "string" && typeof i.size === "string" &&
-      typeof i.price === "number" && typeof i.qty === "number" &&
-      i.qty > 0 && i.price >= 0
+      typeof i.name === "string" &&
+      typeof i.totalPrice === "number" &&
+      typeof i.qty === "number" &&
+      i.qty > 0
     );
   } catch {
     localStorage.removeItem(STORAGE_KEY);
@@ -44,7 +45,6 @@ function saveCart(cart: CartItem[]) {
   } else {
     localStorage.removeItem(STORAGE_KEY);
   }
-  // Also keep sessionStorage for backward compat with order page
   if (cart.length > 0) {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
   } else {
@@ -53,14 +53,12 @@ function saveCart(cart: CartItem[]) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  // Initialize from localStorage synchronously to avoid flash
   const [cart, setCart] = useState<CartItem[]>(() => {
     if (typeof window === "undefined") return [];
     return loadCart();
   });
   const [loaded, setLoaded] = useState(() => typeof window !== "undefined");
 
-  // Fallback: ensure loaded on client mount
   useEffect(() => {
     if (!loaded) {
       setCart(loadCart());
@@ -68,22 +66,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [loaded]);
 
-  // Save to localStorage on change (skip initial empty state)
   useEffect(() => {
     if (loaded) saveCart(cart);
   }, [cart, loaded]);
 
-  const addItem = useCallback((name: string, size: string, price: number, milk?: string, syrup?: string) => {
+  const addCartItem = useCallback((item: Omit<CartItem, 'qty' | 'cartKey'> & { qty?: number }) => {
+    const modifierIds = item.modifiers.map(m => m.id);
+    const cartKey = makeCartKey(item.itemId, item.size as Size, modifierIds);
     setCart((prev) => {
-      const key = `${name}_${size}_${milk ?? ""}_${syrup ?? ""}`;
-      const ex = prev.find((i) => `${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}` === key);
-      if (ex) return prev.map((i) => `${i.name}_${i.size}_${i.milk ?? ""}_${i.syrup ?? ""}` === key ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { name, size, price, qty: 1, milk, syrup }];
+      const existing = prev.find(i => i.cartKey === cartKey);
+      if (existing) {
+        return prev.map(i => i.cartKey === cartKey ? { ...i, qty: i.qty + (item.qty ?? 1) } : i);
+      }
+      return [...prev, { ...item, qty: item.qty ?? 1, cartKey }];
     });
   }, []);
 
-  const removeItem = useCallback((name: string, size: string, milk?: string, syrup?: string) => {
-    setCart((prev) => prev.filter((i) => !(i.name === name && i.size === size && (i.milk ?? "") === (milk ?? "") && (i.syrup ?? "") === (syrup ?? ""))));
+  const removeCartItem = useCallback((cartKey: string) => {
+    setCart((prev) => prev.filter(i => i.cartKey !== cartKey));
   }, []);
 
   const updateQty = useCallback((index: number, delta: number) => {
@@ -103,16 +103,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => {
     setCart([]);
-    // Clear storage immediately (don't wait for effect)
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
   }, []);
 
   const totalItems = cart.reduce((s, i) => s + i.qty, 0);
-  const totalPrice = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const totalPrice = cart.reduce((s, i) => s + i.totalPrice * i.qty, 0);
 
   return (
-    <CartContext.Provider value={{ cart, addItem, removeItem, updateQty, setItems, clearCart, totalItems, totalPrice }}>
+    <CartContext.Provider value={{ cart, addCartItem, removeCartItem, updateQty, setItems, clearCart, totalItems, totalPrice }}>
       {children}
     </CartContext.Provider>
   );

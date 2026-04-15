@@ -1,37 +1,17 @@
-export interface MenuItem {
-  id: string;
-  category: string;
-  name: string;
-  ingredients?: string | null;
-  sizes: Record<string, number>;
-  availableMilk: boolean;
-  tags: string[];
-  activeFrom?: string | null;
-  activeTo?: string | null;
-  radarData?: {
-    acidity: number;
-    sweetness: number;
-    bitterness: number;
-    body: number;
-    aroma: number;
-  } | null;
-  description?: string | null;
-  sortOrder: number;
-}
-
-export interface MenuCategory {
-  id: string;
-  name: string;
-  icon: string;
-  gradient: string;
-  order: number;
-}
+// MenuItem и Category — см. src/lib/menu.ts
 
 export interface CartItem {
+  itemId: string;
   name: string;
+  category: string;
   size: string;
-  price: number;
+  basePrice: number;
+  modifiers: { id: string; name: string; price: number }[];
+  totalPrice: number;
   qty: number;
+  cartKey: string;
+  // Legacy fields for backward compat with existing orders
+  price?: number;
   milk?: string;
   syrup?: string;
 }

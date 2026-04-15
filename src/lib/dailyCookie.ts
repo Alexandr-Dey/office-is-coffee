@@ -1,4 +1,4 @@
-import type { MenuItem } from "./types";
+import type { MenuItem } from "./menu";
 import { COOKIE_FACTS } from "./cookieFacts";
 
 export interface DailyCookie {

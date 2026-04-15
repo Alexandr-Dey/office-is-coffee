@@ -6,9 +6,13 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireBarista } from "@/lib/auth";
 import {
   collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, getDoc,
-  Timestamp, increment, arrayUnion, limit,
+  Timestamp, increment, arrayUnion, arrayRemove, limit,
 } from "firebase/firestore";
 import { getFirebaseAuth } from "@/lib/firebase";
+import {
+  MENU_ITEMS, MODIFIERS, CATEGORIES, normalizeStopList, formatPrice,
+  type StopList, type CategoryId,
+} from "@/lib/menu";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
 interface Order {
@@ -387,11 +391,106 @@ function BaristaPushGate({ uid, children }: { uid: string; children: ReactNode }
 }
 
 /* ═══ PAGE ═══ */
+/* ═══ STOP-LIST PANEL ═══ */
+function StopListPanel({ stopList }: { stopList: StopList }) {
+  const [tab, setTab] = useState<"items" | "modifiers">("items");
+
+  const toggleItem = async (id: string) => {
+    const ref = doc(getFirebaseDb(), "cafe_status", "aksay_main");
+    if (stopList.items.includes(id)) {
+      await updateDoc(ref, { "stopList.items": arrayRemove(id) }).catch(() => {});
+    } else {
+      await updateDoc(ref, { "stopList.items": arrayUnion(id) }).catch(() => {});
+    }
+  };
+
+  const toggleModifier = async (id: string) => {
+    const ref = doc(getFirebaseDb(), "cafe_status", "aksay_main");
+    if (stopList.modifiers.includes(id)) {
+      await updateDoc(ref, { "stopList.modifiers": arrayRemove(id) }).catch(() => {});
+    } else {
+      await updateDoc(ref, { "stopList.modifiers": arrayUnion(id) }).catch(() => {});
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setTab("items")}
+          className={`flex-1 py-2 rounded-xl text-sm font-bold min-h-[44px] ${
+            tab === "items" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
+          }`}>Позиции ({stopList.items.length})</button>
+        <button onClick={() => setTab("modifiers")}
+          className={`flex-1 py-2 rounded-xl text-sm font-bold min-h-[44px] ${
+            tab === "modifiers" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
+          }`}>Модификаторы ({stopList.modifiers.length})</button>
+      </div>
+
+      {tab === "items" && (
+        <div className="space-y-1">
+          {CATEGORIES.map(cat => {
+            const items = MENU_ITEMS.filter(i => i.category === cat.id);
+            if (items.length === 0) return null;
+            return (
+              <div key={cat.id} className="mb-3">
+                <p className="text-xs font-bold text-brand-text/50 uppercase mb-1">{cat.name}</p>
+                {items.map(item => {
+                  const stopped = stopList.items.includes(item.id);
+                  return (
+                    <div key={item.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-white mb-1 border border-[#d0f0e0]">
+                      <span className={`text-sm ${stopped ? "text-red-500 line-through" : "text-brand-text"}`}>{item.name}</span>
+                      <button onClick={() => toggleItem(item.id)}
+                        className={`w-12 h-7 rounded-full transition-colors relative ${stopped ? "bg-red-400" : "bg-green-400"}`}>
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${stopped ? "left-1" : "left-6"}`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tab === "modifiers" && (
+        <div className="space-y-1">
+          {(['milk', 'syrup', 'addon'] as const).map(group => {
+            const mods = MODIFIERS.filter(m => m.group === group);
+            const label = group === 'milk' ? 'Молоко' : group === 'syrup' ? 'Сиропы' : 'Добавки';
+            return (
+              <div key={group} className="mb-3">
+                <p className="text-xs font-bold text-brand-text/50 uppercase mb-1">{label}</p>
+                {mods.map(mod => {
+                  const stopped = stopList.modifiers.includes(mod.id);
+                  return (
+                    <div key={mod.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-white mb-1 border border-[#d0f0e0]">
+                      <div>
+                        <span className={`text-sm ${stopped ? "text-red-500 line-through" : "text-brand-text"}`}>{mod.name}</span>
+                        <span className="text-xs text-brand-text/40 ml-2">{formatPrice(mod.price)}</span>
+                      </div>
+                      <button onClick={() => toggleModifier(mod.id)}
+                        className={`w-12 h-7 rounded-full transition-colors relative ${stopped ? "bg-red-400" : "bg-green-400"}`}>
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${stopped ? "left-1" : "left-6"}`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useRequireBarista();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"active" | "paid">("active");
   const [cafeOpen, setCafeOpen] = useState(true);
+  const [mainTab, setMainTab] = useState<"orders" | "stoplist">("orders");
+  const [stopList, setStopList] = useState<StopList>({ items: [], modifiers: [] });
 
   // Force token refresh
   useEffect(() => {
@@ -408,7 +507,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
-      if (snap.exists()) setCafeOpen(snap.data().isOpen ?? true);
+      if (snap.exists()) {
+        setCafeOpen(snap.data().isOpen ?? true);
+        setStopList(normalizeStopList(snap.data().stopList));
+      }
     }, () => {});
     return () => unsub();
   }, []);
@@ -452,38 +554,56 @@ export default function AdminPage() {
       </div>
 
       <div className="px-4 pt-4 max-w-[480px] mx-auto">
-        {/* Queue visualization */}
-        <QueueScene activeCount={waitingOrders.length} readyCount={readyOrders.length} />
-
-        {/* Filter */}
+        {/* Main tabs: Orders / Stop-list */}
         <div className="flex gap-2 mb-4">
-          <button onClick={() => setFilter("active")}
+          <button onClick={() => setMainTab("orders")}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
-              filter === "active" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
-            }`}>
-            Активные ({activeOrders.length})
-          </button>
-          <button onClick={() => setFilter("paid")}
+              mainTab === "orders" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
+            }`}>📋 Заказы</button>
+          <button onClick={() => setMainTab("stoplist")}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
-              filter === "paid" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
-            }`}>
-            Завершённые ({doneOrders.length})
-          </button>
+              mainTab === "stoplist" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
+            }`}>🚫 Стоп-лист ({stopList.items.length + stopList.modifiers.length})</button>
         </div>
 
-        {displayed.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
-            <p className="text-5xl mb-3">😴</p>
-            <p className="text-brand-text/40">{filter === "active" ? "Нет активных заказов" : "Нет завершённых заказов"}</p>
-          </motion.div>
-        ) : (
-          <div className="space-y-4">
-            <AnimatePresence>
-              {displayed.map((order) => (
-                <OrderCard key={order.id} order={order} baristaId={user.uid} />
-              ))}
-            </AnimatePresence>
-          </div>
+        {mainTab === "stoplist" && <StopListPanel stopList={stopList} />}
+
+        {mainTab === "orders" && (
+          <>
+            {/* Queue visualization */}
+            <QueueScene activeCount={waitingOrders.length} readyCount={readyOrders.length} />
+
+            {/* Filter */}
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setFilter("active")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
+                  filter === "active" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
+                }`}>
+                Активные ({activeOrders.length})
+              </button>
+              <button onClick={() => setFilter("paid")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
+                  filter === "paid" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
+                }`}>
+                Завершённые ({doneOrders.length})
+              </button>
+            </div>
+
+            {displayed.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
+                <p className="text-5xl mb-3">😴</p>
+                <p className="text-brand-text/40">{filter === "active" ? "Нет активных заказов" : "Нет завершённых заказов"}</p>
+              </motion.div>
+            ) : (
+              <div className="space-y-4">
+                <AnimatePresence>
+                  {displayed.map((order) => (
+                    <OrderCard key={order.id} order={order} baristaId={user.uid} />
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </>
         )}
       </div>
     </main>
