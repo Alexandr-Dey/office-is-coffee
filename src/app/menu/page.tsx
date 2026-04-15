@@ -78,10 +78,10 @@ function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
       transition={{ delay: idx * 0.06 }}
       onClick={stopped ? undefined : onDetail}
       aria-label={`${item.name}, от ${getMinPrice(item)} ₸`}
-      className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow relative ${
+      className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow relative bg-white border border-[#d0f0e0] ${
         stopped ? "opacity-50 grayscale cursor-not-allowed" : ""
-      } bg-gradient-to-br ${gradient} text-white`}
-      style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+      }`}
+      style={{ boxShadow: "0 2px 12px rgba(30,120,70,0.06)" }}
     >
       {cookieData && (
         <CookieButton fact={cookieData.fact} collected={cookieData.collected} onCollect={cookieData.onCollect} />
@@ -91,25 +91,25 @@ function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
           Нет в наличии
         </span>
       )}
-      <div className="text-3xl mb-2 drop-shadow-sm">{icon}</div>
-      <span className="font-semibold text-sm drop-shadow-sm">{item.name}</span>
+      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-xl mb-2`}>{icon}</div>
+      <span className="font-semibold text-sm text-brand-text">{item.name}</span>
       {item.description && !stopped && (
-        <p className="text-xs text-white/60 line-clamp-1 mt-0.5">{item.description}</p>
+        <p className="text-xs text-brand-text/50 line-clamp-1 mt-0.5">{item.description}</p>
       )}
       {sizes.length > 1 && !stopped && (
         <div className="flex gap-1 mb-1 mt-1">
           {sizes.map(s => (
-            <span key={s} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-white/40 text-white drop-shadow-sm">{s}</span>
+            <span key={s} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-brand-bg text-brand-text/60">{s}</span>
           ))}
         </div>
       )}
       <div className="mt-auto flex items-center justify-between pt-2">
-        <span className="font-bold text-white drop-shadow-sm">от {formatPrice(getMinPrice(item))}</span>
+        <span className="font-bold text-brand-dark">от {formatPrice(getMinPrice(item))}</span>
         {!stopped && (
           <motion.button whileTap={{ scale: 0.85 }} onClick={handleQuickAdd}
             aria-label={`Добавить ${item.name} в корзину`}
             className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-              added ? "bg-white text-green-600" : "bg-white/40 text-white hover:bg-white/60"
+              added ? "bg-brand-mint text-white" : "bg-brand-bg text-brand-dark hover:bg-[#d0f0e0]"
             }`}>{added ? "✓" : "+"}</motion.button>
         )}
       </div>
