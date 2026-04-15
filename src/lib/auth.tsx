@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation";
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInAnonymously,
   signOut as firebaseSignOut,
   type User as FirebaseUser,
@@ -73,9 +75,6 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Таймаут на случай если Firebase SDK зависнет (чистый storage, IndexedDB заблокирован, etc.)
-const AUTH_TIMEOUT_MS = 6000;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -83,32 +82,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let unsubUser: (() => void) | null = null;
-    let resolved = false;
-
-    // Safety timeout: если onAuthStateChanged не ответит за AUTH_TIMEOUT_MS → показать форму
-    const timeout = setTimeout(() => {
-      if (!resolved) {
-        console.warn(`Auth timeout: onAuthStateChanged did not fire in ${AUTH_TIMEOUT_MS}ms`);
-        resolved = true;
-        setLoading(false);
-      }
-    }, AUTH_TIMEOUT_MS);
 
     let auth;
     try {
       auth = getFirebaseAuth();
     } catch (e) {
       console.error("Firebase Auth init failed:", e);
-      clearTimeout(timeout);
-      resolved = true;
       setLoading(false);
       return;
     }
 
-    const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
-      resolved = true;
-      clearTimeout(timeout);
+    // Обработка возврата из signInWithRedirect (мобильный flow)
+    getRedirectResult(auth).catch((err) => {
+      console.warn("getRedirectResult error:", err);
+    });
 
+    const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       // Clean up previous user listener
       if (unsubUser) { unsubUser(); unsubUser = null; }
 
@@ -197,7 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
-      clearTimeout(timeout);
       unsubAuth();
       if (unsubUser) unsubUser();
     };
@@ -205,13 +193,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const auth = getFirebaseAuth();
-    const result = await signInWithPopup(auth, googleProvider);
-    trackEvent("User Signed Up", { method: "google" });
-    if (result.user) {
-      identifyUser(result.user.uid, {
-        $name: result.user.displayName,
-        $email: result.user.email,
-      });
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      // Redirect flow — стабильнее на мобилках (Safari, in-app browsers)
+      await signInWithRedirect(auth, googleProvider);
+      // Страница перезагрузится, getRedirectResult обработает результат
+    } else {
+      const result = await signInWithPopup(auth, googleProvider);
+      trackEvent("User Signed Up", { method: "google" });
+      if (result.user) {
+        identifyUser(result.user.uid, {
+          $name: result.user.displayName,
+          $email: result.user.email,
+        });
+      }
     }
   };
 

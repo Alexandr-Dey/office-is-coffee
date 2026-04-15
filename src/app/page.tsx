@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import * as Sentry from "@sentry/nextjs";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -41,12 +42,22 @@ export default function Home() {
       await signInWithGoogle();
     } catch (e) {
       const code = (e as { code?: string }).code ?? "";
-      // Пользователь закрыл окно — не ошибка, молча сбрасываем
-      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+      const silentErrors = ["auth/popup-closed-by-user", "auth/cancelled-popup-request"];
+      if (silentErrors.includes(code)) {
         setSigningIn(false);
         return;
       }
-      setAuthError("Ошибка входа. Попробуйте ещё раз.");
+      const errorMessages: Record<string, string> = {
+        "auth/popup-blocked": "Браузер заблокировал окно входа. Разрешите всплывающие окна.",
+        "auth/network-request-failed": "Проблема с интернетом. Проверьте подключение.",
+        "auth/unauthorized-domain": "Сайт не настроен для входа. Сообщите администратору.",
+        "auth/operation-not-allowed": "Вход через Google отключён. Сообщите администратору.",
+      };
+      setAuthError(errorMessages[code] ?? `Ошибка входа: ${code || "unknown"}`);
+      Sentry.captureException(e, {
+        tags: { auth_method: "google" },
+        extra: { code },
+      });
       console.error("Google sign-in error:", e);
       setSigningIn(false);
     }
@@ -60,7 +71,15 @@ export default function Home() {
     try {
       await signInAsGuest(trimmed);
     } catch (e) {
-      setAuthError("Не удалось войти. Проверьте соединение.");
+      const code = (e as { code?: string }).code ?? "";
+      const msg = code === "auth/network-request-failed"
+        ? "Проблема с интернетом. Проверьте подключение."
+        : `Не удалось войти: ${code || "unknown"}`;
+      setAuthError(msg);
+      Sentry.captureException(e, {
+        tags: { auth_method: "guest" },
+        extra: { code },
+      });
       console.error("Guest sign-in error:", e);
       setSigningIn(false);
     }

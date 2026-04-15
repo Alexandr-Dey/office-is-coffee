@@ -1,6 +1,6 @@
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
@@ -14,22 +14,32 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-function getApp(): FirebaseApp {
-  if (getApps().length) return getApps()[0];
-  return initializeApp(firebaseConfig);
+// Единственная точка инициализации Firebase — никаких повторных вызовов
+let _app: FirebaseApp | null = null;
+let _auth: Auth | null = null;
+let _db: Firestore | null = null;
+
+function getFirebaseApp(): FirebaseApp {
+  if (_app) return _app;
+  _app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  return _app;
 }
 
-// Lazy getters — safe for both SSR and client
-export function getFirebaseAuth() {
-  return getAuth(getApp());
+export function getFirebaseAuth(): Auth {
+  if (_auth) return _auth;
+  _auth = getAuth(getFirebaseApp());
+  return _auth;
 }
 
-export function getFirebaseDb() {
-  return getFirestore(getApp());
+export function getFirebaseDb(): Firestore {
+  if (_db) return _db;
+  _db = getFirestore(getFirebaseApp());
+  return _db;
 }
 
 export function getFirebaseRtdb() {
-  return getDatabase(getApp());
+  return getDatabase(getFirebaseApp());
 }
 
+// Один экземпляр — не пересоздаётся при каждом импорте
 export const googleProvider = new GoogleAuthProvider();
