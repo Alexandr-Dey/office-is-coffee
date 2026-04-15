@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter, notFound } from "next/navigation";
 import { motion } from "framer-motion";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import {
@@ -27,6 +28,7 @@ const spring = { type: "spring" as const, stiffness: 400, damping: 17 };
 export default function MenuItemDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const { addCartItem } = useCart();
   const { showToast } = useToast();
 
@@ -34,6 +36,18 @@ export default function MenuItemDetailPage() {
   const item = MENU_ITEMS.find(i => i.id === itemId);
 
   const [stopList, setStopList] = useState<StopList>({ items: [], modifiers: [] });
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Load favorites
+  useEffect(() => {
+    if (!user || !item) return;
+    getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
+      if (snap.exists()) {
+        const favs: string[] = snap.data().favoriteItems ?? [];
+        setIsFavorite(favs.includes(item.id));
+      }
+    }).catch(() => {});
+  }, [user, item]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
@@ -94,6 +108,20 @@ export default function MenuItemDetailPage() {
     setSelectedAddons(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
   };
 
+  const toggleFavorite = async () => {
+    if (!user) return;
+    const newVal = !isFavorite;
+    setIsFavorite(newVal);
+    const userRef = doc(getFirebaseDb(), "users", user.uid);
+    const snap = await getDoc(userRef).catch(() => null);
+    if (!snap || !snap.exists()) return;
+    const current: string[] = snap.data().favoriteItems ?? [];
+    const updated = newVal
+      ? [...current, item.id]
+      : current.filter(f => f !== item.id);
+    await updateDoc(userRef, { favoriteItems: updated }).catch(() => {});
+  };
+
   const handleAdd = () => {
     addCartItem({
       itemId: item.id,
@@ -126,12 +154,12 @@ export default function MenuItemDetailPage() {
           ←
         </button>
 
-        {/* Favorite placeholder */}
+        {/* Favorite */}
         <button
-          // ASSUMED: favourite logic будет подключена позже
+          onClick={toggleFavorite}
           className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg z-10"
         >
-          🤍
+          {isFavorite ? "❤️" : "🤍"}
         </button>
 
         {/* Stopped badge */}

@@ -127,9 +127,10 @@ interface RecentOrder {
   total: number;
 }
 
-function QuickOrderStrip({ onRepeat, onDetail }: {
+function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
   onRepeat: (items: CartItem[]) => void;
   onDetail: (item: MenuItem) => void;
+  favorites: string[];
 }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -173,7 +174,9 @@ function QuickOrderStrip({ onRepeat, onDetail }: {
     }).catch(() => {});
   }, [user]);
 
-  if (recentOrders.length === 0) return null;
+  const favoriteItems = MENU_ITEMS.filter(i => favorites.includes(i.id));
+
+  if (recentOrders.length === 0 && favoriteItems.length === 0) return null;
 
   const handleRepeat = (order: RecentOrder) => {
     const cartItems: CartItem[] = order.items.map(i => {
@@ -213,6 +216,26 @@ function QuickOrderStrip({ onRepeat, onDetail }: {
             <p className="text-sm font-bold mt-1">{formatPrice(order.total)} →</p>
           </motion.button>
         ))}
+        {favoriteItems.map((item) => {
+          const itemCat = getCategory(item.category);
+          const grad = GRADIENT_CLASSES[itemCat.gradient];
+          return (
+            <motion.button
+              key={item.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onDetail(item)}
+              className={`flex-shrink-0 w-32 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${grad}`}
+              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">{CAT_ICONS[item.category]}</span>
+                <span className="text-xs">❤️</span>
+              </div>
+              <p className="text-xs font-bold truncate mt-1">{item.name}</p>
+              <p className="text-[10px] text-white/70 mt-0.5">от {formatPrice(getMinPrice(item))}</p>
+            </motion.button>
+          );
+        })}
       </div>
     </section>
   );
@@ -403,6 +426,7 @@ export default function MenuPage() {
       <QuickOrderStrip
         onRepeat={(items) => setItems(items)}
         onDetail={(item) => openDetail(item)}
+        favorites={favorites}
       />
 
       {/* Search */}
