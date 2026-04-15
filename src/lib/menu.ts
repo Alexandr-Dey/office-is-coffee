@@ -53,7 +53,7 @@ export const SIZE_LABELS: Record<Size, string> = {
 export const GRADIENT_CLASSES: Record<Category['gradient'], string> = {
   green: 'from-[#1a7a44] to-[#2d9e5a]',
   pink: 'from-[#d42b4f] to-[#e85d7a]',
-  blue: 'from-[#0ea5e9] to-[#38bdf8]',
+  blue: 'from-[#0369a1] to-[#0ea5e9]',
   orange: 'from-[#f97316] to-[#fb923c]',
 };
 
