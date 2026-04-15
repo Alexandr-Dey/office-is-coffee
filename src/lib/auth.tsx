@@ -79,8 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let unsubUser: (() => void) | null = null;
+
     const auth = getFirebaseAuth();
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
+      // Clean up previous user listener
+      if (unsubUser) { unsubUser(); unsubUser = null; }
+
       setFirebaseUser(fbUser);
       if (!fbUser) {
         setUser(null);
@@ -136,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Listen to user doc for real-time role/profile updates
-      const unsubUser = onSnapshot(userRef, (userSnap) => {
+      unsubUser = onSnapshot(userRef, (userSnap) => {
         if (userSnap.exists()) {
           const data = userSnap.data();
           setUser({
@@ -163,10 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       });
 
-      return () => unsubUser();
     });
 
-    return () => unsubAuth();
+    return () => {
+      unsubAuth();
+      if (unsubUser) unsubUser();
+    };
   }, []);
 
   const signInWithGoogle = async () => {
