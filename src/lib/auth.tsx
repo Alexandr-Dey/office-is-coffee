@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn("getRedirectResult error:", err);
     });
 
-    const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       // Clean up previous user listener
       if (unsubUser) { unsubUser(); unsubUser = null; }
 
@@ -108,54 +108,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Оптимистичный user из Firebase Auth — показываем UI сразу,
+      // не дожидаясь Firestore. Роль/профиль подтянутся через onSnapshot.
+      const assignment = getAssignmentByEmail(fbUser.email);
+      setUser({
+        uid: fbUser.uid,
+        displayName: fbUser.displayName ?? "Гость",
+        email: fbUser.email ?? null,
+        role: assignment?.role ?? "client",
+        photoURL: fbUser.photoURL ?? null,
+        onboardingDone: false,
+        characterName: assignment?.characterName,
+      });
+      setLoading(false);
+
+      // Firestore sync — в фоне, не блокирует UI
       const db = getFirebaseDb();
       const userRef = doc(db, "users", fbUser.uid);
 
-      // Check email-based role assignment (baristas, CEO, etc.)
-      const assignment = getAssignmentByEmail(fbUser.email);
-
-      // Check if user doc exists, create if not
-      const snap = await getDoc(userRef).catch(() => null);
-      if (!snap || !snap.exists()) {
-        // First login — create user doc (with assigned role if applicable)
-        await setDoc(userRef, {
-          displayName: fbUser.displayName ?? "Гость",
-          email: fbUser.email ?? null,
-          photoURL: fbUser.photoURL ?? null,
-          role: assignment?.role ?? ("client" as Role),
-          ...(assignment?.characterName
-            ? { characterName: assignment.characterName }
-            : {}),
-          loyaltyCount: 0,
-          streak: 0,
-          lastOrderDate: null,
-          pushToken: null,
-          geolocationAllowed: false,
-          favoriteItem: null,
-          onboardingDone: false,
-          createdAt: new Date().toISOString(),
-        }).catch(() => {});
-      } else if (assignment) {
-        // Existing user but email is in assignments — sync role/character
-        const data = snap.data();
-        const needsUpdate =
-          data.role !== assignment.role ||
-          (assignment.characterName && data.characterName !== assignment.characterName);
-        if (needsUpdate) {
-          await setDoc(
-            userRef,
-            {
-              role: assignment.role,
-              ...(assignment.characterName
-                ? { characterName: assignment.characterName }
-                : {}),
-            },
-            { merge: true },
-          ).catch(() => {});
+      const syncFirestore = async () => {
+        const snap = await getDoc(userRef).catch(() => null);
+        if (!snap || !snap.exists()) {
+          await setDoc(userRef, {
+            displayName: fbUser.displayName ?? "Гость",
+            email: fbUser.email ?? null,
+            photoURL: fbUser.photoURL ?? null,
+            role: assignment?.role ?? ("client" as Role),
+            ...(assignment?.characterName
+              ? { characterName: assignment.characterName }
+              : {}),
+            loyaltyCount: 0,
+            streak: 0,
+            lastOrderDate: null,
+            pushToken: null,
+            geolocationAllowed: false,
+            favoriteItem: null,
+            onboardingDone: false,
+            createdAt: new Date().toISOString(),
+          }).catch(() => {});
+        } else if (assignment) {
+          const data = snap.data();
+          const needsUpdate =
+            data.role !== assignment.role ||
+            (assignment.characterName && data.characterName !== assignment.characterName);
+          if (needsUpdate) {
+            await setDoc(
+              userRef,
+              {
+                role: assignment.role,
+                ...(assignment.characterName
+                  ? { characterName: assignment.characterName }
+                  : {}),
+              },
+              { merge: true },
+            ).catch(() => {});
+          }
         }
-      }
+      };
 
-      // Listen to user doc for real-time role/profile updates
+      syncFirestore().catch(() => {});
+
+      // Real-time listener — обновит роль/профиль когда Firestore ответит
       unsubUser = onSnapshot(userRef, (userSnap) => {
         if (userSnap.exists()) {
           const data = userSnap.data();
@@ -169,18 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             characterName: data.characterName ?? undefined,
           });
         }
-        setLoading(false);
       }, () => {
-        // Firestore error — still set user with minimal info
-        setUser({
-          uid: fbUser.uid,
-          displayName: fbUser.displayName ?? "Гость",
-          email: fbUser.email ?? null,
-          role: "client",
-          photoURL: fbUser.photoURL ?? null,
-          onboardingDone: false,
-        });
-        setLoading(false);
+        // Firestore error — оптимистичный user уже установлен, ничего не делаем
       });
 
     });
