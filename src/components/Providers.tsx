@@ -1,13 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
-import { initMixpanel, trackEvent } from "@/lib/mixpanel";
+import type { ReactNode } from "react";
 
 export default function Providers({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    initMixpanel();
-    trackEvent("app_loaded");
-  }, []);
-
   return <>{children}</>;
 }

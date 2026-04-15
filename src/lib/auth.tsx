@@ -73,6 +73,9 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// Таймаут на случай если Firebase SDK зависнет (чистый storage, IndexedDB заблокирован, etc.)
+const AUTH_TIMEOUT_MS = 6000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -80,9 +83,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let unsubUser: (() => void) | null = null;
+    let resolved = false;
 
-    const auth = getFirebaseAuth();
+    // Safety timeout: если onAuthStateChanged не ответит за AUTH_TIMEOUT_MS → показать форму
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        console.warn(`Auth timeout: onAuthStateChanged did not fire in ${AUTH_TIMEOUT_MS}ms`);
+        resolved = true;
+        setLoading(false);
+      }
+    }, AUTH_TIMEOUT_MS);
+
+    let auth;
+    try {
+      auth = getFirebaseAuth();
+    } catch (e) {
+      console.error("Firebase Auth init failed:", e);
+      clearTimeout(timeout);
+      resolved = true;
+      setLoading(false);
+      return;
+    }
+
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
+      resolved = true;
+      clearTimeout(timeout);
+
       // Clean up previous user listener
       if (unsubUser) { unsubUser(); unsubUser = null; }
 
@@ -171,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      clearTimeout(timeout);
       unsubAuth();
       if (unsubUser) unsubUser();
     };
