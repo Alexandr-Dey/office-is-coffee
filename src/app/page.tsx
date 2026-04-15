@@ -15,7 +15,7 @@ const fadeUp = {
 const stagger = { animate: { transition: { staggerChildren: 0.15 } } };
 
 export default function Home() {
-  const { user, loading, signInWithGoogle, signInAsGuest } = useAuth();
+  const { user, loading, connectionError, signInWithGoogle, signInAsGuest } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
   const [guestName, setGuestName] = useState("");
@@ -85,7 +85,31 @@ export default function Home() {
     }
   };
 
-  if (loading || user) {
+  if (loading && !connectionError) {
+    return (
+      <main className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" />
+      </main>
+    );
+  }
+
+  if (connectionError && !user) {
+    return (
+      <main className="min-h-screen bg-brand-bg flex items-center justify-center px-6">
+        <div className="text-center max-w-sm">
+          <p className="text-5xl mb-4">☕</p>
+          <h2 className="font-display text-xl font-bold text-brand-text mb-2">Не удалось подключиться</h2>
+          <p className="text-sm text-brand-text/60 mb-6">Проверьте интернет и попробуйте снова</p>
+          <button onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-brand-dark text-white font-bold rounded-xl">
+            Повторить
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (user) {
     return (
       <main className="min-h-screen bg-brand-bg flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" />

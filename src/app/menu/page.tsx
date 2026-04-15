@@ -91,25 +91,25 @@ function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
           Нет в наличии
         </span>
       )}
-      <div className="text-3xl mb-2">{icon}</div>
-      <span className="font-semibold text-sm">{item.name}</span>
+      <div className="text-3xl mb-2 drop-shadow-sm">{icon}</div>
+      <span className="font-semibold text-sm drop-shadow-sm">{item.name}</span>
       {item.description && !stopped && (
         <p className="text-xs text-white/60 line-clamp-1 mt-0.5">{item.description}</p>
       )}
       {sizes.length > 1 && !stopped && (
         <div className="flex gap-1 mb-1 mt-1">
           {sizes.map(s => (
-            <span key={s} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-white/30 text-white">{s}</span>
+            <span key={s} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-white/40 text-white drop-shadow-sm">{s}</span>
           ))}
         </div>
       )}
       <div className="mt-auto flex items-center justify-between pt-2">
-        <span className="font-bold text-white">от {formatPrice(getMinPrice(item))}</span>
+        <span className="font-bold text-white drop-shadow-sm">от {formatPrice(getMinPrice(item))}</span>
         {!stopped && (
           <motion.button whileTap={{ scale: 0.85 }} onClick={handleQuickAdd}
             aria-label={`Добавить ${item.name} в корзину`}
             className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-              added ? "bg-white text-green-600" : "bg-white/25 text-white hover:bg-white/40"
+              added ? "bg-white text-green-600" : "bg-white/40 text-white hover:bg-white/60"
             }`}>{added ? "✓" : "+"}</motion.button>
         )}
       </div>

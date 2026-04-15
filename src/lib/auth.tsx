@@ -57,6 +57,7 @@ interface AuthContextValue {
   user: AppUser | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
+  connectionError: boolean;
   signInWithGoogle: () => Promise<void>;
   signInAsGuest: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -66,6 +67,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   firebaseUser: null,
   loading: true,
+  connectionError: false,
   signInWithGoogle: async () => {},
   signInAsGuest: async () => {},
   signOut: async () => {},
@@ -79,9 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
     let unsubUser: (() => void) | null = null;
+    let didFire = false;
 
     let auth;
     try {
@@ -89,8 +93,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error("Firebase Auth init failed:", e);
       setLoading(false);
+      setConnectionError(true);
       return;
     }
+
+    // Safety timeout: если onAuthStateChanged не сработал за 15с — показать ошибку
+    const safetyTimeout = setTimeout(() => {
+      if (!didFire) {
+        console.warn("Auth: onAuthStateChanged did not fire in 15s");
+        setLoading(false);
+        setConnectionError(true);
+      }
+    }, 15000);
 
     // Обработка возврата из signInWithRedirect (мобильный flow)
     getRedirectResult(auth).catch((err) => {
@@ -98,6 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+      didFire = true;
+      clearTimeout(safetyTimeout);
+      setConnectionError(false);
       // Clean up previous user listener
       if (unsubUser) { unsubUser(); unsubUser = null; }
 
@@ -189,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      clearTimeout(safetyTimeout);
       unsubAuth();
       if (unsubUser) unsubUser();
     };
@@ -244,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, firebaseUser, loading, signInWithGoogle, signInAsGuest, signOut }}
+      value={{ user, firebaseUser, loading, connectionError, signInWithGoogle, signInAsGuest, signOut }}
     >
       {children}
     </AuthContext.Provider>
