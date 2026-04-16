@@ -13,7 +13,7 @@ import type { CartItem } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 import { useCart } from "@/lib/cart";
 import {
-  CATEGORIES, MENU_ITEMS, GRADIENT_CLASSES,
+  CATEGORIES, MENU_ITEMS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
   type MenuItem, type StopList, type CategoryId,
   getCategory, getAvailableSizes, getDefaultSize, getMinPrice, formatPrice,
   normalizeStopList,
@@ -79,7 +79,7 @@ function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
       transition={{ delay: idx * 0.06 }}
       onClick={stopped ? undefined : onDetail}
       aria-label={`${item.name}, от ${getMinPrice(item)} ₸`}
-      className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow relative bg-white border border-[#d0f0e0] ${
+      className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow relative ${PASTEL_BG[cat.gradient]} border ${PASTEL_BORDER[cat.gradient]} ${
         stopped ? "opacity-50 grayscale cursor-not-allowed" : ""
       }`}
       style={{ boxShadow: "0 2px 12px rgba(30,120,70,0.06)" }}
@@ -168,7 +168,7 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
         const mods = items[0].modifiers;
         const sub = mods && mods.length > 0 ? mods.map(m => m.name).join(", ") : "";
         unique.push({ key, label, sub, items, total: (d.total as number) ?? 0 });
-        if (unique.length >= 3) break;
+        if (unique.length >= 1) break;
       }
       setRecentOrders(unique);
     }).catch(() => {});

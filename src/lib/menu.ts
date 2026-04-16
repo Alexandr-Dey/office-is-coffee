@@ -49,12 +49,27 @@ export const SIZE_LABELS: Record<Size, string> = {
   L: '450 мл',
 };
 
-// ═══ GRADIENT MAP ═══
+// ═══ GRADIENT MAP — насыщенные, для иконок/heroes ═══
 export const GRADIENT_CLASSES: Record<Category['gradient'], string> = {
   green: 'from-[#1a7a44] to-[#2d9e5a]',
   pink: 'from-[#d42b4f] to-[#e85d7a]',
   blue: 'from-[#0369a1] to-[#0ea5e9]',
   orange: 'from-[#f97316] to-[#fb923c]',
+};
+
+// ═══ PASTEL TINTS — едва заметные оттенки фона карточек ═══
+export const PASTEL_BG: Record<Category['gradient'], string> = {
+  green: 'bg-[#f0faf3]',  // едва-зелёный
+  pink: 'bg-[#fdf2f4]',   // едва-розовый
+  blue: 'bg-[#eff8fc]',   // едва-голубой
+  orange: 'bg-[#fff5ec]', // едва-персиковый
+};
+
+export const PASTEL_BORDER: Record<Category['gradient'], string> = {
+  green: 'border-[#d0f0e0]',
+  pink: 'border-[#f5d8de]',
+  blue: 'border-[#cfe5f0]',
+  orange: 'border-[#fadcc0]',
 };
 
 // ═══ CATEGORIES ═══
