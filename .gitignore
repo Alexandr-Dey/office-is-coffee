@@ -43,3 +43,9 @@ next-env.d.ts
 *-firebase-adminsdk-*.json
 service-account.json
 functions/node_modules/
+.env
+lighthouse-report.html
+e2e/screenshots/
+playwright-report/
+test-results/
+.claude/worktrees/
