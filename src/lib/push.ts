@@ -127,7 +127,7 @@ export async function trackPushOpened(): Promise<void> {
     const functions = getFunctions(getApps()[0]);
     const fn = httpsCallable(functions, "trackPushOpened");
     await fn({ pushLogId: pushId });
-    console.log("trackPushOpened: sent for", pushId);
+    // trackPushOpened sent
   } catch (e) {
     console.warn("trackPushOpened failed:", e);
   }

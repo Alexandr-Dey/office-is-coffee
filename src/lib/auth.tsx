@@ -97,19 +97,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Safety timeout: если onAuthStateChanged не сработал за 15с — показать ошибку
+    // Safety timeout: если onAuthStateChanged не сработал за 8с — показать ошибку.
+    // Обычно срабатывает <1с, 8с — большой запас даже для медленного соединения.
     const safetyTimeout = setTimeout(() => {
       if (!didFire) {
-        console.warn("Auth: onAuthStateChanged did not fire in 15s");
+        console.warn("Auth: onAuthStateChanged did not fire in 8s");
         setLoading(false);
         setConnectionError(true);
       }
-    }, 15000);
+    }, 8000);
 
-    // Обработка возврата из signInWithRedirect (мобильный flow)
-    getRedirectResult(auth).catch((err) => {
-      console.warn("getRedirectResult error:", err);
-    });
+    // Обработка возврата из signInWithRedirect (мобильный flow).
+    // При Safari Private Mode / отключённом storage может бросить —
+    // не блокируем основной flow, onAuthStateChanged всё равно сработает.
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          trackEvent("User Signed Up", { method: "google" });
+          identifyUser(result.user.uid, {
+            $name: result.user.displayName,
+            $email: result.user.email,
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("getRedirectResult error:", err);
+      });
 
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       didFire = true;
@@ -214,29 +227,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const auth = getFirebaseAuth();
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isMobile = typeof navigator !== "undefined"
+      && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
       // Redirect flow — стабильнее на мобилках (Safari, in-app browsers)
       await signInWithRedirect(auth, googleProvider);
-      // Страница перезагрузится, getRedirectResult обработает результат
-    } else {
-      const result = await signInWithPopup(auth, googleProvider);
-      trackEvent("User Signed Up", { method: "google" });
-      if (result.user) {
-        identifyUser(result.user.uid, {
-          $name: result.user.displayName,
-          $email: result.user.email,
-        });
-      }
+      return;
+    }
+    const result = await signInWithPopup(auth, googleProvider);
+    trackEvent("User Signed Up", { method: "google" });
+    if (result.user) {
+      identifyUser(result.user.uid, {
+        $name: result.user.displayName,
+        $email: result.user.email,
+      });
     }
   };
 
   const signInAsGuest = async (name: string) => {
     const auth = getFirebaseAuth();
     const result = await signInAnonymously(auth);
+    // setDoc — не блокирует ответ. AuthContext всё равно подтянет данные через onSnapshot.
     const db = getFirebaseDb();
     const userRef = doc(db, "users", result.user.uid);
-    await setDoc(userRef, {
+    setDoc(userRef, {
       displayName: name.trim() || "Гость",
       email: null,
       photoURL: null,
@@ -249,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       favoriteItem: null,
       onboardingDone: false,
       createdAt: new Date().toISOString(),
-    }, { merge: true });
+    }, { merge: true }).catch(() => {});
     trackEvent("User Signed Up", { method: "guest" });
     identifyUser(result.user.uid, { $name: name.trim() || "Гость" });
   };

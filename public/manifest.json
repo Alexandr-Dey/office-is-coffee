@@ -3,11 +3,17 @@
   "short_name": "LiC",
   "description": "Заказывай кофе, копи монеты, получай каждый 8-й бесплатно",
   "start_url": "/menu",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f2fdf6",
   "theme_color": "#1a7a44",
+  "lang": "ru",
+  "dir": "ltr",
+  "categories": ["food", "lifestyle"],
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
