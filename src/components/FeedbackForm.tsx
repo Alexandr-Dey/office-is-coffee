@@ -6,8 +6,8 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 
-const MIN_LEN = 10;
-const MAX_LEN = 1000;
+const MIN_LEN = 1;
+const MAX_LEN = 2000;
 
 export default function FeedbackForm() {
   const { user } = useAuth();
@@ -20,7 +20,11 @@ export default function FeedbackForm() {
   const submit = async () => {
     const text = message.trim();
     if (text.length < MIN_LEN) {
-      setError(`Минимум ${MIN_LEN} символов`);
+      setError("Напишите хотя бы что-то");
+      return;
+    }
+    if (text.length > MAX_LEN) {
+      setError(`Слишком длинно (макс ${MAX_LEN} символов)`);
       return;
     }
     if (!user) {
@@ -88,7 +92,7 @@ export default function FeedbackForm() {
           onChange={(e) => { setMessage(e.target.value); if (error) setError(""); }}
           placeholder="Напишите что улучшить, что сломалось или что вам понравилось..."
           rows={4}
-          maxLength={MAX_LEN + 100}
+          maxLength={MAX_LEN}
           className={`w-full px-4 py-3 rounded-xl border outline-none text-sm text-brand-text bg-brand-bg resize-none ${
             error || tooLong
               ? "border-red-300 focus:border-red-400"
