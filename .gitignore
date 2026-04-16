@@ -43,3 +43,4 @@ next-env.d.ts
 *-firebase-adminsdk-*.json
 service-account.json
 functions/node_modules/
+.claude/worktrees/

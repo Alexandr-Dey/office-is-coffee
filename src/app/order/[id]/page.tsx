@@ -141,6 +141,11 @@ export default function OrderWaitPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
 
+  // Стабильная ссылка на showToast — чтобы useEffect не пересоздавал onSnapshot
+  // listener при каждом рендере родителя.
+  const showToastRef = useRef(showToast);
+  useEffect(() => { showToastRef.current = showToast; }, [showToast]);
+
   // Check push permission state
   useEffect(() => {
     if (!("Notification" in window)) { setPushState("denied"); return; }
@@ -167,9 +172,9 @@ export default function OrderWaitPage() {
         if (!snap.exists()) { setNotFound(true); return; }
         const data = snap.data() as OrderData;
         if (prevStatus.current && prevStatus.current !== data.status) {
-          if (data.status === "accepted") showToast("☕ Ваш кофе готовится!", "info");
+          if (data.status === "accepted") showToastRef.current("☕ Ваш кофе готовится!", "info");
           else if (data.status === "ready") {
-            showToast("✅ Ваш кофе готов! Заберите у стойки", "success");
+            showToastRef.current("✅ Ваш кофе готов! Заберите у стойки", "success");
             feedbackTimer.current = setTimeout(() => setShowFeedback(true), 120000);
           }
         }
@@ -179,7 +184,7 @@ export default function OrderWaitPage() {
       () => setNotFound(true),
     );
     return () => { unsub(); clearTimeout(feedbackTimer.current); };
-  }, [orderId, showToast]);
+  }, [orderId]);
 
   const dismissFeedback = useCallback(() => setShowFeedback(false), []);
 

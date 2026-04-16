@@ -62,6 +62,33 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
   const orderRef = event.data.ref;
   const userId = data.userId;
 
+  // Defense in depth: валидация total и items
+  const items = Array.isArray(data.items) ? data.items : [];
+  if (items.length === 0) {
+    await orderRef.update({ status: "cancelled", cancelReason: "Пустой заказ" });
+    return;
+  }
+  // Recompute total из items
+  const computedTotal = items.reduce((sum, i) => {
+    const tp = typeof i.totalPrice === "number" ? i.totalPrice
+             : typeof i.price === "number" ? i.price : 0;
+    const qty = typeof i.qty === "number" && i.qty > 0 ? i.qty : 1;
+    return sum + tp * qty;
+  }, 0);
+  // Допуск 1₸ на округление; если клиент прислал меньше — отклоняем
+  if (typeof data.total !== "number" || data.total < 0 || data.total > computedTotal + 1) {
+    await orderRef.update({
+      status: "cancelled",
+      cancelReason: `Несоответствие total (${data.total} vs ${computedTotal})`,
+    });
+    return;
+  }
+  // Sanity cap: один заказ не должен превышать 100,000₸
+  if (computedTotal > 100000) {
+    await orderRef.update({ status: "cancelled", cancelReason: "Слишком большая сумма" });
+    return;
+  }
+
   // Auto-transition new → pending
   await orderRef.update({ status: "pending" });
 
@@ -197,16 +224,26 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
 
   /* ── ready → bonus + push client ── */
   if (after.status === "ready") {
-    // Barista bonus (+5₸) only if not free
-    if (!after.isFreeByLoyalty) {
+    // Barista bonus (+5₸) только если не бесплатный И ещё не начислялся
+    // (защита от повторного срабатывания при ready→pending→ready)
+    if (!after.isFreeByLoyalty && !after.bonusAwardedAt) {
       const baristaId = after.baristaid;
       if (baristaId) {
         const bonusRef = db.collection("barista_bonuses").doc(baristaId);
+        const orderRef = event.data.after.ref;
         await db.runTransaction(async (tx) => {
+          // Проверяем флаг на самом order (атомарно)
+          const orderSnap = await tx.get(orderRef);
+          if (orderSnap.exists && orderSnap.data().bonusAwardedAt) return;
+
           const bonusSnap = await tx.get(bonusRef);
           if (bonusSnap.exists) {
             const history = bonusSnap.data().history || [];
-            if (history.some((h) => h.orderId === orderId)) return;
+            if (history.some((h) => h.orderId === orderId)) {
+              // Бэкап-проверка: уже в истории — только проставляем флаг
+              tx.update(orderRef, { bonusAwardedAt: new Date().toISOString() });
+              return;
+            }
             tx.update(bonusRef, {
               totalBonus: FieldValue.increment(5),
               pendingPayout: FieldValue.increment(5),
@@ -218,8 +255,11 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
               history: [{ orderId, amount: 5, date: new Date().toISOString() }],
             });
           }
+          tx.update(orderRef, {
+            baristaBonus: 5,
+            bonusAwardedAt: new Date().toISOString(),
+          });
         });
-        await event.data.after.ref.update({ baristaBonus: 5 });
       }
     }
 

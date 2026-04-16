@@ -42,6 +42,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (authLoading || !user) { setLoading(false); return; }
+    let cancelled = false;
     const q = query(
       collection(getFirebaseDb(), "orders"),
       fbWhere("userId", "==", user.uid),
@@ -49,19 +50,23 @@ export default function OrdersPage() {
       limit(30),
     );
     const unsub = onSnapshot(q, (snap) => {
+      if (cancelled) return;
       setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) })));
       setLoading(false);
     }, (err) => {
+      if (cancelled) return;
       console.error("Orders query error:", err.message);
       // Fallback: if index missing, try without orderBy
       if (err.message.includes("index")) {
         import("firebase/firestore").then(({ getDocs }) => {
+          if (cancelled) return;
           const fallbackQ = query(
             collection(getFirebaseDb(), "orders"),
             fbWhere("userId", "==", user!.uid),
             limit(30),
           );
           getDocs(fallbackQ).then((snap) => {
+            if (cancelled) return;
             const list = snap.docs
               .map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) }))
               .sort((a, b) => {
@@ -71,13 +76,13 @@ export default function OrdersPage() {
               });
             setOrders(list);
             setLoading(false);
-          }).catch(() => setLoading(false));
+          }).catch(() => { if (!cancelled) setLoading(false); });
         });
       } else {
         setLoading(false);
       }
     });
-    return () => unsub();
+    return () => { cancelled = true; unsub(); };
   }, [user, authLoading]);
 
   const repeatOrder = (items: OrderItem[]) => {
@@ -86,15 +91,16 @@ export default function OrdersPage() {
       if (i.milk && i.milk !== "Стандарт") {
         modifiers.unshift({ id: i.milk, name: i.milk, price: 0 });
       }
-      const cartKey = `${i.name}__${i.size}__${modifiers.map(m => m.id).sort().join(',')}`;
+      const itemId = i.name;
+      const cartKey = `${itemId}__${i.size}__${modifiers.map(m => m.id).sort().join(',')}`;
       return {
-        itemId: i.name,
+        itemId,
         name: i.name,
-        category: '',
+        category: 'coffee_classic', // legacy: дефолт чтобы не падало в getCategory()
         size: i.size,
-        basePrice: i.price,
+        basePrice: i.price ?? 0,
         modifiers,
-        totalPrice: i.price,
+        totalPrice: i.price ?? 0,
         qty: i.qty,
         cartKey,
       };

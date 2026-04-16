@@ -10,7 +10,7 @@ import { useCart } from "@/lib/cart";
 import confetti from "canvas-confetti";
 import { trackEvent } from "@/lib/mixpanel";
 import type { CartItem } from "@/lib/types";
-import { formatPrice } from "@/lib/menu";
+import { formatPrice, MENU_ITEMS } from "@/lib/menu";
 
 export default function OrderPage() {
   const { user } = useAuth();
@@ -24,22 +24,30 @@ export default function OrderPage() {
   const [depositBalance, setDepositBalance] = useState(0);
   const [cafeOpen, setCafeOpen] = useState(true);
   const [orderError, setOrderError] = useState("");
+  const [loyaltyLoaded, setLoyaltyLoaded] = useState(false);
 
   useEffect(() => {
     if (user?.displayName) setName(user.displayName);
 
+    let cancelled = false;
     if (user) {
+      // Лояльность нужно загрузить ДО создания заказа — чтобы isFree был корректным
       getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
+        if (cancelled) return;
         if (snap.exists() && snap.data().loyaltyCount === 7) setIsFree(true);
-      }).catch(() => {});
+        setLoyaltyLoaded(true);
+      }).catch(() => { if (!cancelled) setLoyaltyLoaded(true); });
       getDoc(doc(getFirebaseDb(), "deposits", user.uid)).then((snap) => {
+        if (cancelled) return;
         if (snap.exists()) setDepositBalance(snap.data().balance ?? 0);
       }).catch(() => {});
+    } else {
+      setLoyaltyLoaded(true); // anon — не нужно ждать
     }
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
-      if (snap.exists()) setCafeOpen(snap.data().isOpen ?? true);
+      if (!cancelled && snap.exists()) setCafeOpen(snap.data().isOpen ?? true);
     }, () => {});
-    return () => unsub();
+    return () => { cancelled = true; unsub(); };
   }, [user]);
 
   const total = isFree ? 0 : cart.reduce((s, i) => s + i.totalPrice * i.qty, 0);
@@ -54,6 +62,13 @@ export default function OrderPage() {
       setOrderError("Для оплаты депозитом нужно войти через Google");
       return;
     }
+    // Валидация: все позиции должны быть в актуальном меню
+    const invalidItem = cart.find(i => !MENU_ITEMS.find(m => m.id === i.itemId));
+    if (invalidItem) {
+      setOrderError(`«${invalidItem.name}» больше нет в меню. Удали из корзины и обнови страницу.`);
+      return;
+    }
+
     setOrderError("");
     setSending(true);
     try {
@@ -233,7 +248,7 @@ export default function OrderPage() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             onClick={handleConfirm}
-            disabled={sending || !cafeOpen || (payMethod === "deposit" && depositBalance < total && !isFree)}
+            disabled={sending || !cafeOpen || !loyaltyLoaded || (payMethod === "deposit" && depositBalance < total && !isFree)}
             className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all min-h-[44px] ${
               sending ? "bg-brand-mid/50 text-white cursor-wait" : "bg-brand-dark text-white hover:shadow-xl disabled:opacity-50"
             }`}>

@@ -38,7 +38,8 @@ export default function CoinsPage() {
       setDataLoading(false);
     }, () => { setDataLoading(false); });
 
-    // Load last orders for history
+    // Load last orders for history (с защитой от setState после unmount)
+    let cancelled = false;
     const q = query(
       collection(getFirebaseDb(), "orders"),
       where("userId", "==", user.uid),
@@ -46,6 +47,7 @@ export default function CoinsPage() {
       limit(8)
     );
     getDocs(q).then((snap) => {
+      if (cancelled) return;
       const sorted = snap.docs
         .map(d => d.data())
         .sort((a, b) => {
@@ -62,7 +64,7 @@ export default function CoinsPage() {
       })));
     }).catch(() => {});
 
-    return () => unsub();
+    return () => { cancelled = true; unsub(); };
   }, [user]);
 
   const cups = Array.from({ length: 8 }, (_, i) => i < loyaltyCount);

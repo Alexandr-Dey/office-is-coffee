@@ -36,18 +36,24 @@ export default function MenuItemDetailPage() {
   const itemId = params.id as string;
   const item = MENU_ITEMS.find(i => i.id === itemId);
 
+  // ВСЕ хуки ВЫШЕ early return — иначе rules-of-hooks нарушение
   const [stopList, setStopList] = useState<StopList>({ items: [], modifiers: [] });
   const [isFavorite, setIsFavorite] = useState(false);
+  const [size, setSize] = useState<Size>(item ? getDefaultSize(item) : 'M');
+  const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
+  const [selectedSyrups, setSelectedSyrups] = useState<string[]>([]);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 
   // Load favorites
   useEffect(() => {
     if (!user || !item) return;
+    let cancelled = false;
     getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
-      if (snap.exists()) {
-        const favs: string[] = snap.data().favoriteItems ?? [];
-        setIsFavorite(favs.includes(item.id));
-      }
+      if (cancelled || !snap.exists()) return;
+      const favs: string[] = snap.data().favoriteItems ?? [];
+      setIsFavorite(favs.includes(item.id));
     }).catch(() => {});
+    return () => { cancelled = true; };
   }, [user, item]);
 
   useEffect(() => {
@@ -59,6 +65,7 @@ export default function MenuItemDetailPage() {
 
   if (!item) {
     notFound();
+    return null; // notFound() бросает, но TS этого не знает
   }
 
   const cat = getCategory(item.category);
@@ -66,11 +73,6 @@ export default function MenuItemDetailPage() {
   const icon = CAT_ICONS[item.category];
   const sizes = getAvailableSizes(item);
   const isStopped = stopList.items.includes(item.id);
-
-  const [size, setSize] = useState<Size>(getDefaultSize(item));
-  const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
-  const [selectedSyrups, setSelectedSyrups] = useState<string[]>([]);
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 
   const allModifiers = getModifiersForCategory(item.category)
     .filter(m => !stopList.modifiers.includes(m.id));

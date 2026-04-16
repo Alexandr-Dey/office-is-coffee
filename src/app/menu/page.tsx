@@ -14,9 +14,9 @@ import { useToast } from "@/components/Toast";
 import { useCart } from "@/lib/cart";
 import {
   CATEGORIES, MENU_ITEMS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
-  type MenuItem, type StopList, type CategoryId,
+  type MenuItem, type StopList, type CategoryId, type Size,
   getCategory, getAvailableSizes, getDefaultSize, getMinPrice, formatPrice,
-  normalizeStopList,
+  normalizeStopList, makeCartKey,
 } from "@/lib/menu";
 import { getDailyCookie, isCookieCollectedToday } from "@/lib/dailyCookie";
 import { COOKIE_FACTS, type CookieFact } from "@/lib/cookieFacts";
@@ -181,11 +181,15 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
   const handleRepeat = (order: RecentOrder) => {
     const cartItems: CartItem[] = order.items.map(i => {
       const mods = i.modifiers ?? [];
-      const cartKey = `${i.itemId ?? i.name}__${i.size}__${mods.map(m => m.id).sort().join(',')}`;
+      const itemId = i.itemId ?? i.name;
+      // Подтягиваем актуальную категорию из MENU_ITEMS если в legacy-заказе её нет
+      const menuMatch = MENU_ITEMS.find(m => m.id === itemId);
+      const category = i.category ?? menuMatch?.category ?? 'coffee_classic';
+      const cartKey = makeCartKey(itemId, i.size as Size, mods.map(m => m.id));
       return {
-        itemId: i.itemId ?? i.name,
+        itemId,
         name: i.name,
-        category: i.category ?? '',
+        category,
         size: i.size,
         basePrice: i.basePrice ?? i.totalPrice ?? i.price ?? 0,
         modifiers: mods,

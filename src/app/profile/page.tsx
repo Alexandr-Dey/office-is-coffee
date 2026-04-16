@@ -317,50 +317,47 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     const unsubs: Array<() => void> = [];
     unsubs.push(onSnapshot(doc(getFirebaseDb(), "users", user.uid), (snap) => {
-      if (snap.exists()) {
-        setStreak(snap.data().streak ?? 0);
-        setLoyaltyCount(snap.data().loyaltyCount ?? 0);
-        setGeoPermission(snap.data().geolocationAllowed ?? false);
-        setCookiesCount(snap.data().cookiesCount ?? 0);
-        setPendingCookie(snap.data().pendingCookie ?? false);
-      }
+      if (cancelled || !snap.exists()) return;
+      setStreak(snap.data().streak ?? 0);
+      setLoyaltyCount(snap.data().loyaltyCount ?? 0);
+      setGeoPermission(snap.data().geolocationAllowed ?? false);
+      setCookiesCount(snap.data().cookiesCount ?? 0);
+      setPendingCookie(snap.data().pendingCookie ?? false);
     }, () => {}));
     unsubs.push(onSnapshot(doc(getFirebaseDb(), "deposits", user.uid), (snap) => {
-      if (snap.exists()) {
-        setDepositBalance(snap.data().balance ?? 0);
-        setDepositHistory((snap.data().history ?? []) as DepositHistoryEntry[]);
-      }
+      if (cancelled || !snap.exists()) return;
+      setDepositBalance(snap.data().balance ?? 0);
+      setDepositHistory((snap.data().history ?? []) as DepositHistoryEntry[]);
     }, () => {}));
-    // Barista bonuses
     if (user.role === "barista" || user.role === "ceo") {
       unsubs.push(onSnapshot(doc(getFirebaseDb(), "barista_bonuses", user.uid), (snap) => {
-        if (snap.exists()) {
-          const d = snap.data();
-          setBonus({ totalBonus: d.totalBonus ?? 0, pendingPayout: d.pendingPayout ?? 0, payoutRequested: d.payoutRequested ?? false });
-        }
+        if (cancelled || !snap.exists()) return;
+        const d = snap.data();
+        setBonus({ totalBonus: d.totalBonus ?? 0, pendingPayout: d.pendingPayout ?? 0, payoutRequested: d.payoutRequested ?? false });
       }, () => {}));
-      // Hearts today — load by baristaCharacter field or show total for CEO
       const today = new Date().toISOString().slice(0, 10);
       getDoc(doc(getFirebaseDb(), "users", user.uid)).then(async (userSnap) => {
+        if (cancelled) return;
         const character = userSnap.exists() ? userSnap.data().baristaCharacter : null;
         if (character === "vitaliy" || character === "aslan") {
-          // Specific barista — show their hearts
           const snap = await getDoc(doc(getFirebaseDb(), "barista_hearts", `${character}_${today}`));
+          if (cancelled) return;
           setHeartsToday(snap.exists() ? snap.data().count ?? 0 : 0);
         } else {
-          // CEO or unassigned — show total
           const [vSnap, aSnap] = await Promise.all([
             getDoc(doc(getFirebaseDb(), "barista_hearts", `vitaliy_${today}`)),
             getDoc(doc(getFirebaseDb(), "barista_hearts", `aslan_${today}`)),
           ]);
+          if (cancelled) return;
           setHeartsToday((vSnap.exists() ? vSnap.data().count ?? 0 : 0) + (aSnap.exists() ? aSnap.data().count ?? 0 : 0));
         }
       }).catch(() => {});
     }
-    return () => unsubs.forEach(u => u());
-  }, [user]);
+    return () => { cancelled = true; unsubs.forEach(u => u()); };
+  }, [user, user?.role]);
 
   useEffect(() => {
     const ua = navigator.userAgent;
