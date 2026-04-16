@@ -208,6 +208,15 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'shake_coconut',    name: 'Кокосовый',   category: 'milkshake', prices: { M: 1450 }, countsForLoyalty: false },
 ];
 
+// ═══ COLD CATEGORIES — сироп бесплатен ═══
+export const COLD_CATEGORIES: ReadonlySet<CategoryId> = new Set<CategoryId>([
+  'ice_coffee', 'ice_tea', 'lemonade', 'fresh', 'smoothie', 'milkshake',
+]);
+
+export function isColdCategory(cat: CategoryId): boolean {
+  return COLD_CATEGORIES.has(cat);
+}
+
 // ═══ UTILITIES ═══
 
 export function getCategory(id: CategoryId): Category {

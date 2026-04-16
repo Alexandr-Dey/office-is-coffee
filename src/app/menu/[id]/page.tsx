@@ -13,6 +13,7 @@ import {
   type MenuItem, type Modifier, type Size, type StopList, type CategoryId,
   getCategory, getModifiersForCategory, getAvailableSizes,
   getDefaultSize, formatPrice, normalizeStopList, calculateItemTotal,
+  isColdCategory,
 } from "@/lib/menu";
 
 /* ═══ CATEGORY ICONS ═══ */
@@ -84,6 +85,9 @@ export default function MenuItemDetailPage() {
 
   const basePrice = item.prices[size] ?? 0;
 
+  // Сироп бесплатен в холодных напитках
+  const syrupIsFree = isColdCategory(item.category);
+
   const chosenModifiers: Modifier[] = [];
   if (selectedMilk) {
     const milk = milkOptions.find(m => m.id === selectedMilk);
@@ -91,7 +95,7 @@ export default function MenuItemDetailPage() {
   }
   for (const id of selectedSyrups) {
     const s = syrupOptions.find(m => m.id === id);
-    if (s) chosenModifiers.push(s);
+    if (s) chosenModifiers.push(syrupIsFree ? { ...s, price: 0 } : s);
   }
   for (const id of selectedAddons) {
     const a = addonOptions.find(m => m.id === id);
@@ -273,7 +277,9 @@ export default function MenuItemDetailPage() {
             transition={{ ...spring, delay: 0.18 }}
             className="px-6 mt-6"
           >
-            <p className="text-xs font-bold text-brand-text/50 uppercase tracking-wider mb-3">Сироп</p>
+            <p className="text-xs font-bold text-brand-text/50 uppercase tracking-wider mb-3">
+              Сироп{syrupIsFree && <span className="ml-2 text-brand-mint normal-case font-medium">бесплатно ❄️</span>}
+            </p>
             <div className="flex flex-wrap gap-2">
               {syrupOptions.map(m => (
                 <button
@@ -286,7 +292,7 @@ export default function MenuItemDetailPage() {
                   }`}
                 >
                   {m.name}
-                  <span className="text-xs opacity-60 ml-1">+{formatPrice(m.price)}</span>
+                  {!syrupIsFree && <span className="text-xs opacity-60 ml-1">+{formatPrice(m.price)}</span>}
                 </button>
               ))}
             </div>
