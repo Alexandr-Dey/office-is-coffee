@@ -98,13 +98,14 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
-    // feedback — клиент создаёт жалобы/предложения; CEO/barista читает
+    // feedback — клиент создаёт жалобы/предложения; читать может любой auth
+    // (страница /ceo/feedback защищена useRequireCEO на клиенте)
     match /feedback/{feedbackId} {
       allow create: if isAuthenticated()
                     && request.resource.data.userId == request.auth.uid;
-      allow read: if isAuthenticated()
-                  && (resource.data.userId == request.auth.uid);
-      allow update, delete: if false;
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
     }
   }
 }

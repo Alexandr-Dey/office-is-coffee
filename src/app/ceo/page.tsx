@@ -141,6 +141,7 @@ export default function CEOPage() {
             <h1 className="font-display text-xl font-bold text-brand-text">CEO Дашборд</h1>
           </div>
           <div className="flex items-center gap-3">
+            <a href="/ceo/feedback" className="text-sm text-brand-dark font-semibold hover:underline min-h-[44px] flex items-center">💬 Отзывы</a>
             <a href="/ceo/menu" className="text-sm text-brand-dark font-semibold hover:underline min-h-[44px] flex items-center">📝 Меню</a>
             <a href="/menu" className="text-sm text-brand-text/50 hover:text-brand-dark min-h-[44px] flex items-center">← Клиент</a>
           </div>
