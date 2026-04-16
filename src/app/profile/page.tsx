@@ -18,6 +18,7 @@ interface DepositHistoryEntry {
 }
 import { QRCodeSVG } from "qrcode.react";
 import { CAFE_ADDRESS } from "@/lib/constants";
+import FeedbackForm from "@/components/FeedbackForm";
 
 const WISDOMS = [
   "Дают — бери, не дают — отбери",
@@ -623,6 +624,9 @@ export default function ProfilePage() {
             <p className="text-xs text-blue-500 mt-1">{"Нажми \"Поделиться\" \u2192 \"На экран Домой\""}</p>
           </div>
         )}
+
+        {/* Feedback form — для всех ролей */}
+        {user && <FeedbackForm />}
 
         <div className="bg-white rounded-2xl border border-[#d0f0e0] p-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
           <motion.button whileTap={{ scale: 0.95 }} onClick={handleSignOut}

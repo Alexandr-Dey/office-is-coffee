@@ -29,7 +29,7 @@ export default function MenuItemDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const { addCartItem } = useCart();
+  const { addCartItem, totalItems } = useCart();
   const { showToast } = useToast();
 
   const itemId = params.id as string;
@@ -137,7 +137,7 @@ export default function MenuItemDetailPage() {
   };
 
   return (
-    <main className="min-h-screen bg-brand-bg pb-28">
+    <main className="min-h-screen bg-brand-bg pb-40">
       {/* ═══ HERO ═══ */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -322,21 +322,33 @@ export default function MenuItemDetailPage() {
         )}
       </div>
 
-      {/* ═══ STICKY FOOTER ═══ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#d0f0e0] px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <div className="max-w-[480px] mx-auto flex items-center gap-4">
+      {/* ═══ STICKY FOOTER (поднят над BottomNav) ═══ */}
+      <div className="fixed bottom-16 left-0 right-0 z-[60] bg-white border-t border-[#d0f0e0] px-6 py-3 pb-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+        <div className="max-w-[480px] mx-auto flex items-center gap-3">
           <div className="flex-shrink-0">
-            <p className="text-xs text-brand-text/40">Итого</p>
-            <p className="text-2xl font-bold text-brand-dark">{formatPrice(totalPrice)}</p>
+            <p className="text-xs text-brand-text/40">Позиция</p>
+            <p className="text-xl font-bold text-brand-dark">{formatPrice(totalPrice)}</p>
           </div>
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleAdd}
             disabled={isStopped}
-            className="flex-1 py-4 bg-brand-mid text-white font-semibold rounded-2xl text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-3.5 bg-brand-mid text-white font-semibold rounded-2xl text-base disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isStopped ? "Нет в наличии" : "Добавить в корзину"}
+            {isStopped ? "Нет в наличии" : "Добавить"}
           </motion.button>
+          {totalItems > 0 && (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => router.push("/order")}
+              className="py-3.5 px-4 bg-brand-dark text-white font-semibold rounded-2xl text-base flex items-center gap-1.5"
+            >
+              <span>🛒</span>
+              <span className="bg-brand-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {totalItems}
+              </span>
+            </motion.button>
+          )}
         </div>
       </div>
     </main>
