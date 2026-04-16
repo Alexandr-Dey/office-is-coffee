@@ -157,9 +157,20 @@ match /menu_items/{itemId} { allow write: if isAuthenticated(); }
 
 ## Превью-URL для проверки
 
-После push ветки `chore/full-audit-2026-04-16` Vercel создаст preview deployment.
-URL появится в GitHub Checks или Vercel dashboard.
-Формат: `https://office-is-coffee-git-chore-full-audit-2026-04-16-<hash>.vercel.app`
+Ветка запушена в `origin/chore/full-audit-2026-04-16`.
+Vercel автоматически создаёт preview deployment (1-3 минуты).
+
+**Где найти URL:**
+1. https://vercel.com/dashboard → проект `office-is-coffee` → Deployments
+2. Или GitHub PR: https://github.com/Alexandr-Dey/office-is-coffee/pull/new/chore/full-audit-2026-04-16
+
+Формат URL: `https://office-is-coffee-git-chore-full-audit-2026-04-16-<scope>.vercel.app`
+
+**Lighthouse результаты на превью:** запустить вручную (нужен реальный URL):
+```bash
+node scripts/lighthouse.js https://<preview-url>
+```
+Локально на собранной версии Lighthouse не запускался — для честных метрик нужен deployed CDN (Vercel edge cache, gzip, image optimization).
 
 ---
 
