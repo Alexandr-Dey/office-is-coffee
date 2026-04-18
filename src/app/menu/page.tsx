@@ -355,7 +355,7 @@ export default function MenuPage() {
   const [loyaltyCount, setLoyaltyCount] = useState(0);
   const [cafeOpen, setCafeOpen] = useState(true);
   const [stopList, setStopList] = useState<StopList>({ items: [], modifiers: [] });
-  const [geoNearby, setGeoNearby] = useState(false);
+  const [distanceToCafe, setDistanceToCafe] = useState<number | null>(null);
   const [activeOrderStatus, setActiveOrderStatus] = useState<"idle" | "new" | "pending" | "accepted" | "ready">("idle");
   const [streakDays, setStreakDays] = useState(0);
   const [lastOrderDate, setLastOrderDate] = useState<string | null>(null);
@@ -422,22 +422,21 @@ export default function MenuPage() {
     return () => unsub();
   }, [user]);
 
-  /* Geolocation check */
+  /* Geolocation — показываем расстояние до кофейни */
   useEffect(() => {
-    if (!navigator.geolocation || !user) return;
-    let cancelled = false;
-    getDoc(doc(getFirebaseDb(), "users", user.uid)).then((snap) => {
-      if (cancelled) return;
-      if (snap.exists() && snap.data().geolocationAllowed) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          if (cancelled) return;
-          const dist = getDistanceM(pos.coords.latitude, pos.coords.longitude, CAFE_LAT, CAFE_LNG);
-          if (dist <= CAFE_RADIUS_M) setGeoNearby(true);
-        }, () => {});
-      }
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [user]);
+    if (!navigator.geolocation) return;
+    // Не требуем geolocationAllowed — если браузер уже дал разрешение, используем
+    if (typeof navigator.permissions !== "undefined") {
+      navigator.permissions.query({ name: "geolocation" }).then((result) => {
+        if (result.state === "granted") {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            const dist = getDistanceM(pos.coords.latitude, pos.coords.longitude, CAFE_LAT, CAFE_LNG);
+            setDistanceToCafe(Math.round(dist));
+          }, () => {}, { timeout: 10000, maximumAge: 60000 });
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   /* Active orders for scene */
   useEffect(() => {
@@ -514,9 +513,22 @@ export default function MenuPage() {
 
       <header className="px-3 pt-2 flex items-center justify-between">
         <h1 className="font-display text-lg font-bold text-brand-text">Love is Coffee</h1>
-        <div className="flex items-center gap-1.5">
-          <div className={`w-2.5 h-2.5 rounded-full ${cafeOpen ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
-          <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
+        <div className="flex items-center gap-3">
+          {distanceToCafe !== null && (
+            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+              distanceToCafe <= CAFE_RADIUS_M
+                ? "bg-green-100 text-green-700"
+                : distanceToCafe <= 1000
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-gray-100 text-gray-500"
+            }`}>
+              📍 {distanceToCafe < 1000 ? `${distanceToCafe} м` : `${(distanceToCafe / 1000).toFixed(1)} км`}
+            </span>
+          )}
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2.5 h-2.5 rounded-full ${cafeOpen ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
+            <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
+          </div>
         </div>
       </header>
 

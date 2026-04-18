@@ -10,7 +10,8 @@ const SESSION_KEY = "oic_nearby_notified";
 /**
  * Следит за геолокацией. Когда пользователь оказывается ближе 100м
  * к кофейне — показывает локальную нотификацию (один раз за сессию).
- * Работает только если Notification.permission === "granted".
+ * Работает если браузер уже дал разрешение на геолокацию.
+ * Пуш-нотификация показывается если Notification permission granted.
  */
 export default function NearbyNotifier() {
   const { user } = useAuth();
@@ -19,52 +20,70 @@ export default function NearbyNotifier() {
   useEffect(() => {
     if (!user) return;
     if (!("geolocation" in navigator)) return;
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
     if (sessionStorage.getItem(SESSION_KEY)) {
       notified.current = true;
       return;
     }
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (notified.current) return;
+    // Проверяем разрешение на геолокацию через Permissions API
+    // Если уже granted — запускаем watch без промпта
+    let watchId: number | null = null;
 
-        const dist = getDistanceM(
-          pos.coords.latitude,
-          pos.coords.longitude,
-          CAFE_LAT,
-          CAFE_LNG,
-        );
+    const startWatch = () => {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (notified.current) return;
 
-        if (dist <= NEARBY_RADIUS_M) {
-          notified.current = true;
-          sessionStorage.setItem(SESSION_KEY, "1");
+          const dist = getDistanceM(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            CAFE_LAT,
+            CAFE_LNG,
+          );
 
-          // Показываем через ServiceWorker если есть, иначе напрямую
-          if (navigator.serviceWorker?.controller) {
-            navigator.serviceWorker.ready.then((reg) => {
-              reg.showNotification("☕ Love is Coffee рядом!", {
-                body: "Закажи кофе заранее — будет готов к твоему приходу",
-                icon: "/icon-192.png",
-                badge: "/icon-192.png",
-                tag: "nearby",
-                data: { url: "/menu" },
-              });
-            }).catch(() => {});
-          } else {
-            new Notification("☕ Love is Coffee рядом!", {
-              body: "Закажи кофе заранее — будет готов к твоему приходу",
-              icon: "/icon-192.png",
-              tag: "nearby",
-            });
+          if (dist <= NEARBY_RADIUS_M) {
+            notified.current = true;
+            sessionStorage.setItem(SESSION_KEY, "1");
+
+            // Пуш если разрешён
+            if ("Notification" in window && Notification.permission === "granted") {
+              if (navigator.serviceWorker?.controller) {
+                navigator.serviceWorker.ready.then((reg) => {
+                  reg.showNotification("☕ Love is Coffee рядом!", {
+                    body: "Закажи кофе заранее — будет готов к твоему приходу",
+                    icon: "/icon-192.png",
+                    badge: "/icon-192.png",
+                    tag: "nearby",
+                    data: { url: "/menu" },
+                  });
+                }).catch(() => {});
+              } else {
+                new Notification("☕ Love is Coffee рядом!", {
+                  body: "Закажи кофе заранее — будет готов к твоему приходу",
+                  icon: "/icon-192.png",
+                  tag: "nearby",
+                });
+              }
+            }
           }
-        }
-      },
-      () => {},
-      { enableHighAccuracy: false, maximumAge: 30000, timeout: 10000 },
-    );
+        },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: 30000, timeout: 10000 },
+      );
+    };
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    if (typeof navigator.permissions !== "undefined") {
+      navigator.permissions.query({ name: "geolocation" }).then((result) => {
+        if (result.state === "granted") {
+          startWatch();
+        }
+        // Если prompt или denied — не запускаем, не спамим промптом
+      }).catch(() => {});
+    }
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
   }, [user]);
 
   return null;
