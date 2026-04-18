@@ -299,6 +299,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     identifyUser(result.user.uid, { $name: name.trim() || "Гость" });
   };
 
+  // Ensure push token on every authenticated session
+  useEffect(() => {
+    if (!user) return;
+    import("@/lib/push").then(({ ensurePushToken }) => ensurePushToken(user.uid)).catch(() => {});
+  }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const signOut = async () => {
     const auth = getFirebaseAuth();
     await firebaseSignOut(auth);

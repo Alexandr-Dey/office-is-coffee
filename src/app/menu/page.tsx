@@ -426,6 +426,67 @@ function useTypingPlaceholder(words: string[]): string {
   return text;
 }
 
+/* ═══ PUSH PROMPT BANNER ═══ */
+const PUSH_DISMISSED_KEY = "oic_push_dismissed";
+
+function PushPromptBanner({ uid }: { uid?: string }) {
+  const [show, setShow] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+
+  useEffect(() => {
+    if (!uid) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") return;
+    if (Notification.permission === "denied") return;
+    if (sessionStorage.getItem(PUSH_DISMISSED_KEY)) return;
+    // Show after short delay
+    const t = setTimeout(() => setShow(true), 2000);
+    return () => clearTimeout(t);
+  }, [uid]);
+
+  if (!show) return null;
+
+  const handleEnable = async () => {
+    if (!uid) return;
+    setRequesting(true);
+    const { requestPushPermission } = await import("@/lib/push");
+    await requestPushPermission(uid).catch(() => {});
+    setShow(false);
+    sessionStorage.setItem(PUSH_DISMISSED_KEY, "1");
+  };
+
+  const handleDismiss = () => {
+    setShow(false);
+    sessionStorage.setItem(PUSH_DISMISSED_KEY, "1");
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="px-3 mt-2"
+    >
+      <div className="bg-gradient-to-r from-brand-dark to-brand-mid rounded-2xl p-3 flex items-center gap-3">
+        <span className="text-2xl flex-shrink-0">🔔</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-white">Узнай когда кофе готов</p>
+          <p className="text-[10px] text-white/70">Пришлём пуш — не нужно проверять</p>
+        </div>
+        <div className="flex gap-1.5 flex-shrink-0">
+          <button onClick={handleEnable} disabled={requesting}
+            className="px-3 py-1.5 bg-white text-brand-dark text-xs font-bold rounded-lg disabled:opacity-50">
+            {requesting ? "..." : "Да"}
+          </button>
+          <button onClick={handleDismiss} className="px-2 py-1.5 text-white/50 text-xs">
+            ✕
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 /* ═══ KEYBOARD LAYOUT MAPS ═══ */
 // EN QWERTY → RU ЙЦУКЕН (user typed on wrong layout)
 const EN_RU: Record<string, string> = {
@@ -487,11 +548,7 @@ export default function MenuPage() {
   const { showToast } = useToast();
   const router = useRouter();
 
-  /* Ensure push token is fresh on every visit */
-  useEffect(() => {
-    if (!user) return;
-    import("@/lib/push").then(({ ensurePushToken }) => ensurePushToken(user.uid)).catch(() => {});
-  }, [user]);
+  /* Push token now handled globally in AuthProvider */
 
   const currentCat = CATEGORIES.find(c => c.id === cat) ?? CATEGORIES[0];
   const isSearching = search.trim().length >= 2;
@@ -689,6 +746,9 @@ export default function MenuPage() {
         <p className="text-[11px] font-bold text-brand-dark mb-1 px-1">☕ Каждый 8-й кофе — наш подарок</p>
         <LoyaltyBanner count={loyaltyCount} streak={streakDays} />
       </div>
+
+      {/* Push prompt */}
+      <PushPromptBanner uid={user?.uid} />
 
       {/* Quick order + favorites + popular — single scrollable strip */}
       <QuickOrderStrip

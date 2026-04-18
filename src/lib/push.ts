@@ -33,38 +33,49 @@ function getOrRegisterSW(): Promise<ServiceWorkerRegistration> {
  * Save FCM token to Firestore for a given user.
  * Used internally by both requestPushPermission and ensurePushToken.
  */
-async function saveFcmToken(uid: string): Promise<boolean> {
-  const { getMessaging, getToken, onMessage } = await import("firebase/messaging");
-  const { getApps } = await import("firebase/app");
+async function saveFcmToken(uid: string, attempt = 1): Promise<boolean> {
+  try {
+    const { getMessaging, getToken, onMessage } = await import("firebase/messaging");
+    const { getApps } = await import("firebase/app");
 
-  if (!getApps().length) return false;
-  const app = getApps()[0];
+    if (!getApps().length) return false;
+    const app = getApps()[0];
 
-  const swReg = await getOrRegisterSW();
+    const swReg = await getOrRegisterSW();
 
-  const messaging = getMessaging(app);
-  const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-  if (!vapidKey) {
-    console.warn("FCM VAPID key not configured");
+    const messaging = getMessaging(app);
+    const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+    if (!vapidKey) {
+      console.warn("[Push] VAPID key not configured");
+      return false;
+    }
+
+    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
+    if (!token) {
+      console.warn("[Push] getToken returned empty");
+      return false;
+    }
+
+    await setDoc(doc(getFirebaseDb(), "push_tokens", uid), {
+      token,
+      platform: /iPhone|iPad/.test(navigator.userAgent) ? "ios" : "android/web",
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log("[Push] Token saved for", uid.slice(0, 8));
+
+    // Handle foreground messages
+    onMessage(messaging, () => {});
+
+    return true;
+  } catch (err) {
+    console.error(`[Push] saveFcmToken attempt ${attempt} failed:`, err);
+    if (attempt < 2) {
+      await new Promise(r => setTimeout(r, 2000));
+      return saveFcmToken(uid, attempt + 1);
+    }
     return false;
   }
-
-  const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
-  if (!token) return false;
-
-  await setDoc(doc(getFirebaseDb(), "push_tokens", uid), {
-    token,
-    platform: /iPhone|iPad/.test(navigator.userAgent) ? "ios" : "android/web",
-    updatedAt: new Date().toISOString(),
-  });
-
-  // Handle foreground messages — DON'T show native Notification
-  // (SW already handles background; foreground = app is open, no need for OS notification)
-  onMessage(messaging, () => {
-    // Intentionally empty — real-time Firestore listeners update UI directly
-  });
-
-  return true;
 }
 
 /**
