@@ -135,19 +135,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Оптимистичный user из Firebase Auth — показываем UI сразу,
-      // не дожидаясь Firestore. Роль/профиль подтянутся через onSnapshot.
+      // Определяем: новый пользователь или возвращающийся.
+      // Для возвращающихся ставим onboardingDone: true оптимистично,
+      // чтобы не было мигания onboarding → menu.
       const assignment = getAssignmentByEmail(fbUser.email);
+      const createdAt = fbUser.metadata.creationTime ? new Date(fbUser.metadata.creationTime).getTime() : 0;
+      const lastLogin = fbUser.metadata.lastSignInTime ? new Date(fbUser.metadata.lastSignInTime).getTime() : 0;
+      const isNewUser = Math.abs(lastLogin - createdAt) < 10000; // <10с = только что создан
+
       setUser({
         uid: fbUser.uid,
         displayName: fbUser.displayName ?? "Гость",
         email: fbUser.email ?? null,
         role: assignment?.role ?? "client",
         photoURL: fbUser.photoURL ?? null,
-        onboardingDone: false,
+        onboardingDone: !isNewUser, // возвращающийся → true, новый → false
         characterName: assignment?.characterName,
       });
       setLoading(false);
+      console.log(`[Auth] optimistic user: ${fbUser.email ?? "anon"}, isNew=${isNewUser}, uid=${fbUser.uid.slice(0, 8)}`);
 
       // Firestore sync — в фоне, не блокирует UI
       const db = getFirebaseDb();

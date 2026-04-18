@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import * as Sentry from "@sentry/nextjs";
 
@@ -15,8 +15,18 @@ const fadeUp = {
 const stagger = { animate: { transition: { staggerChildren: 0.15 } } };
 
 export default function Home() {
-  const { user, loading, connectionError, signInWithGoogle, signInAsGuest } = useAuth();
+  return (
+    <Suspense>
+      <HomeInner />
+    </Suspense>
+  );
+}
+
+function HomeInner() {
+  const { user, firebaseUser, loading, connectionError, signInWithGoogle, signInAsGuest } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const debug = searchParams.get("debug") === "1";
   const [signingIn, setSigningIn] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [showGuest, setShowGuest] = useState(false);
@@ -121,7 +131,17 @@ export default function Home() {
   if (user) {
     return (
       <main className="min-h-screen bg-brand-bg flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin mx-auto" />
+          {debug && (
+            <div className="mt-4 p-3 bg-gray-900 text-green-400 rounded-xl text-[11px] font-mono text-left">
+              <p>AUTH DEBUG (redirecting...)</p>
+              <p>uid: {user.uid.slice(0,8)}.. | {user.email ?? "anon"}</p>
+              <p>role: {user.role} | onboarding: {String(user.onboardingDone)}</p>
+              <p>→ {user.role === "barista" ? "/admin" : user.role === "ceo" ? "/ceo" : !user.onboardingDone ? "/onboarding" : "/menu"}</p>
+            </div>
+          )}
+        </div>
       </main>
     );
   }
@@ -209,6 +229,18 @@ export default function Home() {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Debug panel — ?debug=1 */}
+      {debug && (
+        <div className="mx-4 mb-2 p-3 bg-gray-900 text-green-400 rounded-xl text-[11px] font-mono leading-relaxed">
+          <p>AUTH DEBUG</p>
+          <p>loading: {String(loading)} | signingIn: {String(signingIn)}</p>
+          <p>connectionError: {String(connectionError)}</p>
+          <p>firebaseUser: {String(!!firebaseUser)}</p>
+          <p>user: null (login screen)</p>
+          <p>authError: {authError || "none"}</p>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="py-6 px-6 border-t border-[#d0f0e0]">
