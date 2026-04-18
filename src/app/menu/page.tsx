@@ -619,7 +619,8 @@ export default function MenuPage() {
       </div>
 
       {/* Loyalty */}
-      <div className="px-3 -mt-1">
+      <div className="px-3 -mt-4 relative z-10">
+        <p className="text-[11px] font-bold text-brand-text/50 uppercase tracking-wider mb-1 px-1">Лояльность</p>
         <LoyaltyBanner count={loyaltyCount} streak={streakDays} />
       </div>
 
