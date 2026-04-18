@@ -518,13 +518,59 @@ function StopListPanel({ stopList }: { stopList: StopList }) {
   );
 }
 
+/* ═══ POPULAR PANEL ═══ */
+function PopularPanel({ popularItems }: { popularItems: string[] }) {
+  const togglePopular = async (id: string) => {
+    const ref = doc(getFirebaseDb(), "cafe_status", "aksay_main");
+    if (popularItems.includes(id)) {
+      await updateDoc(ref, { popularItems: arrayRemove(id) }).catch(() => {});
+    } else {
+      if (popularItems.length >= 8) return; // max 8
+      await updateDoc(ref, { popularItems: arrayUnion(id) }).catch(() => {});
+    }
+  };
+
+  return (
+    <div>
+      <p className="text-xs text-brand-text/50 mb-3">
+        Выбери до 8 позиций. Они появятся в секции «Популярное» у клиентов.
+      </p>
+      {CATEGORIES.map(cat => {
+        const items = MENU_ITEMS.filter(i => i.category === cat.id);
+        if (items.length === 0) return null;
+        return (
+          <div key={cat.id} className="mb-3">
+            <p className="text-xs font-bold text-brand-text/50 uppercase mb-1">{cat.name}</p>
+            {items.map(item => {
+              const isPopular = popularItems.includes(item.id);
+              return (
+                <div key={item.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-white mb-1 border border-[#d0f0e0]">
+                  <div className="flex items-center gap-2">
+                    {isPopular && <span className="text-xs">🔥</span>}
+                    <span className={`text-sm ${isPopular ? "font-bold text-brand-dark" : "text-brand-text"}`}>{item.name}</span>
+                  </div>
+                  <button onClick={() => togglePopular(item.id)}
+                    className={`w-12 h-7 rounded-full transition-colors relative ${isPopular ? "bg-orange-400" : "bg-gray-200"}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${isPopular ? "left-6" : "left-1"}`} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useRequireBarista();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"active" | "paid">("active");
   const [cafeOpen, setCafeOpen] = useState(true);
-  const [mainTab, setMainTab] = useState<"orders" | "stoplist">("orders");
+  const [mainTab, setMainTab] = useState<"orders" | "stoplist" | "popular">("orders");
   const [stopList, setStopList] = useState<StopList>({ items: [], modifiers: [] });
+  const [popularItems, setPopularItems] = useState<string[]>([]);
 
   // Force token refresh
   useEffect(() => {
@@ -594,6 +640,7 @@ export default function AdminPage() {
       if (snap.exists()) {
         setCafeOpen(snap.data().isOpen ?? true);
         setStopList(normalizeStopList(snap.data().stopList));
+        setPopularItems(snap.data().popularItems ?? []);
       }
     }, () => {});
     return () => unsub();
@@ -655,19 +702,27 @@ export default function AdminPage() {
       </div>
 
       <div className="px-4 pt-4 max-w-[480px] mx-auto">
-        {/* Main tabs: Orders / Stop-list */}
-        <div className="flex gap-2 mb-4">
+        {/* Main tabs */}
+        <div className="flex gap-1.5 mb-4">
           <button onClick={() => setMainTab("orders")}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
+            className={`flex-1 py-2 rounded-xl text-xs font-bold min-h-[40px] transition-all ${
               mainTab === "orders" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
             }`}>📋 Заказы</button>
+          <button onClick={() => setMainTab("popular")}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold min-h-[40px] transition-all ${
+              mainTab === "popular" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
+            }`}>🔥 Популярное ({popularItems.length})</button>
           <button onClick={() => setMainTab("stoplist")}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all ${
+            className={`flex-1 py-2 rounded-xl text-xs font-bold min-h-[40px] transition-all ${
               mainTab === "stoplist" ? "bg-brand-dark text-white" : "bg-white text-brand-text border border-[#d0f0e0]"
-            }`}>🚫 Стоп-лист ({stopList.items.length + stopList.modifiers.length})</button>
+            }`}>🚫 Стоп ({stopList.items.length + stopList.modifiers.length})</button>
         </div>
 
         {mainTab === "stoplist" && <StopListPanel stopList={stopList} />}
+
+        {mainTab === "popular" && (
+          <PopularPanel popularItems={popularItems} />
+        )}
 
         {mainTab === "orders" && (
           <>

@@ -328,6 +328,54 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
   );
 }
 
+/* ═══ POPULAR STRIP — управляется баристами/CEO через Firestore ═══ */
+function PopularStrip({ onDetail, stopList }: {
+  onDetail: (item: MenuItem) => void;
+  stopList: string[];
+}) {
+  const [popularIds, setPopularIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
+      if (snap.exists()) {
+        setPopularIds(snap.data().popularItems ?? []);
+      }
+    }, () => {});
+    return () => unsub();
+  }, []);
+
+  const items = popularIds
+    .map(id => MENU_ITEMS.find(i => i.id === id))
+    .filter((i): i is MenuItem => !!i && !stopList.includes(i.id));
+
+  if (items.length === 0) return null;
+
+  return (
+    <section className="mt-3 px-3" aria-label="Популярное">
+      <h2 className="text-sm font-bold text-brand-text mb-2">🔥 Популярное</h2>
+      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2">
+        {items.map((item) => {
+          const itemCat = getCategory(item.category);
+          const grad = GRADIENT_CLASSES[itemCat.gradient];
+          return (
+            <motion.button
+              key={item.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onDetail(item)}
+              className={`flex-shrink-0 w-36 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${grad}`}
+              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+            >
+              <span className="text-xl">{CAT_ICONS[item.category]}</span>
+              <p className="text-xs font-bold truncate mt-1">{item.name}</p>
+              <p className="text-[10px] text-white/70 mt-0.5">от {formatPrice(getMinPrice(item))}</p>
+            </motion.button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 /* ═══ PAGE ═══ */
 export default function MenuPage() {
   const { user } = useAuth();
@@ -550,6 +598,12 @@ export default function MenuPage() {
         onRepeat={(items) => setItems(items)}
         onDetail={(item) => openDetail(item)}
         favorites={favorites}
+      />
+
+      {/* Popular — managed by baristas/CEO */}
+      <PopularStrip
+        onDetail={(item) => openDetail(item)}
+        stopList={stopList.items}
       />
 
       {/* Search */}
