@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRequireBarista } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, getDocs, query, where, orderBy, doc, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, doc, onSnapshot, Timestamp } from "firebase/firestore";
 
 function getAlmatyToday(): string {
   const d = new Date();
@@ -39,50 +39,49 @@ export default function BaristaStatsPage() {
   useEffect(() => {
     async function load() {
       const db = getFirebaseDb();
-      const ordersSnap = await getDocs(collection(db, "orders"));
       const today = getAlmatyToday();
+
+      // Start of today in UTC (approximation for UTC+5)
+      const todayStart = new Date(today + "T00:00:00+05:00");
+      const todayTs = Timestamp.fromDate(todayStart);
+
+      // Today's orders (filtered server-side)
+      const todayQuery = query(
+        collection(db, "orders"),
+        where("createdAt", ">=", todayTs),
+      );
+      const todaySnap = await getDocs(todayQuery);
 
       let orders = 0;
       let revenue = 0;
-      let active = 0;
       let ratingSum = 0;
       let ratingCount = 0;
 
-      for (const d of ordersSnap.docs) {
+      for (const d of todaySnap.docs) {
         const o = d.data();
-
-        // Count active orders
-        if (["new", "pending", "accepted"].includes(o.status)) {
-          active++;
-        }
-
-        // Today's stats
-        if (o.createdAt) {
-          let orderDate = "";
-          if (o.createdAt.toMillis) {
-            const dt = new Date(o.createdAt.toMillis() + 5 * 60 * 60 * 1000);
-            orderDate = dt.toISOString().slice(0, 10);
-          }
-          if (orderDate === today) {
-            orders++;
-            revenue += o.total ?? 0;
-            if (o.rating) {
-              ratingSum += o.rating;
-              ratingCount++;
-            }
-          }
+        orders++;
+        revenue += o.total ?? 0;
+        if (o.rating) {
+          ratingSum += o.rating;
+          ratingCount++;
         }
       }
 
-      // Today's bonuses
+      // Active orders (filtered server-side)
+      const activeQuery = query(
+        collection(db, "orders"),
+        where("status", "in", ["new", "pending", "accepted"]),
+      );
+      const activeSnap = await getDocs(activeQuery);
+      const active = activeSnap.size;
+
+      // Today's bonuses — read only own document instead of all
       if (user) {
-        const bonusSnap = await getDocs(query(collection(db, "barista_bonuses")));
-        for (const d of bonusSnap.docs) {
-          if (d.id === user.uid && d.data().history) {
-            const todayBonuses = (d.data().history as Array<{ amount: number; date: string }>)
-              .filter(h => h.date && h.date.startsWith(today));
-            setTodayTips(todayBonuses.reduce((s, h) => s + h.amount, 0));
-          }
+        const bonusDoc = await import("firebase/firestore").then(f => f.getDoc(doc(db, "barista_bonuses", user.uid)));
+        if (bonusDoc.exists() && bonusDoc.data().history) {
+          const todayBonuses = (bonusDoc.data().history as Array<{ amount: number; date: string }>)
+            .filter(h => h.date && h.date.startsWith(today));
+          setTodayTips(todayBonuses.reduce((s, h) => s + h.amount, 0));
         }
       }
 

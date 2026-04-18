@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
@@ -52,7 +52,7 @@ function LoyaltyBanner({ count }: { count: number }) {
 }
 
 /* ═══ DRINK CARD ═══ */
-function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
+const DrinkCard = memo(function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
   item: MenuItem; idx: number; stopped: boolean;
   onQuickAdd: () => void;
   onDetail: () => void;
@@ -116,7 +116,7 @@ function DrinkCard({ item, onQuickAdd, onDetail, idx, stopped, cookieData }: {
       </div>
     </motion.article>
   );
-}
+});
 
 /* ═══ QUICK ORDER STRIP ═══ */
 interface RecentOrder {
@@ -138,6 +138,7 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     const q = query(
       collection(getFirebaseDb(), "orders"),
       fbWhere("userId", "==", user.uid),
@@ -145,6 +146,7 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
       limit(15)
     );
     getDocs(q).then((snap) => {
+      if (cancelled) return;
       const docs = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => {
@@ -172,6 +174,7 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
       }
       setRecentOrders(unique);
     }).catch(() => {});
+    return () => { cancelled = true; };
   }, [user]);
 
   const favoriteItems = MENU_ITEMS.filter(i => favorites.includes(i.id));
@@ -274,15 +277,19 @@ export default function MenuPage() {
 
   const currentCat = CATEGORIES.find(c => c.id === cat) ?? CATEGORIES[0];
   const isSearching = search.trim().length >= 2;
-  const searchResults = isSearching
-    ? MENU_ITEMS.filter(i => {
-        const q = search.toLowerCase();
-        return i.name.toLowerCase().includes(q)
-          || (i.description ?? "").toLowerCase().includes(q)
-          || (CATEGORIES.find(c => c.id === i.category)?.name ?? "").toLowerCase().includes(q);
-      })
-    : [];
-  const currentItems = isSearching ? searchResults : MENU_ITEMS.filter(i => i.category === cat);
+  const searchResults = useMemo(() => {
+    if (!isSearching) return [];
+    const q = search.toLowerCase();
+    return MENU_ITEMS.filter(i =>
+      i.name.toLowerCase().includes(q)
+      || (i.description ?? "").toLowerCase().includes(q)
+      || (getCategory(i.category).name).toLowerCase().includes(q)
+    );
+  }, [search, isSearching]);
+  const currentItems = useMemo(
+    () => isSearching ? searchResults : MENU_ITEMS.filter(i => i.category === cat),
+    [isSearching, searchResults, cat]
+  );
 
   /* Listen to cafe status + stop list */
   useEffect(() => {

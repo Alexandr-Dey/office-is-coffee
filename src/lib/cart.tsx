@@ -45,11 +45,6 @@ function saveCart(cart: CartItem[]) {
   } else {
     localStorage.removeItem(STORAGE_KEY);
   }
-  if (cart.length > 0) {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-  } else {
-    sessionStorage.removeItem(STORAGE_KEY);
-  }
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
