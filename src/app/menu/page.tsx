@@ -38,15 +38,45 @@ const CAT_ICONS: Record<CategoryId, string> = {
 };
 
 /* ═══ LOYALTY ═══ */
-function LoyaltyBanner({ count }: { count: number }) {
+function LoyaltyBanner({ count, userName }: { count: number; userName?: string }) {
+  const progress = (count / 8) * 100;
+  const nextFree = 8 - count;
   return (
-    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-      <div className="flex gap-1">
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      {userName && (
+        <p className="text-sm font-semibold text-brand-text mb-2">
+          Привет, {userName} 👋
+        </p>
+      )}
+      <div className="flex gap-1.5 mb-2">
         {Array.from({ length: 8 }, (_, i) => (
-          <span key={i} className={`text-lg ${i < count ? "" : "opacity-20"}`}>{i < count ? "☕" : "○"}</span>
+          <motion.div
+            key={i}
+            initial={false}
+            animate={{ scale: i < count ? 1 : 0.85, opacity: i < count ? 1 : 0.3 }}
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-sm ${
+              i < count
+                ? "bg-brand-dark"
+                : i === count
+                  ? "bg-brand-mint/30 border-2 border-dashed border-brand-mint"
+                  : "bg-gray-100"
+            }`}
+          >
+            {i < count ? "☕" : ""}
+          </motion.div>
         ))}
       </div>
-      <span className="text-xs text-brand-text/50">каждый 8-й бесплатный</span>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="h-full bg-gradient-to-r from-brand-dark to-brand-mint rounded-full"
+        />
+      </div>
+      <p className="text-[11px] text-brand-text/40">
+        {count === 7 ? "🎉 Следующий кофе бесплатный!" : `Ещё ${nextFree} до бесплатного`}
+      </p>
     </div>
   );
 }
@@ -107,10 +137,13 @@ const DrinkCard = memo(function DrinkCard({ item, onQuickAdd, onDetail, idx, sto
       <div className="mt-auto flex items-center justify-between pt-2">
         <span className="font-bold text-brand-dark">от {formatPrice(getMinPrice(item))}</span>
         {!stopped && (
-          <motion.button whileTap={{ scale: 0.85 }} onClick={handleQuickAdd}
+          <motion.button
+            whileTap={{ scale: 0.8 }}
+            animate={added ? { scale: [1, 1.3, 1] } : {}}
+            onClick={handleQuickAdd}
             aria-label={`Добавить ${item.name} в корзину`}
-            className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-              added ? "bg-brand-mint text-white" : "bg-brand-bg text-brand-dark hover:bg-[#d0f0e0]"
+            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${
+              added ? `bg-gradient-to-br ${gradient} text-white shadow-md` : "bg-white text-brand-dark border border-[#e0e0e0] hover:shadow-md"
             }`}>{added ? "✓" : "+"}</motion.button>
         )}
       </div>
@@ -430,7 +463,7 @@ export default function MenuPage() {
 
       {/* Loyalty */}
       <div className="px-3 -mt-1">
-        <LoyaltyBanner count={loyaltyCount} />
+        <LoyaltyBanner count={loyaltyCount} userName={user?.displayName ?? undefined} />
       </div>
 
       {/* Quick order */}
@@ -468,17 +501,20 @@ export default function MenuPage() {
         <nav ref={tabsRef} aria-label="Категории меню" className="px-3 mt-3 relative">
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex gap-2 pb-1" role="tablist">
-              {CATEGORIES.map((c) => (
-                <button key={c.id} onClick={() => setCat(c.id)}
-                  role="tab"
-                  aria-selected={cat === c.id}
-                  aria-label={`Категория ${c.name}`}
-                  className={`px-3 py-2 min-h-[40px] rounded-[16px] text-xs font-medium whitespace-nowrap transition-all ${
-                    cat === c.id ? "bg-[#1a7a44] text-white shadow-md" : "bg-[#f0fdf4] text-[#2d9e5a]"
-                  }`}>
-                  <span className="mr-1">{CAT_ICONS[c.id]}</span>{c.name}
-                </button>
-              ))}
+              {CATEGORIES.map((c) => {
+                const isActive = cat === c.id;
+                return (
+                  <button key={c.id} onClick={() => setCat(c.id)}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-label={`Категория ${c.name}`}
+                    className={`px-3 py-2 min-h-[40px] rounded-[16px] text-xs font-medium whitespace-nowrap transition-all ${
+                      isActive ? `bg-gradient-to-r ${GRADIENT_CLASSES[c.gradient]} text-white shadow-md` : `${PASTEL_BG[c.gradient]} text-brand-text/60 border ${PASTEL_BORDER[c.gradient]}`
+                    }`}>
+                    <span className="mr-1">{CAT_ICONS[c.id]}</span>{c.name}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="absolute right-3 top-0 bottom-0 w-8 bg-gradient-to-l from-brand-bg to-transparent pointer-events-none" aria-hidden="true" />

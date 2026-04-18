@@ -92,7 +92,7 @@ export default function CoinsPage() {
   return (
     <main className="min-h-screen pb-20 pt-6 px-4 bg-brand-bg">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg mx-auto">
-        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">⭐ Монеты</h1>
+        <h1 className="font-display text-2xl font-bold text-brand-dark mb-4">⭐ Бонусы</h1>
 
         {/* Loyalty card with progress */}
         <div className="bg-white rounded-2xl border border-[#d0f0e0] p-5 mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>

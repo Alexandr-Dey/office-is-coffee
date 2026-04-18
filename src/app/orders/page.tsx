@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { collection, query, orderBy, where as fbWhere, limit, onSnapshot, Timestamp } from "firebase/firestore";
@@ -193,7 +194,7 @@ export default function OrdersPage() {
                   <div className="text-center py-12">
                     <p className="text-4xl mb-3">☕</p>
                     <p className="text-brand-text/50">Нет активных заказов</p>
-                    <a href="/menu" className="inline-block mt-4 px-6 py-2.5 bg-brand-dark text-white rounded-full text-sm font-bold min-h-[44px]">Заказать кофе</a>
+                    <Link href="/menu" className="inline-block mt-4 px-6 py-2.5 bg-brand-dark text-white rounded-full text-sm font-bold min-h-[44px] leading-[44px]">Заказать кофе</Link>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -203,8 +204,8 @@ export default function OrdersPage() {
                         <motion.div key={order.id}
                           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
                           onClick={() => router.push(`/order/${order.id}`)}
-                          className={`rounded-2xl border p-4 cursor-pointer ${cfg.bg}`}
-                          style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+                          className={`rounded-2xl border p-4 cursor-pointer ${cfg.bg} ${order.status === "ready" ? "ring-2 ring-green-400 ring-offset-2" : ""}`}
+                          style={{ boxShadow: order.status === "ready" ? "0 0 20px rgba(74,222,128,0.3)" : "0 2px 8px rgba(30,120,70,0.06)" }}>
                           <div className="flex items-center justify-between mb-2">
                             <span className={`text-sm font-bold ${cfg.color}`}>{cfg.icon} {cfg.text}</span>
                             <span className="text-xs text-brand-text/40">{formatDate(order.createdAt)}</span>
