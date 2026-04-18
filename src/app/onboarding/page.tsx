@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import confetti from "canvas-confetti";
 import { requestPushPermission } from "@/lib/push";
 import { trackEvent } from "@/lib/mixpanel";
@@ -194,9 +194,9 @@ export default function OnboardingPage() {
       navigator.geolocation.getCurrentPosition(
         () => {
           if (user)
-            updateDoc(doc(getFirebaseDb(), "users", user.uid), {
+            setDoc(doc(getFirebaseDb(), "users", user.uid), {
               geolocationAllowed: true,
-            }).catch(() => {});
+            }, { merge: true }).catch(() => {});
         },
         () => {},
         { timeout: 10000 },
@@ -214,7 +214,7 @@ export default function OnboardingPage() {
   const handleDone = async () => {
     if (user) {
       try {
-        await updateDoc(doc(getFirebaseDb(), "users", user.uid), { onboardingDone: true });
+        await setDoc(doc(getFirebaseDb(), "users", user.uid), { onboardingDone: true }, { merge: true });
       } catch { /* ignore */ }
     }
     trackEvent("Onboarding Completed", { stepsCompleted: STEPS.length });
