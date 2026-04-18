@@ -77,8 +77,14 @@ export default function NearbyNotifier() {
         if (result.state === "granted") {
           startWatch();
         }
-        // Если prompt или denied — не запускаем, не спамим промптом
-      }).catch(() => {});
+        // prompt/denied — не запускаем, не спамим промптом
+      }).catch(() => {
+        // Safari: permissions.query не поддерживает geolocation
+        // Пробуем watch — если разрешение уже есть, заработает
+        startWatch();
+      });
+    } else {
+      startWatch();
     }
 
     return () => {

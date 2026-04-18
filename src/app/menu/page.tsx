@@ -424,17 +424,29 @@ export default function MenuPage() {
 
   /* Geolocation — показываем расстояние до кофейни */
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    // Не требуем geolocationAllowed — если браузер уже дал разрешение, используем
+    if (!("geolocation" in navigator)) return;
+
+    const getPosition = () => {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const dist = getDistanceM(pos.coords.latitude, pos.coords.longitude, CAFE_LAT, CAFE_LNG);
+        setDistanceToCafe(Math.round(dist));
+      }, () => {}, { timeout: 8000, maximumAge: 60000, enableHighAccuracy: false });
+    };
+
+    // Permissions API (Chrome/Firefox) — проверяем без промпта
     if (typeof navigator.permissions !== "undefined") {
       navigator.permissions.query({ name: "geolocation" }).then((result) => {
-        if (result.state === "granted") {
-          navigator.geolocation.getCurrentPosition((pos) => {
-            const dist = getDistanceM(pos.coords.latitude, pos.coords.longitude, CAFE_LAT, CAFE_LNG);
-            setDistanceToCafe(Math.round(dist));
-          }, () => {}, { timeout: 10000, maximumAge: 60000 });
-        }
-      }).catch(() => {});
+        if (result.state === "granted") getPosition();
+        // prompt/denied — не спрашиваем автоматически
+      }).catch(() => {
+        // Safari не поддерживает permissions.query для geolocation
+        // Пробуем напрямую — если уже дано разрешение, сработает без промпта
+        // Если не дано — Safari покажет системный промпт (это нормально, один раз)
+        getPosition();
+      });
+    } else {
+      // Старый браузер без Permissions API — пробуем напрямую
+      getPosition();
     }
   }, []);
 
