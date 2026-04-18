@@ -11,7 +11,7 @@ import { useToast } from "@/components/Toast";
 import {
   MENU_ITEMS, CATEGORIES, MODIFIERS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
   type MenuItem, type Modifier, type Size, type StopList, type CategoryId,
-  getCategory, getModifiersForCategory, getAvailableSizes,
+  getCategory, getModifiersForItem, getAvailableSizes,
   getDefaultSize, formatPrice, normalizeStopList, calculateItemTotal,
   isColdCategory,
 } from "@/lib/menu";
@@ -74,7 +74,7 @@ export default function MenuItemDetailPage() {
   const sizes = getAvailableSizes(item);
   const isStopped = stopList.items.includes(item.id);
 
-  const allModifiers = getModifiersForCategory(item.category)
+  const allModifiers = getModifiersForItem(item)
     .filter(m => !stopList.modifiers.includes(m.id));
 
   const milkOptions = allModifiers.filter(m => m.group === 'milk');

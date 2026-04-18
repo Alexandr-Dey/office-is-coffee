@@ -466,7 +466,7 @@ export default function MenuPage() {
                   role="tab"
                   aria-selected={cat === c.id}
                   aria-label={`Категория ${c.name}`}
-                  className={`px-4 py-2.5 min-h-[44px] rounded-[20px] text-sm font-medium whitespace-nowrap transition-all ${
+                  className={`px-3 py-2 min-h-[40px] rounded-[16px] text-xs font-medium whitespace-nowrap transition-all ${
                     cat === c.id ? "bg-[#1a7a44] text-white shadow-md" : "bg-[#f0fdf4] text-[#2d9e5a]"
                   }`}>
                   <span className="mr-1">{CAT_ICONS[c.id]}</span>{c.name}
