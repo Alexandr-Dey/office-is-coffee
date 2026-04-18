@@ -614,6 +614,34 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Карта кофейни */}
+        <div className="bg-white rounded-2xl border border-[#d0f0e0] overflow-hidden mb-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+          <div className="px-4 pt-4 pb-2">
+            <p className="font-bold text-brand-text text-sm">📍 Где мы находимся</p>
+            <p className="text-xs text-brand-text/50 mt-0.5">{CAFE_ADDRESS}</p>
+          </div>
+          <div className="relative w-full" style={{ height: 200 }}>
+            <iframe
+              title="Карта кофейни Love is Coffee"
+              src="https://www.openstreetmap.org/export/embed.html?bbox=76.9410%2C43.2358%2C76.9490%2C43.2398&layer=mapnik&marker=43.2378%2C76.9450"
+              className="w-full h-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="px-4 py-3 flex items-center justify-between">
+            <p className="text-xs text-brand-text/40">Пн–Вс · 07:30–22:00</p>
+            <a
+              href="https://2gis.kz/almaty/geo/70000001075145918"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-bold text-brand-dark"
+            >
+              Открыть в 2ГИС →
+            </a>
+          </div>
+        </div>
+
         {/* iOS PWA banner */}
         {isIOS && !isPWA && (
           <div className="bg-blue-50 rounded-2xl p-4 mb-4 text-center">
