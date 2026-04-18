@@ -405,6 +405,48 @@ function PopularStrip({ onDetail, stopList }: {
   );
 }
 
+/* ═══ TYPING PLACEHOLDER ═══ */
+function useTypingPlaceholder(words: string[]): string {
+  const [text, setText] = useState(words[0]);
+
+  useEffect(() => {
+    let wordIdx = 0;
+    let charIdx = 0;
+    let deleting = false;
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      const word = words[wordIdx];
+      if (!deleting) {
+        charIdx++;
+        setText(word.slice(0, charIdx));
+        if (charIdx === word.length) {
+          // Pause at full word, then start deleting
+          timeout = setTimeout(() => { deleting = true; tick(); }, 2000);
+          return;
+        }
+        timeout = setTimeout(tick, 80 + Math.random() * 40);
+      } else {
+        charIdx--;
+        setText(word.slice(0, charIdx));
+        if (charIdx === 0) {
+          deleting = false;
+          wordIdx = (wordIdx + 1) % words.length;
+          timeout = setTimeout(tick, 400);
+          return;
+        }
+        timeout = setTimeout(tick, 40);
+      }
+    };
+
+    timeout = setTimeout(tick, 1500);
+    return () => clearTimeout(timeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return text;
+}
+
 /* ═══ PAGE ═══ */
 export default function MenuPage() {
   const { user } = useAuth();
@@ -412,6 +454,16 @@ export default function MenuPage() {
   const [cat, setCat] = useState<CategoryId>("coffee_classic");
   const [showCart, setShowCart] = useState(false);
   const [search, setSearch] = useState("");
+  const animatedPlaceholder = useTypingPlaceholder([
+    "Капучино...",
+    "Раф медовый...",
+    "Айс латте...",
+    "Матча...",
+    "Облепиховый чай...",
+    "Фраппучино...",
+    "Глинтвейн...",
+    "Мокко...",
+  ]);
   const [loyaltyCount, setLoyaltyCount] = useState(0);
   const [cafeOpen, setCafeOpen] = useState(true);
   const [stopList, setStopList] = useState<StopList>({ items: [], modifiers: [] });
@@ -645,7 +697,7 @@ export default function MenuPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Найти напиток..."
+            placeholder={animatedPlaceholder}
             className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-[#d0f0e0] bg-white text-sm text-brand-text outline-none focus:border-brand-mint focus:ring-1 focus:ring-brand-mint min-h-[44px]"
           />
           {search && (
