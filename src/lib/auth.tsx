@@ -143,65 +143,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const db = getFirebaseDb();
       const userRef = doc(db, "users", fbUser.uid);
 
-      const syncFirestore = async () => {
-        const snap = await getDoc(userRef).catch(() => null);
-        if (!snap || !snap.exists()) {
-          await setDoc(userRef, {
-            displayName: fbUser.displayName ?? "Гость",
-            email: fbUser.email ?? null,
-            photoURL: fbUser.photoURL ?? null,
-            role: assignment?.role ?? ("client" as Role),
-            ...(assignment?.characterName
-              ? { characterName: assignment.characterName }
-              : {}),
-            loyaltyCount: 0,
-            streak: 0,
-            lastOrderDate: null,
-            pushToken: null,
-            geolocationAllowed: false,
-            favoriteItem: null,
-            onboardingDone: false,
-            createdAt: new Date().toISOString(),
-          }).catch(() => {});
-        } else if (assignment) {
-          const data = snap.data();
-          const needsUpdate =
-            data.role !== assignment.role ||
-            (assignment.characterName && data.characterName !== assignment.characterName);
-          if (needsUpdate) {
-            await setDoc(
-              userRef,
-              {
-                role: assignment.role,
-                ...(assignment.characterName
-                  ? { characterName: assignment.characterName }
-                  : {}),
-              },
-              { merge: true },
-            ).catch(() => {});
+      const userPayload = {
+        displayName: fbUser.displayName ?? "Гость",
+        email: fbUser.email ?? null,
+        photoURL: fbUser.photoURL ?? null,
+        role: assignment?.role ?? ("client" as Role),
+        ...(assignment?.characterName
+          ? { characterName: assignment.characterName }
+          : {}),
+        loyaltyCount: 0,
+        streak: 0,
+        lastOrderDate: null,
+        pushToken: null,
+        geolocationAllowed: false,
+        favoriteItem: null,
+        onboardingDone: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      const syncFirestore = async (attempt = 1): Promise<void> => {
+        try {
+          const snap = await getDoc(userRef);
+          if (!snap.exists()) {
+            await setDoc(userRef, userPayload);
+          } else if (assignment) {
+            const data = snap.data();
+            const needsUpdate =
+              data.role !== assignment.role ||
+              (assignment.characterName && data.characterName !== assignment.characterName);
+            if (needsUpdate) {
+              await setDoc(
+                userRef,
+                {
+                  role: assignment.role,
+                  ...(assignment.characterName
+                    ? { characterName: assignment.characterName }
+                    : {}),
+                },
+                { merge: true },
+              );
+            }
+          }
+        } catch (err) {
+          console.error(`[Auth] syncFirestore attempt ${attempt} failed:`, err);
+          // Retry once — auth token may not have propagated to Firestore yet
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 1500));
+            return syncFirestore(attempt + 1);
           }
         }
       };
 
-      syncFirestore().catch(() => {});
+      syncFirestore();
 
       // Real-time listener — обновит роль/профиль когда Firestore ответит
-      unsubUser = onSnapshot(userRef, (userSnap) => {
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          setUser({
-            uid: fbUser.uid,
-            displayName: data.displayName ?? fbUser.displayName ?? "Гость",
-            email: fbUser.email ?? null,
-            role: (data.role as Role) ?? "client",
-            photoURL: fbUser.photoURL ?? null,
-            onboardingDone: data.onboardingDone ?? false,
-            characterName: data.characterName ?? undefined,
-          });
-        }
-      }, () => {
-        // Firestore error — оптимистичный user уже установлен, ничего не делаем
-      });
+      const startSnapshot = () => {
+        unsubUser = onSnapshot(userRef, (userSnap) => {
+          if (userSnap.exists()) {
+            const data = userSnap.data();
+            setUser({
+              uid: fbUser.uid,
+              displayName: data.displayName ?? fbUser.displayName ?? "Гость",
+              email: fbUser.email ?? null,
+              role: (data.role as Role) ?? "client",
+              photoURL: fbUser.photoURL ?? null,
+              onboardingDone: data.onboardingDone ?? false,
+              characterName: data.characterName ?? undefined,
+            });
+          }
+        }, (err) => {
+          console.error("[Auth] onSnapshot error:", err);
+          // Retry once after delay — auth token may not be ready
+          setTimeout(() => {
+            if (unsubUser) return; // already resubscribed via onAuthStateChanged
+            startSnapshot();
+          }, 2000);
+        });
+      };
+      startSnapshot();
 
     });
 
