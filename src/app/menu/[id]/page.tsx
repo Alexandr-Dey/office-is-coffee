@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import {
-  MENU_ITEMS, CATEGORIES, MODIFIERS, GRADIENT_CLASSES,
+  MENU_ITEMS, CATEGORIES, MODIFIERS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
   type MenuItem, type Modifier, type Size, type StopList, type CategoryId,
   getCategory, getModifiersForCategory, getAvailableSizes,
   getDefaultSize, formatPrice, normalizeStopList, calculateItemTotal,
@@ -142,8 +142,11 @@ export default function MenuItemDetailPage() {
     router.push("/menu");
   };
 
+  const pastelBg = PASTEL_BG[cat.gradient];
+  const pastelBorder = PASTEL_BORDER[cat.gradient];
+
   return (
-    <main className="min-h-screen bg-brand-bg pb-40">
+    <main className={`min-h-screen ${pastelBg} pb-40`}>
       {/* ═══ HERO ═══ */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -202,7 +205,7 @@ export default function MenuItemDetailPage() {
       </motion.div>
 
       {/* ═══ CONTENT ═══ */}
-      <div className="bg-brand-bg rounded-t-3xl -mt-4 relative z-10 pt-2">
+      <div className={`${pastelBg} rounded-t-3xl -mt-4 relative z-10 pt-2`}>
 
         {/* SIZE PICKER */}
         {sizes.length > 1 && (
@@ -221,8 +224,8 @@ export default function MenuItemDetailPage() {
                   onClick={() => setSize(s)}
                   className={`flex-1 py-4 rounded-2xl text-center transition-all ${
                     size === s
-                      ? "bg-brand-mid text-white shadow-[0_4px_16px_rgba(46,158,90,0.3)]"
-                      : "bg-white text-brand-text border border-[#d0f0e0]"
+                      ? `bg-gradient-to-br ${gradient} text-white shadow-lg`
+                      : `bg-white text-brand-text border ${pastelBorder}`
                   }`}
                 >
                   <span className="block text-xl font-semibold">{s}</span>
@@ -247,8 +250,8 @@ export default function MenuItemDetailPage() {
                 onClick={() => setSelectedMilk(null)}
                 className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
                   selectedMilk === null
-                    ? "bg-brand-dark text-white"
-                    : "bg-white text-brand-text border border-[#d0f0e0]"
+                    ? `bg-gradient-to-br ${gradient} text-white shadow-md`
+                    : `bg-white text-brand-text border ${pastelBorder}`
                 }`}
               >
                 Стандарт
@@ -259,8 +262,8 @@ export default function MenuItemDetailPage() {
                   onClick={() => setSelectedMilk(selectedMilk === m.id ? null : m.id)}
                   className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
                     selectedMilk === m.id
-                      ? "bg-brand-dark text-white"
-                      : "bg-white text-brand-text border border-[#d0f0e0]"
+                      ? `bg-gradient-to-br ${gradient} text-white shadow-md`
+                      : `bg-white text-brand-text border ${pastelBorder}`
                   }`}
                 >
                   {m.name}
@@ -289,8 +292,8 @@ export default function MenuItemDetailPage() {
                   onClick={() => toggleSyrup(m.id)}
                   className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
                     selectedSyrups.includes(m.id)
-                      ? "bg-brand-dark text-white"
-                      : "bg-white text-brand-text border border-[#d0f0e0]"
+                      ? `bg-gradient-to-br ${gradient} text-white shadow-md`
+                      : `bg-white text-brand-text border ${pastelBorder}`
                   }`}
                 >
                   {m.name}
@@ -317,8 +320,8 @@ export default function MenuItemDetailPage() {
                   onClick={() => toggleAddon(m.id)}
                   className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
                     selectedAddons.includes(m.id)
-                      ? "bg-brand-dark text-white"
-                      : "bg-white text-brand-text border border-[#d0f0e0]"
+                      ? `bg-gradient-to-br ${gradient} text-white shadow-md`
+                      : `bg-white text-brand-text border ${pastelBorder}`
                   }`}
                 >
                   {m.name}
