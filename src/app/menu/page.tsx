@@ -194,10 +194,12 @@ interface RecentOrder {
   total: number;
 }
 
-function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
+function QuickOrderStrip({ onRepeat, onDetail, favorites, popularIds, stopList }: {
   onRepeat: (items: CartItem[]) => void;
   onDetail: (item: MenuItem) => void;
   favorites: string[];
+  popularIds: string[];
+  stopList: string[];
 }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -245,8 +247,13 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
   }, [user]);
 
   const favoriteItems = MENU_ITEMS.filter(i => favorites.includes(i.id));
+  // Популярные — исключаем те что уже в избранном чтобы не дублировать
+  const favSet = new Set(favorites);
+  const popularItems = popularIds
+    .map(id => MENU_ITEMS.find(i => i.id === id))
+    .filter((i): i is MenuItem => !!i && !stopList.includes(i.id) && !favSet.has(i.id));
 
-  if (recentOrders.length === 0 && favoriteItems.length === 0) return null;
+  if (recentOrders.length === 0 && favoriteItems.length === 0 && popularItems.length === 0) return null;
 
   const handleRepeat = (order: RecentOrder) => {
     const cartItems: CartItem[] = order.items.map(i => {
@@ -310,6 +317,26 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
             </motion.button>
           );
         })}
+        {popularItems.map((item) => {
+          const itemCat = getCategory(item.category);
+          const grad = GRADIENT_CLASSES[itemCat.gradient];
+          return (
+            <motion.button
+              key={`pop-${item.id}`}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onDetail(item)}
+              className={`flex-shrink-0 w-32 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${grad}`}
+              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">{CAT_ICONS[item.category]}</span>
+                <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">🔥</span>
+              </div>
+              <p className="text-xs font-bold truncate mt-1">{item.name}</p>
+              <p className="text-[10px] text-white/70 mt-0.5">от {formatPrice(getMinPrice(item))}</p>
+            </motion.button>
+          );
+        })}
       </div>
     </section>
   );
@@ -354,54 +381,6 @@ function SceneTip() {
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-/* ═══ POPULAR STRIP — управляется баристами/CEO через Firestore ═══ */
-function PopularStrip({ onDetail, stopList }: {
-  onDetail: (item: MenuItem) => void;
-  stopList: string[];
-}) {
-  const [popularIds, setPopularIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
-      if (snap.exists()) {
-        setPopularIds(snap.data().popularItems ?? []);
-      }
-    }, () => {});
-    return () => unsub();
-  }, []);
-
-  const items = popularIds
-    .map(id => MENU_ITEMS.find(i => i.id === id))
-    .filter((i): i is MenuItem => !!i && !stopList.includes(i.id));
-
-  if (items.length === 0) return null;
-
-  return (
-    <section className="mt-3 px-3" aria-label="Популярное">
-      <h2 className="text-sm font-bold text-brand-text mb-2">🔥 Популярное</h2>
-      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2">
-        {items.map((item) => {
-          const itemCat = getCategory(item.category);
-          const grad = GRADIENT_CLASSES[itemCat.gradient];
-          return (
-            <motion.button
-              key={item.id}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onDetail(item)}
-              className={`flex-shrink-0 w-36 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${grad}`}
-              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-            >
-              <span className="text-xl">{CAT_ICONS[item.category]}</span>
-              <p className="text-xs font-bold truncate mt-1">{item.name}</p>
-              <p className="text-[10px] text-white/70 mt-0.5">от {formatPrice(getMinPrice(item))}</p>
-            </motion.button>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -474,6 +453,7 @@ export default function MenuPage() {
   const [cookieCollected, setCookieCollected] = useState(false);
   const [lastCookieDate, setLastCookieDate] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [popularIds, setPopularIds] = useState<string[]>([]);
   const [totalOrders, setTotalOrders] = useState<number | undefined>(undefined);
   const tabsRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
@@ -508,6 +488,7 @@ export default function MenuPage() {
         const data = snap.data();
         setCafeOpen(data.isOpen ?? true);
         setStopList(normalizeStopList(data.stopList));
+        setPopularIds(data.popularItems ?? []);
       }
     }, () => {});
     return () => unsub();
@@ -676,16 +657,12 @@ export default function MenuPage() {
         <LoyaltyBanner count={loyaltyCount} streak={streakDays} />
       </div>
 
-      {/* Quick order */}
+      {/* Quick order + favorites + popular — single scrollable strip */}
       <QuickOrderStrip
         onRepeat={(items) => setItems(items)}
         onDetail={(item) => openDetail(item)}
         favorites={favorites}
-      />
-
-      {/* Popular — managed by baristas/CEO */}
-      <PopularStrip
-        onDetail={(item) => openDetail(item)}
+        popularIds={popularIds}
         stopList={stopList.items}
       />
 
