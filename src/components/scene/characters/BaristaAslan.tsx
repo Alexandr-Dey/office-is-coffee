@@ -99,7 +99,7 @@ export function BaristaAslan({ orderStatus }: Props) {
     >
       {/* Invisible hit area */}
       <rect x="-30" y="-20" width="60" height="90" fill="transparent" />
-      <text x="0" y="-18" textAnchor="middle" fill="#27ae60" fontSize="9" fontWeight="bold" opacity="0.7">
+      <text x="0" y="-22" textAnchor="middle" fill="#27ae60" fontSize="14" fontWeight="bold" opacity="0.85">
         Аслан
       </text>
       <AslanBody action={state === "idle" ? currentAction : state} isWaving={state === "ready"} />

@@ -118,7 +118,7 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
     >
       {/* Invisible hit area — larger than visible body */}
       <rect x="-30" y="-20" width="60" height="90" fill="transparent" />
-      <text x="0" y="-18" textAnchor="middle" fill="#2980b9" fontSize="9" fontWeight="bold" opacity="0.7">
+      <text x="0" y="-22" textAnchor="middle" fill="#2980b9" fontSize="14" fontWeight="bold" opacity="0.85">
         Виталий
       </text>
       <VitaliyBody action={isAngry ? "angry" : canMove ? currentAction : state} isSad={isSad} />

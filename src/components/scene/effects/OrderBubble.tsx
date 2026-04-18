@@ -24,12 +24,12 @@ export function OrderBubble({ status }: Props) {
       exit={{ opacity: 0, y: -10 }}
       transition={{ type: "spring", damping: 20 }}
     >
-      <rect x="300" y="230" width="200" height="36" rx="10" fill="rgba(255,255,255,0.95)" stroke="#1a7a44" strokeWidth="1.5" />
-      <text x="400" y="254" textAnchor="middle" fill="#1a7a44" fontSize="13" fontWeight="bold">
+      <rect x="270" y="220" width="260" height="48" rx="14" fill="rgba(255,255,255,0.95)" stroke="#1a7a44" strokeWidth="2" />
+      <text x="400" y="252" textAnchor="middle" fill="#1a7a44" fontSize="20" fontWeight="bold">
         {text}
       </text>
       {/* Triangle pointer down */}
-      <polygon points="385,266 400,276 395,266" fill="rgba(255,255,255,0.95)" stroke="#1a7a44" strokeWidth="1" />
+      <polygon points="385,268 400,280 395,268" fill="rgba(255,255,255,0.95)" stroke="#1a7a44" strokeWidth="1.5" />
     </motion.g>
   );
 }
