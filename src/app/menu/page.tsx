@@ -88,14 +88,11 @@ function LoyaltyBanner({ count, streak, userName, totalOrders }: {
     <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3.5" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
       {/* Greeting */}
       <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="text-sm font-bold text-brand-text">
-            {greeting.emoji} {greeting.text}
-          </p>
-          <p className="text-[11px] text-brand-text/40">{greeting.suggestion}</p>
-        </div>
+        <p className="text-sm font-bold text-brand-text">
+          {greeting.emoji} {greeting.text} <span className="font-normal text-brand-text/40">· {greeting.suggestion}</span>
+        </p>
         {streakMsg && (
-          <span className="text-[11px] font-semibold text-brand-dark bg-brand-mint/15 px-2.5 py-1 rounded-full whitespace-nowrap">
+          <span className="text-[11px] font-semibold text-brand-dark bg-brand-mint/15 px-2.5 py-1 rounded-full whitespace-nowrap ml-2">
             {streakMsg}
           </span>
         )}
