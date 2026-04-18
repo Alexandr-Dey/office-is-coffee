@@ -426,6 +426,34 @@ function useTypingPlaceholder(words: string[]): string {
   return text;
 }
 
+/* ═══ KEYBOARD LAYOUT MAPS ═══ */
+// EN QWERTY → RU ЙЦУКЕН (user typed on wrong layout)
+const EN_RU: Record<string, string> = {
+  q:'й',w:'ц',e:'у',r:'к',t:'е',y:'н',u:'г',i:'ш',o:'щ',p:'з',
+  '[':'х',']':'ъ',a:'ф',s:'ы',d:'в',f:'а',g:'п',h:'р',j:'о',k:'л',
+  l:'д',';':'ж',"'":"э",z:'я',x:'ч',c:'с',v:'м',b:'и',n:'т',m:'ь',
+  ',':'б','.':'ю',
+};
+function enToRu(s: string): string {
+  let r = '';
+  for (const c of s) r += EN_RU[c] ?? c;
+  return r === s ? '' : r; // empty if nothing changed
+}
+
+// KZ layout has extra letters — map common KZ keys to closest RU
+const KZ_RU: Record<string, string> = {
+  'ә':'а','ғ':'г','қ':'к','ң':'н','ө':'о','ү':'у','ұ':'у','і':'и','һ':'х',
+};
+function kzToRu(s: string): string {
+  let r = '';
+  let changed = false;
+  for (const c of s) {
+    if (KZ_RU[c]) { r += KZ_RU[c]; changed = true; }
+    else r += c;
+  }
+  return changed ? r : '';
+}
+
 /* ═══ PAGE ═══ */
 export default function MenuPage() {
   const { user } = useAuth();
@@ -470,11 +498,16 @@ export default function MenuPage() {
   const searchResults = useMemo(() => {
     if (!isSearching) return [];
     const q = search.toLowerCase();
-    return MENU_ITEMS.filter(i =>
-      i.name.toLowerCase().includes(q)
-      || (i.description ?? "").toLowerCase().includes(q)
-      || (getCategory(i.category).name).toLowerCase().includes(q)
-    );
+    // Генерируем варианты: оригинал + EN→RU раскладка + KZ→RU раскладка
+    const variants = [q, enToRu(q), kzToRu(q)].filter(Boolean);
+    return MENU_ITEMS.filter(i => {
+      const name = i.name.toLowerCase();
+      const desc = (i.description ?? "").toLowerCase();
+      const catName = getCategory(i.category).name.toLowerCase();
+      return variants.some(v =>
+        name.includes(v) || desc.includes(v) || catName.includes(v)
+      );
+    });
   }, [search, isSearching]);
   const currentItems = useMemo(
     () => isSearching ? searchResults : MENU_ITEMS.filter(i => i.category === cat),
