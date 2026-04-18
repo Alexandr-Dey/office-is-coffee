@@ -114,11 +114,11 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
       id="barista-vitaliy"
       onPointerDown={handleTap}
       style={{ cursor: "pointer", transition: "transform 2s ease-in-out" }}
-      transform={`translate(${posX}, 275)`}
+      transform={`translate(${posX}, 260) scale(1.4)`}
     >
       {/* Invisible hit area — larger than visible body */}
-      <rect x="-30" y="-20" width="60" height="90" fill="transparent" />
-      <text x="0" y="-22" textAnchor="middle" fill="#2980b9" fontSize="14" fontWeight="bold" opacity="0.85">
+      <rect x="-30" y="-25" width="60" height="100" fill="transparent" />
+      <text x="0" y="-24" textAnchor="middle" fill="#2980b9" fontSize="13" fontWeight="bold" opacity="0.9">
         Виталий
       </text>
       <VitaliyBody action={isAngry ? "angry" : canMove ? currentAction : state} isSad={isSad} />
