@@ -80,7 +80,7 @@ export function BaristaAslan({ orderStatus }: Props) {
 
   const handleTap = useCallback(() => {
     setTapCount(p => p + 1);
-    setHearts(prev => [...prev, Date.now()]);
+    setHearts(prev => [...prev.slice(-15), Date.now()]);
     const today = new Date().toISOString().slice(0, 10);
     setDoc(doc(getFirebaseDb(), "barista_hearts", `aslan_${today}`), {
       baristaName: "Аслан",

@@ -5,6 +5,7 @@ import { doc, setDoc } from "firebase/firestore";
 
 /** Shared SW registration (reused across calls) */
 let swRegPromise: Promise<ServiceWorkerRegistration> | null = null;
+let onMessageRegistered = false;
 
 function getOrRegisterSW(): Promise<ServiceWorkerRegistration> {
   if (swRegPromise) return swRegPromise;
@@ -64,8 +65,11 @@ async function saveFcmToken(uid: string, attempt = 1): Promise<boolean> {
 
     console.log("[Push] Token saved for", uid.slice(0, 8));
 
-    // Handle foreground messages
-    onMessage(messaging, () => {});
+    // Handle foreground messages (register only once)
+    if (!onMessageRegistered) {
+      onMessage(messaging, () => {});
+      onMessageRegistered = true;
+    }
 
     return true;
   } catch (err) {

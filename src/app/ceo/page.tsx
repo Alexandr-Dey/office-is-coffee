@@ -66,7 +66,8 @@ export default function CEOPage() {
   useEffect(() => {
     async function loadStats() {
       const db = getFirebaseDb();
-      const ordersSnap = await getDocs(collection(db, "orders"));
+      // Только оплаченные заказы — не грузим всю коллекцию
+      const ordersSnap = await getDocs(query(collection(db, "orders"), where("status", "==", "paid"), limit(500)));
       const orders = ordersSnap.docs.map((d) => d.data());
 
       const today = getAlmatyToday();

@@ -580,9 +580,13 @@ export default function AdminPage() {
   const alertIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Persistent alert: repeating sound every 5s while there are "new" orders
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const playAlertSound = useCallback(() => {
     try {
-      const ctx = new AudioContext();
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        audioCtxRef.current = new AudioContext();
+      }
+      const ctx = audioCtxRef.current;
       const playTone = (freq: number, delay: number) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();

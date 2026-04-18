@@ -59,8 +59,11 @@ export default function BaristaStatsPage() {
 
       for (const d of todaySnap.docs) {
         const o = d.data();
+        if (o.status === "cancelled") continue; // не считаем отменённые
         orders++;
-        revenue += o.total ?? 0;
+        if (o.status === "paid" || o.status === "ready") {
+          revenue += o.total ?? 0;
+        }
         if (o.rating) {
           ratingSum += o.rating;
           ratingCount++;

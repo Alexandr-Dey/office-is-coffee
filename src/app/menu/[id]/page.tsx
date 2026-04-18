@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter, notFound } from "next/navigation";
 import { motion } from "framer-motion";
-import { doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
@@ -119,13 +119,9 @@ export default function MenuItemDetailPage() {
     const newVal = !isFavorite;
     setIsFavorite(newVal);
     const userRef = doc(getFirebaseDb(), "users", user.uid);
-    const snap = await getDoc(userRef).catch(() => null);
-    if (!snap || !snap.exists()) return;
-    const current: string[] = snap.data().favoriteItems ?? [];
-    const updated = newVal
-      ? [...current, item.id]
-      : current.filter(f => f !== item.id);
-    await updateDoc(userRef, { favoriteItems: updated }).catch(() => {});
+    await updateDoc(userRef, {
+      favoriteItems: newVal ? arrayUnion(item.id) : arrayRemove(item.id),
+    }).catch(() => {});
   };
 
   // Сколько этого напитка уже в корзине (любой размер/модификаторы)

@@ -91,7 +91,7 @@ export function BaristaVitaliy({ orderStatus, streakDays, lastOrderDate }: Props
   const handleTap = useCallback(() => {
     setTapCount(p => p + 1);
     // Floating heart
-    setHearts(prev => [...prev, Date.now()]);
+    setHearts(prev => [...prev.slice(-15), Date.now()]);
     // Save to Firestore
     const today = new Date().toISOString().slice(0, 10);
     setDoc(doc(getFirebaseDb(), "barista_hearts", `vitaliy_${today}`), {

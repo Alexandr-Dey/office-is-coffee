@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, getDoc, where as fbWhere, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, getDoc, where as fbWhere, updateDoc, increment } from "firebase/firestore";
 import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants";
 import { trackEvent } from "@/lib/mixpanel";
 import type { CartItem } from "@/lib/types";
@@ -664,13 +664,10 @@ export default function MenuPage() {
   const handleCollectCookie = async () => {
     if (!user || !dailyCookie || cookieCollected) return;
     setCookieCollected(true);
-    const db = getFirebaseDb();
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-    const currentCount = snap.exists() ? snap.data()?.cookiesCount ?? 0 : 0;
+    const userRef = doc(getFirebaseDb(), "users", user.uid);
     await updateDoc(userRef, {
       lastCookieDate: dailyCookie.date,
-      cookiesCount: currentCount + 1,
+      cookiesCount: increment(1),
       pendingCookie: true,
     }).catch(() => {});
     showToast("🍪 Печенька в профиле!", "success");
