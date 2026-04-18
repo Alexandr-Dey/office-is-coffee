@@ -76,68 +76,54 @@ function getStreakMessage(streak: number): string | null {
 }
 
 /* ═══ LOYALTY ═══ */
-function LoyaltyBanner({ count, streak, userName, totalOrders }: {
-  count: number; streak: number; userName?: string; totalOrders?: number;
+function LoyaltyBanner({ count, streak }: {
+  count: number; streak: number;
 }) {
   const progress = (count / 8) * 100;
   const nextFree = 8 - count;
-  const greeting = getGreeting(userName);
   const streakMsg = getStreakMessage(streak);
 
   return (
-    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3.5" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-      {/* Greeting */}
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-brand-text">
-          {greeting.emoji} {greeting.text} <span className="font-normal text-brand-text/40">· {greeting.suggestion}</span>
-        </p>
-        {streakMsg && (
-          <span className="text-[11px] font-semibold text-brand-dark bg-brand-mint/15 px-2.5 py-1 rounded-full whitespace-nowrap ml-2">
-            {streakMsg}
-          </span>
-        )}
-      </div>
-
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-2.5 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
       {/* Cups */}
-      <div className="flex gap-1.5 mb-2">
+      <div className="flex gap-1 flex-shrink-0">
         {Array.from({ length: 8 }, (_, i) => (
-          <motion.div
+          <div
             key={i}
-            initial={false}
-            animate={{ scale: i < count ? 1 : 0.85, opacity: i < count ? 1 : 0.3 }}
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-sm ${
+            className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
               i < count
                 ? "bg-brand-dark"
                 : i === count
-                  ? "bg-brand-mint/30 border-2 border-dashed border-brand-mint"
+                  ? "bg-brand-mint/30 border border-dashed border-brand-mint"
                   : "bg-gray-100"
             }`}
           >
             {i < count ? "☕" : ""}
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      {/* Progress */}
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="h-full bg-gradient-to-r from-brand-dark to-brand-mint rounded-full"
-        />
+      {/* Progress + text */}
+      <div className="flex-1 min-w-0">
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="h-full bg-gradient-to-r from-brand-dark to-brand-mint rounded-full"
+          />
+        </div>
+        <p className="text-[10px] text-brand-text/40 mt-0.5">
+          {count === 7 ? "🎉 Следующий бесплатный!" : `${count}/8 · ещё ${nextFree} до бесплатного`}
+        </p>
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] text-brand-text/40">
-          {count === 7 ? "🎉 Следующий кофе бесплатный!" : `Ещё ${nextFree} до бесплатного`}
-        </p>
-        {totalOrders !== undefined && totalOrders > 0 && (
-          <p className="text-[10px] text-brand-text/25">
-            Всего заказов: {totalOrders}
-          </p>
-        )}
-      </div>
+      {/* Streak badge */}
+      {streakMsg && (
+        <span className="text-[10px] font-semibold text-brand-dark bg-brand-mint/15 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+          {streakMsg}
+        </span>
+      )}
     </div>
   );
 }
@@ -511,6 +497,7 @@ export default function MenuPage() {
   };
 
   const goToOrder = () => { router.push("/order"); };
+  const greeting = getGreeting(user?.displayName ?? undefined);
 
   return (
     <main className="min-h-screen bg-brand-bg pb-40">
@@ -521,10 +508,12 @@ export default function MenuPage() {
       )}
 
       <header className="px-3 pt-2 flex items-center justify-between">
-        <h1 className="font-display text-lg font-bold text-brand-text">Love is Coffee</h1>
-        <div className="flex items-center gap-3">
+        <h1 className="font-display text-base font-bold text-brand-text truncate">
+          {greeting.emoji} {greeting.text}
+        </h1>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {distanceToCafe !== null && (
-            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
               distanceToCafe <= CAFE_RADIUS_M
                 ? "bg-green-100 text-green-700"
                 : distanceToCafe <= 1000
@@ -534,9 +523,9 @@ export default function MenuPage() {
               📍 {distanceToCafe < 1000 ? `${distanceToCafe} м` : `${(distanceToCafe / 1000).toFixed(1)} км`}
             </span>
           )}
-          <div className="flex items-center gap-1.5">
-            <div className={`w-2.5 h-2.5 rounded-full ${cafeOpen ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
-            <span className="text-xs text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
+          <div className="flex items-center gap-1">
+            <div className={`w-2 h-2 rounded-full ${cafeOpen ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
+            <span className="text-[11px] text-brand-text/50">{cafeOpen ? "Открыто" : "Закрыто"}</span>
           </div>
         </div>
       </header>
@@ -553,12 +542,7 @@ export default function MenuPage() {
 
       {/* Loyalty */}
       <div className="px-3 -mt-1">
-        <LoyaltyBanner
-          count={loyaltyCount}
-          streak={streakDays}
-          userName={user?.displayName ?? undefined}
-          totalOrders={totalOrders}
-        />
+        <LoyaltyBanner count={loyaltyCount} streak={streakDays} />
       </div>
 
       {/* Quick order */}
