@@ -69,10 +69,10 @@ function getGreeting(name?: string): { text: string; emoji: string; suggestion: 
 
 function getStreakMessage(streak: number): string | null {
   if (streak === 0) return null;
-  if (streak >= 14) return `🔥 ${streak} дней подряд! Ты легенда!`;
-  if (streak >= 7) return `🏆 ${streak} дней подряд — неделя!`;
-  if (streak >= 3) return `🔥 ${streak} дня подряд, продолжай!`;
-  return `☕ Стрик: ${streak}`;
+  if (streak >= 14) return `🔥 ${streak}д`;
+  if (streak >= 7) return `🏆 ${streak}д`;
+  if (streak >= 3) return `🔥 ${streak}д`;
+  return `☕ ${streak}д`;
 }
 
 /* ═══ LOYALTY ═══ */
@@ -84,43 +84,30 @@ function LoyaltyBanner({ count, streak }: {
   const streakMsg = getStreakMessage(streak);
 
   return (
-    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-2.5 flex items-center gap-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-3 py-2 flex items-center gap-2" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
       {/* Cups */}
-      <div className="flex gap-1 flex-shrink-0">
+      <div className="flex gap-0.5 flex-shrink-0">
         {Array.from({ length: 8 }, (_, i) => (
-          <div
-            key={i}
-            className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              i < count
-                ? "bg-brand-dark"
-                : i === count
-                  ? "bg-brand-mint/30 border border-dashed border-brand-mint"
-                  : "bg-gray-100"
-            }`}
-          >
-            {i < count ? "☕" : ""}
-          </div>
+          <div key={i} className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center ${
+            i < count ? "bg-brand-dark" : i === count ? "bg-brand-mint/30 border border-dashed border-brand-mint" : "bg-gray-100"
+          }`}>{i < count ? "☕" : ""}</div>
         ))}
       </div>
 
-      {/* Progress + text */}
+      {/* Progress */}
       <div className="flex-1 min-w-0">
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="h-full bg-gradient-to-r from-brand-dark to-brand-mint rounded-full"
-          />
+          <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.6, ease: "easeOut" }}
+            className="h-full bg-gradient-to-r from-brand-dark to-brand-mint rounded-full" />
         </div>
-        <p className="text-[10px] text-brand-text/40 mt-0.5">
-          {count === 7 ? "🎉 Следующий бесплатный!" : `${count}/8 · ещё ${nextFree} до бесплатного`}
+        <p className="text-[10px] text-brand-text/40 mt-0.5 truncate">
+          {count === 7 ? "🎉 Следующий бесплатный!" : `${count}/8 · ещё ${nextFree}`}
         </p>
       </div>
 
-      {/* Streak badge */}
+      {/* Streak */}
       {streakMsg && (
-        <span className="text-[10px] font-semibold text-brand-dark bg-brand-mint/15 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+        <span className="text-[10px] font-bold text-brand-dark bg-brand-mint/15 px-1.5 py-0.5 rounded-full flex-shrink-0">
           {streakMsg}
         </span>
       )}
