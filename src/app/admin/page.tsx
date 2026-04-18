@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireBarista } from "@/lib/auth";
@@ -531,36 +531,63 @@ export default function AdminPage() {
     getFirebaseAuth().currentUser?.getIdToken(true).catch(() => {});
   }, []);
 
-  const prevOrderCountRef = useRef<number | null>(null);
+  const alertIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Persistent alert: repeating sound every 5s while there are "new" orders
+  const playAlertSound = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const playTone = (freq: number, delay: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        gain.gain.value = 0.4;
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.12);
+      };
+      playTone(880, 0);
+      playTone(1100, 0.15);
+      playTone(1320, 0.30);
+    } catch { /* audio not available */ }
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+  }, []);
+
+  const startAlert = useCallback(() => {
+    if (alertIntervalRef.current) return; // already running
+    playAlertSound(); // play immediately
+    alertIntervalRef.current = setInterval(() => {
+      playAlertSound();
+    }, 5000);
+  }, [playAlertSound]);
+
+  const stopAlert = useCallback(() => {
+    if (alertIntervalRef.current) {
+      clearInterval(alertIntervalRef.current);
+      alertIntervalRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const q = query(collection(getFirebaseDb(), "orders"), orderBy("createdAt", "desc"), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       const newOrders = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) }));
-      const newCount = newOrders.filter(o => o.status === "new").length;
-
-      // Sound + vibrate on new order (skip first load)
-      if (prevOrderCountRef.current !== null && newCount > prevOrderCountRef.current) {
-        try {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = 880;
-          gain.gain.value = 0.3;
-          osc.start();
-          osc.stop(ctx.currentTime + 0.15);
-          setTimeout(() => { osc.frequency.value = 1100; const o2 = ctx.createOscillator(); o2.connect(gain); o2.frequency.value = 1100; o2.start(); o2.stop(ctx.currentTime + 0.15); }, 200);
-        } catch { /* audio not available */ }
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      }
-      prevOrderCountRef.current = newCount;
-
       setOrders(newOrders);
     });
     return () => unsub();
   }, []);
+
+  // Alert logic: start/stop based on "new" orders count
+  const newOrdersCount = orders.filter(o => o.status === "new").length;
+  useEffect(() => {
+    if (newOrdersCount > 0) {
+      startAlert();
+    } else {
+      stopAlert();
+    }
+    return () => stopAlert();
+  }, [newOrdersCount, startAlert, stopAlert]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
@@ -602,7 +629,22 @@ export default function AdminPage() {
   return (
     <BaristaPushGate uid={user.uid}>
     <main className="min-h-screen bg-brand-bg pb-20">
-      <div className="sticky top-0 z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]">
+      {/* Flashing banner for new orders */}
+      {newOrdersCount > 0 && (
+        <motion.div
+          animate={{ opacity: [1, 0.6, 1] }}
+          transition={{ repeat: Infinity, duration: 1.2 }}
+          className="sticky top-0 z-[60] bg-red-500 text-white text-center py-3 cursor-pointer"
+          onClick={() => { setMainTab("orders"); setFilter("active"); }}
+        >
+          <p className="text-base font-bold">
+            🔔 {newOrdersCount === 1 ? "Новый заказ!" : `${newOrdersCount} новых заказа!`}
+          </p>
+          <p className="text-xs text-white/80">Нажми чтобы принять</p>
+        </motion.div>
+      )}
+
+      <div className={`sticky ${newOrdersCount > 0 ? "top-[60px]" : "top-0"} z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0]`}>
         <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="font-display text-lg font-bold text-brand-text">📋 Заказы</h1>
           <motion.button whileTap={{ scale: 0.95 }} onClick={toggleCafe}
