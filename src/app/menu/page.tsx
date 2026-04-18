@@ -315,6 +315,48 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites }: {
   );
 }
 
+/* ═══ SCENE TIP — подсказка тапнуть баристу ═══ */
+const TIPS = [
+  "❤️ Тапни на баристу — полетят сердечки!",
+  "👆 Нажми на баристу в сцене",
+  "💕 Покажи баристе любовь — тапни!",
+];
+const TIP_SESSION_KEY = "oic_scene_tip";
+
+function SceneTip() {
+  const [visible, setVisible] = useState(false);
+  const [tipText, setTipText] = useState("");
+
+  useEffect(() => {
+    // Показываем раз в сессию, через 3 секунды после загрузки
+    if (sessionStorage.getItem(TIP_SESSION_KEY)) return;
+    const tip = TIPS[Math.floor(Math.random() * TIPS.length)];
+    setTipText(tip);
+    const showTimer = setTimeout(() => setVisible(true), 3000);
+    const hideTimer = setTimeout(() => {
+      setVisible(false);
+      sessionStorage.setItem(TIP_SESSION_KEY, "1");
+    }, 7000);
+    return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, y: 10, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.9 }}
+          onClick={() => { setVisible(false); sessionStorage.setItem(TIP_SESSION_KEY, "1"); }}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-white/90 backdrop-blur-sm text-brand-text text-xs font-semibold px-4 py-2 rounded-full shadow-lg cursor-pointer border border-[#d0f0e0]"
+        >
+          {tipText}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /* ═══ POPULAR STRIP — управляется баристами/CEO через Firestore ═══ */
 function PopularStrip({ onDetail, stopList }: {
   onDetail: (item: MenuItem) => void;
@@ -573,6 +615,7 @@ export default function MenuPage() {
           lastOrderDate={lastOrderDate}
           cafeOpen={cafeOpen}
         />
+        <SceneTip />
       </div>
 
       {/* Loyalty */}
