@@ -160,10 +160,9 @@ export default function OrderPage() {
         </div>
       )}
       <nav className={`fixed ${cafeOpen ? "top-0" : "top-9"} w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0] transition-all`}>
-        <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/menu" className="flex items-center gap-2 text-brand-text/50 hover:text-brand-dark text-sm min-h-[44px]">← Назад в меню</Link>
-          <h1 className="font-display text-xl font-bold text-brand-text">☕ Оформление</h1>
-          <div className="w-20" />
+        <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center gap-3">
+          <Link href="/menu" className="text-brand-text/50 hover:text-brand-dark text-lg min-w-[44px] min-h-[44px] flex items-center justify-center">←</Link>
+          <h1 className="font-display text-lg font-bold text-brand-text">Оформление</h1>
         </div>
       </nav>
 
