@@ -1,5 +1,5 @@
-export const CAFE_LAT = 43.2378;
-export const CAFE_LNG = 76.9450;
+export const CAFE_LAT = 43.2330;
+export const CAFE_LNG = 76.9555;
 export const CAFE_RADIUS_M = 300;
 export const CAFE_ADDRESS = "ул. Назарбаева 226, БанкЦентрКредит";
 export const CAFE_TIMEZONE = "Asia/Almaty";
