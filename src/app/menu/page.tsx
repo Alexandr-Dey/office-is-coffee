@@ -37,17 +37,71 @@ const CAT_ICONS: Record<CategoryId, string> = {
   milkshake: '🥛',
 };
 
+/* ═══ TIME-BASED GREETING ═══ */
+function getAlmatyHour(): number {
+  return (new Date().getUTCHours() + 5) % 24;
+}
+
+function getGreeting(name?: string): { text: string; emoji: string; suggestion: string } {
+  const h = getAlmatyHour();
+  const firstName = name?.split(" ")[0] ?? "";
+  if (h >= 5 && h < 12) return {
+    text: firstName ? `Доброе утро, ${firstName}` : "Доброе утро",
+    emoji: "☀️",
+    suggestion: "Начни день с кофе",
+  };
+  if (h >= 12 && h < 17) return {
+    text: firstName ? `Добрый день, ${firstName}` : "Добрый день",
+    emoji: "👋",
+    suggestion: "Перерыв на кофе?",
+  };
+  if (h >= 17 && h < 22) return {
+    text: firstName ? `Добрый вечер, ${firstName}` : "Добрый вечер",
+    emoji: "🌇",
+    suggestion: "Может чай или какао?",
+  };
+  return {
+    text: firstName ? `Привет, ${firstName}` : "Привет",
+    emoji: "🌙",
+    suggestion: "Поздний кофе — особое настроение",
+  };
+}
+
+function getStreakMessage(streak: number): string | null {
+  if (streak === 0) return null;
+  if (streak >= 14) return `🔥 ${streak} дней подряд! Ты легенда!`;
+  if (streak >= 7) return `🏆 ${streak} дней подряд — неделя!`;
+  if (streak >= 3) return `🔥 ${streak} дня подряд, продолжай!`;
+  return `☕ Стрик: ${streak}`;
+}
+
 /* ═══ LOYALTY ═══ */
-function LoyaltyBanner({ count, userName }: { count: number; userName?: string }) {
+function LoyaltyBanner({ count, streak, userName, totalOrders }: {
+  count: number; streak: number; userName?: string; totalOrders?: number;
+}) {
   const progress = (count / 8) * 100;
   const nextFree = 8 - count;
+  const greeting = getGreeting(userName);
+  const streakMsg = getStreakMessage(streak);
+
   return (
-    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
-      {userName && (
-        <p className="text-sm font-semibold text-brand-text mb-2">
-          Привет, {userName} 👋
-        </p>
-      )}
+    <div className="bg-white rounded-2xl border border-[#d0f0e0] px-4 py-3.5" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      {/* Greeting */}
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className="text-sm font-bold text-brand-text">
+            {greeting.emoji} {greeting.text}
+          </p>
+          <p className="text-[11px] text-brand-text/40">{greeting.suggestion}</p>
+        </div>
+        {streakMsg && (
+          <span className="text-[11px] font-semibold text-brand-dark bg-brand-mint/15 px-2.5 py-1 rounded-full whitespace-nowrap">
+            {streakMsg}
+          </span>
+        )}
+      </div>
+
+      {/* Cups */}
       <div className="flex gap-1.5 mb-2">
         {Array.from({ length: 8 }, (_, i) => (
           <motion.div
@@ -66,6 +120,8 @@ function LoyaltyBanner({ count, userName }: { count: number; userName?: string }
           </motion.div>
         ))}
       </div>
+
+      {/* Progress */}
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
         <motion.div
           initial={{ width: 0 }}
@@ -74,9 +130,17 @@ function LoyaltyBanner({ count, userName }: { count: number; userName?: string }
           className="h-full bg-gradient-to-r from-brand-dark to-brand-mint rounded-full"
         />
       </div>
-      <p className="text-[11px] text-brand-text/40">
-        {count === 7 ? "🎉 Следующий кофе бесплатный!" : `Ещё ${nextFree} до бесплатного`}
-      </p>
+
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-brand-text/40">
+          {count === 7 ? "🎉 Следующий кофе бесплатный!" : `Ещё ${nextFree} до бесплатного`}
+        </p>
+        {totalOrders !== undefined && totalOrders > 0 && (
+          <p className="text-[10px] text-brand-text/25">
+            Всего заказов: {totalOrders}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -298,6 +362,7 @@ export default function MenuPage() {
   const [cookieCollected, setCookieCollected] = useState(false);
   const [lastCookieDate, setLastCookieDate] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [totalOrders, setTotalOrders] = useState<number | undefined>(undefined);
   const tabsRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
   const router = useRouter();
@@ -348,6 +413,10 @@ export default function MenuPage() {
         setLastCookieDate(lcd);
         setCookieCollected(isCookieCollectedToday(lcd));
         setFavorites(snap.data().favoriteItems ?? []);
+        // totalOrders — accumulated loyalty resets × 8 + current count
+        const resets = snap.data().loyaltyResets ?? 0;
+        const current = snap.data().loyaltyCount ?? 0;
+        if (resets > 0 || current > 0) setTotalOrders(resets * 8 + current);
       }
     }, () => {});
     return () => unsub();
@@ -463,7 +532,12 @@ export default function MenuPage() {
 
       {/* Loyalty */}
       <div className="px-3 -mt-1">
-        <LoyaltyBanner count={loyaltyCount} userName={user?.displayName ?? undefined} />
+        <LoyaltyBanner
+          count={loyaltyCount}
+          streak={streakDays}
+          userName={user?.displayName ?? undefined}
+          totalOrders={totalOrders}
+        />
       </div>
 
       {/* Quick order */}
