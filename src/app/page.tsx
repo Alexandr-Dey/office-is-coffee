@@ -40,6 +40,8 @@ export default function Home() {
     setAuthError("");
     try {
       await signInWithGoogle();
+      // На десктопе popup закрылся, onAuthStateChanged скоро сработает.
+      // На мобилке signInWithRedirect перезагрузит страницу — сюда не дойдём.
     } catch (e) {
       const code = (e as { code?: string }).code ?? "";
       const silentErrors = ["auth/popup-closed-by-user", "auth/cancelled-popup-request"];
@@ -62,6 +64,13 @@ export default function Home() {
       setSigningIn(false);
     }
   };
+
+  // Safety: если signingIn застрял (popup завис, onAuthStateChanged не сработал) — сбросить через 30с
+  useEffect(() => {
+    if (!signingIn) return;
+    const t = setTimeout(() => setSigningIn(false), 30000);
+    return () => clearTimeout(t);
+  }, [signingIn]);
 
   const handleGuestSignIn = async () => {
     const trimmed = guestName.trim();

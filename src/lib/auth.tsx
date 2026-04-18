@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unsubUser: (() => void) | null = null;
     let didFire = false;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
     let auth;
     try {
@@ -115,7 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       didFire = true;
       clearTimeout(safetyTimeout);
       setConnectionError(false);
-      // Clean up previous user listener
+      // Clean up previous user listener & pending retry
+      if (retryTimeout) { clearTimeout(retryTimeout); retryTimeout = null; }
       if (unsubUser) { unsubUser(); unsubUser = null; }
 
       setFirebaseUser(fbUser);
@@ -213,9 +215,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }, (err) => {
           console.error("[Auth] onSnapshot error:", err);
+          // Listener is dead after error — clear ref so retry can work
+          unsubUser = null;
           // Retry once after delay — auth token may not be ready
-          setTimeout(() => {
-            if (unsubUser) return; // already resubscribed via onAuthStateChanged
+          retryTimeout = setTimeout(() => {
+            retryTimeout = null;
+            if (unsubUser) return; // onAuthStateChanged already resubscribed
             startSnapshot();
           }, 2000);
         });
@@ -226,6 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       clearTimeout(safetyTimeout);
+      if (retryTimeout) clearTimeout(retryTimeout);
       unsubAuth();
       if (unsubUser) unsubUser();
     };
