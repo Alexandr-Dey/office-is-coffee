@@ -107,9 +107,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 15000);
 
-    // Обработка возврата из signInWithRedirect (мобильный flow)
-    getRedirectResult(auth).catch((err) => {
-      console.warn("getRedirectResult error:", err);
+    // Обработка возврата из signInWithRedirect (fallback для in-app браузеров)
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        trackEvent("User Signed Up", { method: "google" });
+        identifyUser(result.user.uid, {
+          $name: result.user.displayName,
+          $email: result.user.email,
+        });
+      }
+    }).catch((err) => {
+      console.error("[Auth] getRedirectResult error:", err);
     });
 
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
@@ -239,12 +247,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const auth = getFirebaseAuth();
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      // Redirect flow — стабильнее на мобилках (Safari, in-app browsers)
-      await signInWithRedirect(auth, googleProvider);
-      // Страница перезагрузится, getRedirectResult обработает результат
-    } else {
+    try {
+      // Popup flow — работает и на мобилке, и на десктопе.
+      // Не перезагружает страницу → auth state не теряется.
       const result = await signInWithPopup(auth, googleProvider);
       trackEvent("User Signed Up", { method: "google" });
       if (result.user) {
@@ -253,6 +258,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           $email: result.user.email,
         });
       }
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      // Popup заблокирован (in-app браузеры) → fallback на redirect
+      if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+      throw e;
     }
   };
 
