@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useRequireBarista } from "@/lib/auth";
@@ -29,6 +29,25 @@ function timeAgo(ts: Timestamp | null): string {
   if (diff < 60) return `${diff} сек назад`;
   if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
   return `${Math.floor(diff / 3600)} ч назад`;
+}
+
+function getWaitMinutes(ts: Timestamp | null): number {
+  if (!ts) return 0;
+  return Math.floor((Date.now() - ts.toMillis()) / 60000);
+}
+
+/** Urgency color based on wait time */
+function getUrgencyClass(waitMin: number): string {
+  if (waitMin >= 10) return "border-l-4 border-l-red-500";
+  if (waitMin >= 5) return "border-l-4 border-l-amber-400";
+  return "";
+}
+
+/** Remaining time for accepted orders */
+function getRemainingMin(acceptedAt?: number, estimatedMinutes?: number): number | null {
+  if (!acceptedAt || !estimatedMinutes) return null;
+  const elapsed = Math.floor((Date.now() - acceptedAt) / 60000);
+  return estimatedMinutes - elapsed;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -160,14 +179,29 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
 
   const sl = STATUS_LABELS[order.status] ?? STATUS_LABELS.pending;
   const ratingEmoji = order.rating === 3 ? "😍" : order.rating === 2 ? "👍" : order.rating === 1 ? "😕" : null;
+  const waitMin = getWaitMinutes(order.createdAt);
+  const urgency = ["new", "pending"].includes(order.status) ? getUrgencyClass(waitMin) : "";
+  const remaining = getRemainingMin(order.acceptedAt, order.estimatedMinutes);
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 100 }}
-      className="bg-white rounded-2xl border border-[#d0f0e0] shadow-sm p-5" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+      className={`bg-white rounded-2xl border border-[#d0f0e0] shadow-sm p-5 ${urgency}`} style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="font-bold text-brand-text text-lg">{order.name}</h3>
-          <p className="text-xs text-brand-text/40">{timeAgo(order.createdAt)}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-xs text-brand-text/40">{timeAgo(order.createdAt)}</p>
+            {waitMin >= 5 && ["new", "pending"].includes(order.status) && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${waitMin >= 10 ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}>
+                ⏱ {waitMin} мин ждёт
+              </span>
+            )}
+            {order.status === "accepted" && remaining !== null && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${remaining <= 0 ? "bg-red-100 text-red-600" : remaining <= 2 ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"}`}>
+                {remaining <= 0 ? "⏱ Время вышло!" : `⏱ ~${remaining} мин осталось`}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {ratingEmoji && <span className="text-lg">{ratingEmoji}</span>}
@@ -497,10 +531,33 @@ export default function AdminPage() {
     getFirebaseAuth().currentUser?.getIdToken(true).catch(() => {});
   }, []);
 
+  const prevOrderCountRef = useRef<number | null>(null);
+
   useEffect(() => {
     const q = query(collection(getFirebaseDb(), "orders"), orderBy("createdAt", "desc"), limit(50));
     const unsub = onSnapshot(q, (snap) => {
-      setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) })));
+      const newOrders = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Order, "id">) }));
+      const newCount = newOrders.filter(o => o.status === "new").length;
+
+      // Sound + vibrate on new order (skip first load)
+      if (prevOrderCountRef.current !== null && newCount > prevOrderCountRef.current) {
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 880;
+          gain.gain.value = 0.3;
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+          setTimeout(() => { osc.frequency.value = 1100; const o2 = ctx.createOscillator(); o2.connect(gain); o2.frequency.value = 1100; o2.start(); o2.stop(ctx.currentTime + 0.15); }, 200);
+        } catch { /* audio not available */ }
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+      prevOrderCountRef.current = newCount;
+
+      setOrders(newOrders);
     });
     return () => unsub();
   }, []);
@@ -516,6 +573,8 @@ export default function AdminPage() {
   }, []);
 
   const toggleCafe = async () => {
+    const action = cafeOpen ? "закрыть" : "открыть";
+    if (!confirm(`Точно ${action} кофейню?`)) return;
     const newOpen = !cafeOpen;
     setCafeOpen(newOpen);
     await setDoc(doc(getFirebaseDb(), "cafe_status", "aksay_main"), {

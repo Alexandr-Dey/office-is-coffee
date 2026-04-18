@@ -33,6 +33,7 @@ const ROLE_ASSIGNMENTS: Record<
   string,
   { role: Role; characterName?: string }
 > = {
+  "alex.d.workt@gmail.com": { role: "ceo" },
   "aslan.mussilim0018@inbox.ru": { role: "barista", characterName: "Аслан" },
   "vladislavryakin1985@gmail.com": { role: "barista" },
   "alolha18@gmail.com": { role: "barista", characterName: "Виталий" },
