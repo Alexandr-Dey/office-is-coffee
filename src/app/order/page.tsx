@@ -10,6 +10,7 @@ import { useCart } from "@/lib/cart";
 import confetti from "canvas-confetti";
 import { trackEvent } from "@/lib/mixpanel";
 import type { CartItem } from "@/lib/types";
+import Link from "next/link";
 import { formatPrice, MENU_ITEMS } from "@/lib/menu";
 
 export default function OrderPage() {
@@ -145,7 +146,7 @@ export default function OrderPage() {
         <div className="text-center">
           <p className="text-6xl mb-4">☕</p>
           <p className="text-brand-text/50 text-lg mb-4">Корзина пуста</p>
-          <a href="/menu" className="text-brand-dark font-semibold hover:underline">← Вернуться в меню</a>
+          <Link href="/menu" className="text-brand-dark font-semibold hover:underline">← Вернуться в меню</Link>
         </div>
       </main>
     );
@@ -160,7 +161,7 @@ export default function OrderPage() {
       )}
       <nav className={`fixed ${cafeOpen ? "top-0" : "top-9"} w-full z-50 backdrop-blur-md bg-brand-bg/90 border-b border-[#d0f0e0] transition-all`}>
         <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/menu" className="flex items-center gap-2 text-brand-text/50 hover:text-brand-dark text-sm min-h-[44px]">← Назад в меню</a>
+          <Link href="/menu" className="flex items-center gap-2 text-brand-text/50 hover:text-brand-dark text-sm min-h-[44px]">← Назад в меню</Link>
           <h1 className="font-display text-xl font-bold text-brand-text">☕ Оформление</h1>
           <div className="w-20" />
         </div>

@@ -530,11 +530,12 @@ export default function MenuPage() {
             exit={{ scale: 0, opacity: 0 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowCart(true)}
-            className="fixed bottom-[80px] z-[60] w-14 h-14 bg-brand-dark text-white rounded-full shadow-xl flex items-center justify-center"
+            className="fixed bottom-[80px] z-[60] bg-brand-dark text-white rounded-full shadow-xl flex items-center gap-2 px-5 h-14"
             style={{ right: "max(16px, calc(50% - 240px + 16px))" }}
           >
             <span className="text-xl">🛒</span>
-            <span className="absolute -top-1 -right-1 bg-brand-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            <span className="text-sm font-bold">{formatPrice(totalPrice)}</span>
+            <span className="bg-brand-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {totalItems}
             </span>
           </motion.button>

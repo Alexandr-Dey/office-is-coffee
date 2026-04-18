@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 const clientTabs = [
   { href: "/menu", icon: "☕", label: "Меню" },
   { href: "/orders", icon: "📦", label: "Заказы" },
-  { href: "/coins", icon: "⭐", label: "Монеты" },
+  { href: "/coins", icon: "⭐", label: "Бонусы" },
   { href: "/profile", icon: "👤", label: "Профиль" },
 ];
 

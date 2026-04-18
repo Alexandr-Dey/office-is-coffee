@@ -30,7 +30,7 @@ export default function MenuItemDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const { addCartItem, totalItems } = useCart();
+  const { cart, addCartItem, totalItems } = useCart();
   const { showToast } = useToast();
 
   const itemId = params.id as string;
@@ -127,6 +127,9 @@ export default function MenuItemDetailPage() {
       : current.filter(f => f !== item.id);
     await updateDoc(userRef, { favoriteItems: updated }).catch(() => {});
   };
+
+  // Сколько этого напитка уже в корзине (любой размер/модификаторы)
+  const inCartCount = cart.filter(c => c.itemId === item.id).reduce((s, c) => s + c.qty, 0);
 
   const handleAdd = () => {
     addCartItem({
@@ -344,9 +347,9 @@ export default function MenuItemDetailPage() {
             whileTap={{ scale: 0.97 }}
             onClick={handleAdd}
             disabled={isStopped}
-            className="flex-1 py-3.5 bg-brand-mid text-white font-semibold rounded-2xl text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex-1 py-3.5 text-white font-semibold rounded-2xl text-base disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r ${gradient}`}
           >
-            {isStopped ? "Нет в наличии" : "Добавить"}
+            {isStopped ? "Нет в наличии" : inCartCount > 0 ? `Ещё один · уже ${inCartCount} в корзине` : "Добавить в корзину"}
           </motion.button>
           {totalItems > 0 && (
             <motion.button
