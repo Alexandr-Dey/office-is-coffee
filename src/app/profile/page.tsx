@@ -623,7 +623,7 @@ export default function ProfilePage() {
           <div className="relative w-full" style={{ height: 200 }}>
             <iframe
               title="Карта кофейни Love is Coffee"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=76.9515%2C43.2310%2C76.9595%2C43.2350&layer=mapnik&marker=43.2330%2C76.9555"
+              src="https://www.openstreetmap.org/export/embed.html?bbox=76.9465%2C43.2306%2C76.9545%2C43.2346&layer=mapnik&marker=43.2326%2C76.9505"
               className="w-full h-full border-0"
               loading="lazy"
               referrerPolicy="no-referrer"
