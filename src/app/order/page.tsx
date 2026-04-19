@@ -12,6 +12,7 @@ import { trackEvent } from "@/lib/mixpanel";
 import type { CartItem } from "@/lib/types";
 import Link from "next/link";
 import { formatPrice, MENU_ITEMS } from "@/lib/menu";
+import { resolveIsOpen } from "@/lib/constants";
 
 export default function OrderPage() {
   const { user } = useAuth();
@@ -46,7 +47,7 @@ export default function OrderPage() {
       setLoyaltyLoaded(true); // anon — не нужно ждать
     }
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
-      if (!cancelled && snap.exists()) setCafeOpen(snap.data().isOpen ?? true);
+      if (!cancelled && snap.exists()) setCafeOpen(resolveIsOpen(snap.data()).isOpen);
     }, () => {});
     return () => { cancelled = true; unsub(); };
   }, [user]);

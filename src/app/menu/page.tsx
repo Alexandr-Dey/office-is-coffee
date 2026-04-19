@@ -7,7 +7,7 @@ import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, orderBy, limit, getDocs, getDoc, where as fbWhere, updateDoc, increment } from "firebase/firestore";
-import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM } from "@/lib/constants";
+import { CAFE_LAT, CAFE_LNG, CAFE_RADIUS_M, getDistanceM, resolveIsOpen } from "@/lib/constants";
 import { trackEvent } from "@/lib/mixpanel";
 import type { CartItem } from "@/lib/types";
 import { useToast } from "@/components/Toast";
@@ -576,12 +576,20 @@ export default function MenuPage() {
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setCafeOpen(data.isOpen ?? true);
+        const { isOpen } = resolveIsOpen(data);
+        setCafeOpen(isOpen);
         setStopList(normalizeStopList(data.stopList));
         setPopularIds(data.popularItems ?? []);
       }
     }, () => {});
-    return () => unsub();
+    // Re-check schedule every minute
+    const scheduleInterval = setInterval(() => {
+      setCafeOpen(prev => {
+        // Will be overridden by next Firestore snapshot anyway
+        return prev;
+      });
+    }, 60000);
+    return () => { unsub(); clearInterval(scheduleInterval); };
   }, []);
 
   /* Loyalty from Firestore */

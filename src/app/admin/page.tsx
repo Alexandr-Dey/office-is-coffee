@@ -13,6 +13,7 @@ import {
   MENU_ITEMS, MODIFIERS, CATEGORIES, normalizeStopList, formatPrice,
   type StopList, type CategoryId,
 } from "@/lib/menu";
+import { resolveIsOpen, CAFE_OPEN_HOUR, CAFE_OPEN_MIN, CAFE_CLOSE_HOUR, CAFE_CLOSE_MIN } from "@/lib/constants";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
 interface Order {
@@ -568,6 +569,7 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"active" | "paid">("active");
   const [cafeOpen, setCafeOpen] = useState(true);
+  const [isManualOverride, setIsManualOverride] = useState(false);
   const [mainTab, setMainTab] = useState<"orders" | "stoplist" | "popular">("orders");
   const [stopList, setStopList] = useState<StopList>({ items: [], modifiers: [] });
   const [popularItems, setPopularItems] = useState<string[]>([]);
@@ -642,21 +644,48 @@ export default function AdminPage() {
   useEffect(() => {
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
       if (snap.exists()) {
-        setCafeOpen(snap.data().isOpen ?? true);
-        setStopList(normalizeStopList(snap.data().stopList));
-        setPopularItems(snap.data().popularItems ?? []);
+        const data = snap.data();
+        const { isOpen, isManual } = resolveIsOpen(data);
+        setCafeOpen(isOpen);
+        setIsManualOverride(isManual);
+        setStopList(normalizeStopList(data.stopList));
+        setPopularItems(data.popularItems ?? []);
       }
     }, () => {});
     return () => unsub();
   }, []);
 
   const toggleCafe = async () => {
-    const action = cafeOpen ? "закрыть" : "открыть";
-    if (!confirm(`Точно ${action} кофейню?`)) return;
     const newOpen = !cafeOpen;
+    const action = newOpen ? "открыть" : "закрыть";
+
+    // Рассчитываем до когда действует override — до следующего перехода по расписанию
+    const now = new Date();
+    const almaty = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Almaty" }));
+    const todayOpen = new Date(almaty);
+    todayOpen.setHours(CAFE_OPEN_HOUR, CAFE_OPEN_MIN, 0, 0);
+    const todayClose = new Date(almaty);
+    todayClose.setHours(CAFE_CLOSE_HOUR, CAFE_CLOSE_MIN, 0, 0);
+
+    // Override до ближайшего перехода: если закрываем → до открытия, если открываем → до закрытия
+    let overrideUntil: Date;
+    if (newOpen) {
+      // Открываем вручную → override до закрытия по расписанию
+      overrideUntil = almaty < todayClose ? todayClose : new Date(todayClose.getTime() + 86400000);
+    } else {
+      // Закрываем вручную → override до открытия по расписанию
+      overrideUntil = almaty < todayOpen ? todayOpen : new Date(todayOpen.getTime() + 86400000);
+    }
+
+    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} кофейню вручную?\nАвтоматически вернётся по расписанию.`)) return;
+
     setCafeOpen(newOpen);
+    setIsManualOverride(true);
     await setDoc(doc(getFirebaseDb(), "cafe_status", "aksay_main"), {
-      isOpen: newOpen, [newOpen ? "openedAt" : "closedAt"]: new Date().toISOString(),
+      isOpen: newOpen,
+      manualOverride: true,
+      manualUntil: overrideUntil.toISOString(),
+      [newOpen ? "openedAt" : "closedAt"]: new Date().toISOString(),
     }, { merge: true }).catch(() => {});
   };
 
@@ -699,8 +728,9 @@ export default function AdminPage() {
         <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="font-display text-lg font-bold text-brand-text">📋 Заказы</h1>
           <motion.button whileTap={{ scale: 0.95 }} onClick={toggleCafe}
-            className={`px-4 py-2 rounded-full text-sm font-bold min-h-[44px] ${cafeOpen ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
+            className={`px-3 py-2 rounded-full text-xs font-bold min-h-[44px] ${cafeOpen ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
             {cafeOpen ? "🟢 Открыто" : "🔴 Закрыто"}
+            {isManualOverride && <span className="ml-1 opacity-70">· ручн.</span>}
           </motion.button>
         </div>
       </div>
