@@ -44,3 +44,6 @@ next-env.d.ts
 service-account.json
 functions/node_modules/
 .claude/worktrees/
+
+# Windows accidental redirect artefact (от `> nul` вместо `> /dev/null`)
+nul
