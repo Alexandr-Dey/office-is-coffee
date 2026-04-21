@@ -15,6 +15,7 @@ import {
   getDefaultSize, formatPrice, normalizeStopList, calculateItemTotal,
   isColdItem,
 } from "@/lib/menu";
+import { useMenuOverrides, getEffectivePrices } from "@/lib/menu.overrides";
 
 /* ═══ CATEGORY ICONS ═══ */
 const CAT_ICONS: Record<CategoryId, string> = {
@@ -43,6 +44,7 @@ export default function MenuItemDetailPage() {
   const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
   const [selectedSyrups, setSelectedSyrups] = useState<string[]>([]);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const { overrides } = useMenuOverrides();
 
   // Load favorites
   useEffect(() => {
@@ -85,7 +87,8 @@ export default function MenuItemDetailPage() {
   const hasSyrup = item.addons.syrup && syrupOptions.length > 0;
   const hasAddon = item.addons.honey && addonOptions.length > 0;
 
-  const basePrice = item.prices[size] ?? 0;
+  const effectivePrices = getEffectivePrices(item, overrides);
+  const basePrice = effectivePrices[size] ?? 0;
 
   // Сироп бесплатен в холодных напитках (учитывает per-item isHot override)
   const syrupIsFree = isColdItem(item);
@@ -223,7 +226,7 @@ export default function MenuItemDetailPage() {
                   }`}
                 >
                   <span className="block text-xl font-semibold">{s}</span>
-                  <span className="block text-sm mt-0.5">{formatPrice(item.prices[s] ?? 0)}</span>
+                  <span className="block text-sm mt-0.5">{formatPrice(effectivePrices[s] ?? 0)}</span>
                 </motion.button>
               ))}
             </div>

@@ -15,9 +15,10 @@ import { useCart } from "@/lib/cart";
 import {
   CATEGORIES, MENU_ITEMS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
   type MenuItem, type StopList, type CategoryId, type Size,
-  getCategory, getAvailableSizes, getDefaultSize, getMinPrice, formatPrice,
+  getCategory, getAvailableSizes, getDefaultSize, formatPrice,
   normalizeStopList, makeCartKey, normalizeCategoryId,
 } from "@/lib/menu";
+import { useEffectiveMinPrice } from "@/lib/menu.overrides";
 import { getDailyCookie, isCookieCollectedToday } from "@/lib/dailyCookie";
 import { COOKIE_FACTS, type CookieFact } from "@/lib/cookieFacts";
 import CookieButton from "@/components/CookieButton";
@@ -126,6 +127,7 @@ const DrinkCard = memo(function DrinkCard({ item, onQuickAdd, onDetail, idx, sto
   const gradient = GRADIENT_CLASSES[cat.gradient];
   const icon = CAT_ICONS[item.category];
   const sizes = getAvailableSizes(item);
+  const minPrice = useEffectiveMinPrice(item);
   const [added, setAdded] = useState(false);
 
   const handleQuickAdd = (e: React.MouseEvent) => {
@@ -142,7 +144,7 @@ const DrinkCard = memo(function DrinkCard({ item, onQuickAdd, onDetail, idx, sto
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.06 }}
       onClick={stopped ? undefined : onDetail}
-      aria-label={`${item.name}, от ${getMinPrice(item)} ₸`}
+      aria-label={`${item.name}, от ${minPrice} ₸`}
       className={`rounded-2xl p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow relative ${PASTEL_BG[cat.gradient]} border ${PASTEL_BORDER[cat.gradient]} ${
         stopped ? "opacity-50 grayscale cursor-not-allowed" : ""
       }`}
@@ -169,7 +171,7 @@ const DrinkCard = memo(function DrinkCard({ item, onQuickAdd, onDetail, idx, sto
         </div>
       )}
       <div className="mt-auto flex items-center justify-between pt-2">
-        <span className="font-bold text-brand-dark">от {formatPrice(getMinPrice(item))}</span>
+        <span className="font-bold text-brand-dark">от {formatPrice(minPrice)}</span>
         {!stopped && (
           <motion.button
             whileTap={{ scale: 0.8 }}
@@ -297,48 +299,42 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites, popularIds, stopList }
             <p className="text-sm font-bold mt-1">{formatPrice(order.total)} →</p>
           </motion.button>
         ))}
-        {favoriteItems.map((item) => {
-          const itemCat = getCategory(item.category);
-          const grad = GRADIENT_CLASSES[itemCat.gradient];
-          return (
-            <motion.button
-              key={item.id}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onDetail(item)}
-              className={`flex-shrink-0 w-32 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${grad}`}
-              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xl">{CAT_ICONS[item.category]}</span>
-                <span className="text-xs">❤️</span>
-              </div>
-              <p className="text-xs font-bold truncate mt-1">{item.name}</p>
-              <p className="text-[10px] text-white/70 mt-0.5">от {formatPrice(getMinPrice(item))}</p>
-            </motion.button>
-          );
-        })}
-        {popularItems.map((item) => {
-          const itemCat = getCategory(item.category);
-          const grad = GRADIENT_CLASSES[itemCat.gradient];
-          return (
-            <motion.button
-              key={`pop-${item.id}`}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onDetail(item)}
-              className={`flex-shrink-0 w-32 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${grad}`}
-              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xl">{CAT_ICONS[item.category]}</span>
-                <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">🔥</span>
-              </div>
-              <p className="text-xs font-bold truncate mt-1">{item.name}</p>
-              <p className="text-[10px] text-white/70 mt-0.5">от {formatPrice(getMinPrice(item))}</p>
-            </motion.button>
-          );
-        })}
+        {favoriteItems.map((item) => (
+          <CarouselCard key={item.id} item={item} badge="❤️" onClick={() => onDetail(item)} />
+        ))}
+        {popularItems.map((item) => (
+          <CarouselCard key={`pop-${item.id}`} item={item} badge="🔥" badgeStyle="hot" onClick={() => onDetail(item)} />
+        ))}
       </div>
     </section>
+  );
+}
+
+function CarouselCard({ item, badge, badgeStyle, onClick }: {
+  item: MenuItem;
+  badge: string;
+  badgeStyle?: "plain" | "hot";
+  onClick: () => void;
+}) {
+  const itemCat = getCategory(item.category);
+  const grad = GRADIENT_CLASSES[itemCat.gradient];
+  const minPrice = useEffectiveMinPrice(item);
+  return (
+    <motion.button
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className={`flex-shrink-0 w-32 rounded-2xl p-3 text-white text-left bg-gradient-to-br ${grad}`}
+      style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xl">{CAT_ICONS[item.category]}</span>
+        {badgeStyle === "hot"
+          ? <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">{badge}</span>
+          : <span className="text-xs">{badge}</span>}
+      </div>
+      <p className="text-xs font-bold truncate mt-1">{item.name}</p>
+      <p className="text-[10px] text-white/70 mt-0.5">от {formatPrice(minPrice)}</p>
+    </motion.button>
   );
 }
 

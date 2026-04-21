@@ -68,6 +68,15 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    // menu_overrides — публичное чтение (клиенты видят актуальные цены);
+    // write: только auth (UI защищён useRequireBarista/CEO, дополнительный
+    // role-check на сервере появится когда перейдём на настоящий Firebase Auth
+    // с Custom Claims — сейчас локально-сторидж-auth не позволяет).
+    match /menu_overrides/{itemId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
     // push_log — auth read/write
     match /push_log/{logId} {
       allow read: if isAuthenticated();

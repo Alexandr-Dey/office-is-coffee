@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
+import { MenuOverridesProvider } from "@/lib/menu.overrides";
 import { ToastProvider } from "@/components/Toast";
 import BottomNav from "@/components/BottomNav";
 import PushTracker from "@/components/PushTracker";
@@ -39,14 +40,16 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-neutral-100 text-brand-text">
         <div className="mx-auto max-w-[480px] min-h-screen bg-brand-bg shadow-[0_0_40px_rgba(0,0,0,0.08)] relative" id="app-shell">
           <AuthProvider>
-            <CartProvider>
-              <ToastProvider>
-                <PushTracker />
-                <NearbyNotifier />
-                {children}
-                <BottomNav />
-              </ToastProvider>
-            </CartProvider>
+            <MenuOverridesProvider>
+              <CartProvider>
+                <ToastProvider>
+                  <PushTracker />
+                  <NearbyNotifier />
+                  {children}
+                  <BottomNav />
+                </ToastProvider>
+              </CartProvider>
+            </MenuOverridesProvider>
           </AuthProvider>
         </div>
       </body>
