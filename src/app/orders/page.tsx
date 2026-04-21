@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { MENU_ITEMS, normalizeCategoryId } from "@/lib/menu";
 
-interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
+interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[]; category?: string }
 interface Order {
   id: string; name: string; items: OrderItem[]; total: number;
   status: string; rating?: number; createdAt: Timestamp | null;
@@ -96,7 +96,7 @@ export default function OrdersPage() {
       // Resolve actual menu item ID — legacy orders only have name, not itemId
       const menuMatch = MENU_ITEMS.find(m => m.name === i.name) ?? MENU_ITEMS.find(m => m.id === i.name);
       const itemId = menuMatch?.id ?? i.name;
-      const category = normalizeCategoryId(menuMatch?.category);
+      const category = normalizeCategoryId(i.category ?? menuMatch?.category);
       const cartKey = `${itemId}__${i.size}__${modifiers.map(m => m.id).sort().join(',')}`;
       return {
         itemId,
