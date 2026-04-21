@@ -62,9 +62,9 @@ export default function CEOMenuPage() {
           <h3 className="font-bold text-brand-text text-sm mb-2">
             Модификаторы <span className="text-brand-text/30 font-normal">({MODIFIERS.length})</span>
           </h3>
-          {(['milk', 'syrup', 'addon'] as const).map(group => {
+          {(['milk', 'syrup', 'honey'] as const).map(group => {
             const mods = MODIFIERS.filter(m => m.group === group);
-            const label = group === 'milk' ? 'Молоко' : group === 'syrup' ? 'Сиропы' : 'Добавки';
+            const label = group === 'milk' ? 'Молоко' : group === 'syrup' ? 'Сиропы' : 'Мёд';
             return (
               <div key={group} className="mb-3">
                 <p className="text-xs font-bold text-brand-text/50 uppercase mb-1">{label}</p>
@@ -95,7 +95,7 @@ function ItemRow({ item }: { item: MenuItem }) {
         <span className="font-medium text-sm text-brand-text">{item.name}</span>
         {item.countsForLoyalty && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-mint/10 text-brand-dark">Лояльность</span>}
       </div>
-      {item.description && <p className="text-xs text-brand-text/40">{item.description}</p>}
+      {item.composition && <p className="text-xs text-brand-text/40">{item.composition}</p>}
       <p className="text-xs text-brand-dark mt-1">{prices}</p>
     </div>
   );

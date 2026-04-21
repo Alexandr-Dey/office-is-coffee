@@ -8,7 +8,7 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { collection, query, orderBy, where as fbWhere, limit, onSnapshot, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
-import { MENU_ITEMS } from "@/lib/menu";
+import { MENU_ITEMS, normalizeCategoryId } from "@/lib/menu";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
 interface Order {
@@ -96,7 +96,7 @@ export default function OrdersPage() {
       // Resolve actual menu item ID — legacy orders only have name, not itemId
       const menuMatch = MENU_ITEMS.find(m => m.name === i.name) ?? MENU_ITEMS.find(m => m.id === i.name);
       const itemId = menuMatch?.id ?? i.name;
-      const category = menuMatch?.category ?? 'coffee_classic';
+      const category = normalizeCategoryId(menuMatch?.category);
       const cartKey = `${itemId}__${i.size}__${modifiers.map(m => m.id).sort().join(',')}`;
       return {
         itemId,

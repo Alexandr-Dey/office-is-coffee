@@ -1,22 +1,27 @@
-// ═══ MENU DATA — Office is Coffee ═══
-// Хардкод меню. На Firestore переедем отдельной задачей.
+// ═══ MENU DATA — Love is Coffee v2.0 ═══
+// Source of truth: подтверждено владельцем 2026-04-22. 73 позиции.
+// Размеры S/M/L в коде и хранилище в ВЕРХНЕМ регистре — исторически завязаны заказы.
+// Категории: новая конвенция classic_coffee / author_coffee / home_tea / author_tea
+// (старые coffee_classic / coffee_author / tea_home / tea_author → см. normalizeCategoryId).
+
+import * as Sentry from "@sentry/nextjs";
 
 export type Size = 'S' | 'M' | 'L';
 
 export type CategoryId =
-  | 'coffee_classic'
-  | 'coffee_author'
+  | 'classic_coffee'
+  | 'author_coffee'
   | 'ice_coffee'
-  | 'tea_home'
-  | 'tea_author'
+  | 'home_tea'
+  | 'author_tea'
   | 'matcha'
   | 'ice_tea'
-  | 'lemonade'
-  | 'fresh'
   | 'smoothie'
+  | 'fresh'
+  | 'lemonade'
   | 'milkshake';
 
-export type ModifierGroup = 'milk' | 'syrup' | 'addon';
+export type ModifierGroup = 'milk' | 'syrup' | 'honey';
 
 export interface Modifier {
   id: string;
@@ -25,18 +30,23 @@ export interface Modifier {
   group: ModifierGroup;
 }
 
+export interface ItemAddons {
+  milk: boolean;
+  syrup: boolean;
+  honey: boolean;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   category: CategoryId;
+  /** Только реально доступные размеры. Если 'M' нет — не подставлять соседний. */
   prices: Partial<Record<Size, number>>;
-  description?: string;
+  addons: ItemAddons;
+  /** Переопределяет дефолт по COLD_CATEGORIES. Явный true = горячий, false = холодный. */
+  isHot?: boolean;
+  composition?: string;
   countsForLoyalty: boolean;
-  imageUrl?: string;
-  /** false = не показывать альтернативное молоко даже если категория разрешает */
-  availableMilk?: boolean;
-  /** false = не показывать сиропы даже если категория разрешает */
-  availableSyrup?: boolean;
 }
 
 export interface Category {
@@ -44,7 +54,6 @@ export interface Category {
   name: string;
   gradient: 'green' | 'pink' | 'blue' | 'orange';
   sizes: Size[];
-  allowedModifierGroups: ModifierGroup[];
 }
 
 export const SIZE_LABELS: Record<Size, string> = {
@@ -53,7 +62,7 @@ export const SIZE_LABELS: Record<Size, string> = {
   L: '450 мл',
 };
 
-// ═══ GRADIENT MAP — насыщенные, для иконок/heroes ═══
+// ═══ GRADIENT MAP ═══
 export const GRADIENT_CLASSES: Record<Category['gradient'], string> = {
   green: 'from-[#1a7a44] to-[#2d9e5a]',
   pink: 'from-[#d42b4f] to-[#e85d7a]',
@@ -61,12 +70,11 @@ export const GRADIENT_CLASSES: Record<Category['gradient'], string> = {
   orange: 'from-[#f97316] to-[#fb923c]',
 };
 
-// ═══ PASTEL TINTS — едва заметные оттенки фона карточек ═══
 export const PASTEL_BG: Record<Category['gradient'], string> = {
-  green: 'bg-[#f0faf3]',  // едва-зелёный
-  pink: 'bg-[#fdf2f4]',   // едва-розовый
-  blue: 'bg-[#eff8fc]',   // едва-голубой
-  orange: 'bg-[#fff5ec]', // едва-персиковый
+  green: 'bg-[#f0faf3]',
+  pink: 'bg-[#fdf2f4]',
+  blue: 'bg-[#eff8fc]',
+  orange: 'bg-[#fff5ec]',
 };
 
 export const PASTEL_BORDER: Record<Category['gradient'], string> = {
@@ -78,29 +86,29 @@ export const PASTEL_BORDER: Record<Category['gradient'], string> = {
 
 // ═══ CATEGORIES ═══
 export const CATEGORIES: Category[] = [
-  { id: 'coffee_classic', name: 'Кофейная классика', gradient: 'green',  sizes: ['S','M','L'], allowedModifierGroups: ['milk','syrup'] },
-  { id: 'coffee_author',  name: 'Авторский кофе',    gradient: 'pink',   sizes: ['S','M'],     allowedModifierGroups: ['milk','syrup'] },
-  { id: 'ice_coffee',     name: 'Айс кофе',          gradient: 'blue',   sizes: ['M','L'],     allowedModifierGroups: ['milk','syrup'] },
-  { id: 'tea_home',       name: 'Домашний чай',      gradient: 'green',  sizes: ['M','L'],     allowedModifierGroups: ['syrup','addon'] },
-  { id: 'tea_author',     name: 'Авторский чай',     gradient: 'pink',   sizes: ['M','L'],     allowedModifierGroups: ['syrup','addon'] },
-  { id: 'matcha',         name: 'Матча',             gradient: 'green',  sizes: ['M','L'],     allowedModifierGroups: ['syrup','addon'] },
-  { id: 'ice_tea',        name: 'Айс ти',            gradient: 'blue',   sizes: ['M'],         allowedModifierGroups: ['syrup','addon'] },
-  { id: 'lemonade',       name: 'Лимонады',          gradient: 'orange', sizes: ['M'],         allowedModifierGroups: [] },
-  { id: 'fresh',          name: 'Фреши',             gradient: 'orange', sizes: ['M'],         allowedModifierGroups: [] },
-  { id: 'smoothie',       name: 'Смузи',             gradient: 'orange', sizes: ['M'],         allowedModifierGroups: [] },
-  { id: 'milkshake',      name: 'Молочные коктейли', gradient: 'orange', sizes: ['M'],         allowedModifierGroups: ['syrup'] },
+  { id: 'classic_coffee', name: 'Кофейная классика', gradient: 'green',  sizes: ['S','M','L'] },
+  { id: 'author_coffee',  name: 'Авторский кофе',    gradient: 'pink',   sizes: ['M','L']     },
+  { id: 'ice_coffee',     name: 'Айс кофе',          gradient: 'blue',   sizes: ['M','L']     },
+  { id: 'home_tea',       name: 'Домашний чай',      gradient: 'green',  sizes: ['M','L']     },
+  { id: 'author_tea',     name: 'Авторский чай',     gradient: 'pink',   sizes: ['M','L']     },
+  { id: 'matcha',         name: 'Матча',             gradient: 'green',  sizes: ['M','L']     },
+  { id: 'ice_tea',        name: 'Айс ти',            gradient: 'blue',   sizes: ['L']         },
+  { id: 'smoothie',       name: 'Смузи',             gradient: 'orange', sizes: ['M','L']     },
+  { id: 'fresh',          name: 'Фреши',             gradient: 'orange', sizes: ['M','L']     },
+  { id: 'lemonade',       name: 'Лимонады',          gradient: 'orange', sizes: ['L']         },
+  { id: 'milkshake',      name: 'Молочные коктейли', gradient: 'orange', sizes: ['L']         },
 ];
 
 // ═══ MODIFIERS ═══
 export const MODIFIERS: Modifier[] = [
-  // Альтернативное молоко (500₸)
+  // Альтернативное молоко (+500₸)
   { id: 'milk_coconut', name: 'Кокосовое молоко',  price: 500, group: 'milk' },
   { id: 'milk_almond',  name: 'Миндальное молоко', price: 500, group: 'milk' },
   { id: 'milk_nut',     name: 'Ореховое молоко',   price: 500, group: 'milk' },
   { id: 'milk_oat',     name: 'Овсяное молоко',    price: 500, group: 'milk' },
   { id: 'milk_banana',  name: 'Банановое молоко',  price: 500, group: 'milk' },
 
-  // Сиропы (250₸)
+  // Сиропы (+250₸)
   { id: 'syrup_vanilla',         name: 'Ванильный',        price: 250, group: 'syrup' },
   { id: 'syrup_caramel',         name: 'Карамельный',      price: 250, group: 'syrup' },
   { id: 'syrup_salted_caramel',  name: 'Солёная карамель', price: 250, group: 'syrup' },
@@ -117,109 +125,168 @@ export const MODIFIERS: Modifier[] = [
   { id: 'syrup_white_chocolate', name: 'Белый шоколад',    price: 250, group: 'syrup' },
   { id: 'syrup_passion_fruit',   name: 'Маракуйя',         price: 250, group: 'syrup' },
 
-  // Добавки (250₸)
-  { id: 'honey', name: 'Мёд', price: 250, group: 'addon' },
+  // Мёд (+250₸)
+  { id: 'honey', name: 'Мёд', price: 250, group: 'honey' },
 ];
 
-// ═══ MENU ITEMS ═══
-// Источник: MENU-DATA.md (официальное меню Love is Coffee, апрель 2026)
+// ═══ ADDON PRESETS ═══
+const A_ALL_OFF: ItemAddons = { milk: false, syrup: false, honey: false };
+const A_MILK_SYRUP: ItemAddons = { milk: true, syrup: true, honey: false };
+const A_SYRUP_ONLY: ItemAddons = { milk: false, syrup: true, honey: false };
+const A_SYRUP_HONEY: ItemAddons = { milk: false, syrup: true, honey: true };
+const A_HONEY_ONLY: ItemAddons = { milk: false, syrup: false, honey: true };
+
+// ═══ MENU ITEMS (v2.0) ═══
 export const MENU_ITEMS: MenuItem[] = [
   // Кофейная классика
-  { id: 'cappuccino',     name: 'Капучино',   category: 'coffee_classic', prices: { S: 900, M: 1100, L: 1200 }, countsForLoyalty: true },
-  { id: 'latte',          name: 'Латте',      category: 'coffee_classic', prices: { M: 900, L: 1100 },          countsForLoyalty: true },
-  { id: 'flat_white',     name: 'Флэт уайт',  category: 'coffee_classic', prices: { S: 1000, M: 1200, L: 1300 }, countsForLoyalty: true },
-  { id: 'americano',      name: 'Американо',  category: 'coffee_classic', prices: { S: 800, M: 900,  L: 1000 }, countsForLoyalty: true, availableMilk: false, availableSyrup: false },
-  { id: 'espresso',       name: 'Эспрессо',   category: 'coffee_classic', prices: { S: 500, M: 600 },           countsForLoyalty: true, availableMilk: false, availableSyrup: false },
+  { id: 'americano',  name: 'Американо',  category: 'classic_coffee', prices: { S: 850,  M: 950,  L: 1050 }, addons: A_ALL_OFF,     countsForLoyalty: true },
+  { id: 'cappuccino', name: 'Капучино',   category: 'classic_coffee', prices: { S: 1000, M: 1200, L: 1300 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
+  { id: 'latte',      name: 'Латте',      category: 'classic_coffee', prices: {         M: 1050, L: 1200 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
+  { id: 'espresso',   name: 'Эспрессо',   category: 'classic_coffee', prices: { S: 550,  M: 650          }, addons: A_ALL_OFF,     countsForLoyalty: true },
+  { id: 'flat_white', name: 'Флэт уайт',  category: 'classic_coffee', prices: { S: 1150, M: 1300, L: 1400 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
 
-  // Авторский кофе
-  { id: 'irish_coffee',       name: 'Айриш кофе',          category: 'coffee_author', prices: { M: 1000, L: 1100 }, countsForLoyalty: true },
-  { id: 'raf',                name: 'Раф классика',        category: 'coffee_author', prices: { M: 1300, L: 1400 }, countsForLoyalty: true },
-  { id: 'raf_honey',          name: 'Раф медовый',         category: 'coffee_author', prices: { M: 1300, L: 1400 }, countsForLoyalty: true },
-  { id: 'raf_banana_caramel', name: 'Раф банан-карамель',  category: 'coffee_author', prices: { M: 1400, L: 1500 }, countsForLoyalty: true },
-  { id: 'mocha',              name: 'Мокко',               category: 'coffee_author', prices: { M: 1300, L: 1400 }, countsForLoyalty: true },
-  { id: 'mocha_white',        name: 'Мокко белый шоколад', category: 'coffee_author', prices: { M: 1400, L: 1500 }, countsForLoyalty: true },
-  { id: 'latte_halva',        name: 'Латте халва',         category: 'coffee_author', prices: { M: 1000, L: 1100 }, countsForLoyalty: true },
+  // Авторский кофе (весь — addons off по правилу владельца)
+  { id: 'irish_coffee',       name: 'Айриш кофе',           category: 'author_coffee', prices: { M: 1400, L: 1600 }, addons: A_ALL_OFF, countsForLoyalty: true },
+  { id: 'raf',                name: 'Раф',                  category: 'author_coffee', prices: { M: 1400, L: 1600 }, addons: A_ALL_OFF, countsForLoyalty: true },
+  { id: 'raf_honey',          name: 'Раф медовый',          category: 'author_coffee', prices: { M: 1400, L: 1600 }, addons: A_ALL_OFF, countsForLoyalty: true },
+  { id: 'raf_banana_caramel', name: 'Раф банан-карамель',   category: 'author_coffee', prices: { M: 1400, L: 1600 }, addons: A_ALL_OFF, countsForLoyalty: true },
+  { id: 'latte_halva',        name: 'Латте халва',          category: 'author_coffee', prices: { M: 1300, L: 1500 }, addons: A_ALL_OFF, countsForLoyalty: true },
+  { id: 'ginger_spice_latte', name: 'Имбирно-пряный латте', category: 'author_coffee', prices: { M: 1450, L: 1550 }, addons: A_ALL_OFF, countsForLoyalty: true },
+  { id: 'mocha',              name: 'Мокко',                category: 'author_coffee', prices: { L: 1550 },          addons: A_ALL_OFF, countsForLoyalty: true },
+  { id: 'lavender_raf',       name: 'Лавандовый раф',       category: 'author_coffee', prices: { L: 1450 },          addons: A_ALL_OFF, countsForLoyalty: true },
 
-  // Айс кофе
-  { id: 'ice_americano',  name: 'Айс американо',    category: 'ice_coffee', prices: { M: 1000, L: 1100 }, countsForLoyalty: true, availableMilk: false },
-  { id: 'ice_cappuccino', name: 'Айс капучино',     category: 'ice_coffee', prices: { M: 1300, L: 1400 }, countsForLoyalty: true },
-  { id: 'ice_latte',      name: 'Айс латте',        category: 'ice_coffee', prices: { M: 1200, L: 1300 }, countsForLoyalty: true },
-  { id: 'frappuccino',    name: 'Фраппучино',       category: 'ice_coffee', prices: { M: 1400, L: 1500 }, countsForLoyalty: true },
-  { id: 'banana_coffee',  name: 'Банановый кофе',   category: 'ice_coffee', prices: { M: 1400, L: 1500 }, countsForLoyalty: true },
-  { id: 'bumble_bee',     name: 'Бамбл би',         category: 'ice_coffee', prices: { M: 1300, L: 1400 }, countsForLoyalty: true, availableMilk: false },
-  { id: 'espresso_tonic', name: 'Эспрессо тоник',   category: 'ice_coffee', prices: { M: 1200, L: 1300 }, countsForLoyalty: true, availableMilk: false },
+  // Айс кофе (включая горячие Горячий шоколад и Какао с isHot: true)
+  { id: 'ice_americano',  name: 'Айс американо',  category: 'ice_coffee', prices: { M: 1150, L: 1350 }, addons: A_SYRUP_ONLY,  countsForLoyalty: true },
+  { id: 'ice_cappuccino', name: 'Айс капучино',   category: 'ice_coffee', prices: { M: 1450, L: 1650 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
+  { id: 'ice_latte',      name: 'Айс латте',      category: 'ice_coffee', prices: { M: 1350, L: 1450 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
+  { id: 'frappuccino',    name: 'Фраппучино',     category: 'ice_coffee', prices: { M: 1650, L: 1850 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
+  { id: 'banana_coffee',  name: 'Банановый кофе', category: 'ice_coffee', prices: { M: 1850, L: 2050 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
+  { id: 'bumble_bee',     name: 'Бамбл би',       category: 'ice_coffee', prices: { M: 1450, L: 1550 }, addons: A_MILK_SYRUP,  countsForLoyalty: true },
+  { id: 'espresso_tonic', name: 'Эспрессо тоник', category: 'ice_coffee', prices: { M: 1650, L: 1750 }, addons: A_ALL_OFF,     countsForLoyalty: true },
+  { id: 'hot_chocolate',  name: 'Горячий шоколад', category: 'ice_coffee', prices: { M: 1350, L: 1450 }, addons: A_MILK_SYRUP,  countsForLoyalty: true, isHot: true },
+  { id: 'cocoa',          name: 'Какао',           category: 'ice_coffee', prices: { M: 1250, L: 1350 }, addons: A_MILK_SYRUP,  countsForLoyalty: true, isHot: true },
 
   // Домашний чай
-  { id: 'tea_naryadniy',    name: 'Нарядный',     description: 'Апельсин, лимон, мята',                category: 'tea_home', prices: { M: 900, L: 1000  }, countsForLoyalty: false },
-  { id: 'tea_ginger',       name: 'Имбирный',     description: 'Имбирь, мёд, лимон, апельсин',         category: 'tea_home', prices: { M: 900, L: 1000 }, countsForLoyalty: false },
-  { id: 'tea_seabuckthorn', name: 'Облепиховый',   description: 'Облепиха, маракуйя, чай',              category: 'tea_home', prices: { M: 1000, L: 1100 }, countsForLoyalty: false },
-  { id: 'tea_raspberry',    name: 'Малиновый',     description: 'Малина, мята, апельсин, лимон',         category: 'tea_home', prices: { M: 1100, L: 1200 }, countsForLoyalty: false },
-  { id: 'tea_berry',        name: 'Ягодный',       description: 'Смородина, клюква, лимон',              category: 'tea_home', prices: { M: 1000, L: 1100 }, countsForLoyalty: false },
+  { id: 'home_tea_naryadniy',    name: 'Нарядный',    category: 'home_tea', prices: { M: 950,  L: 1050 }, addons: A_SYRUP_HONEY, countsForLoyalty: false, composition: 'апельсин, лимон, мята' },
+  { id: 'home_tea_ginger',       name: 'Имбирный',    category: 'home_tea', prices: { M: 1050, L: 1150 }, addons: A_SYRUP_HONEY, countsForLoyalty: false, composition: 'имбирь, мёд, лимон, апельсин' },
+  { id: 'home_tea_seabuckthorn', name: 'Облепиховый', category: 'home_tea', prices: { M: 1150, L: 1250 }, addons: A_SYRUP_HONEY, countsForLoyalty: false, composition: 'облепиха, маракуйя, лимон, апельсин' },
+  { id: 'home_tea_raspberry',    name: 'Малиновый',   category: 'home_tea', prices: { M: 1250, L: 1350 }, addons: A_SYRUP_HONEY, countsForLoyalty: false, composition: 'малина, мята, апельсин, лимон' },
+  { id: 'home_tea_berry',        name: 'Ягодный',     category: 'home_tea', prices: { M: 1250, L: 1350 }, addons: A_SYRUP_HONEY, countsForLoyalty: false, composition: 'смородина, клюква, лимон' },
 
   // Авторский чай
-  { id: 'tea_latte',           name: 'Чай латте',          description: 'Чай со взбитым молоком и корицей',               category: 'tea_author', prices: { M: 600,  L: 700 },  countsForLoyalty: false },
-  { id: 'tea_grog',            name: 'Грог',               description: 'Чай, имбирь, корица, кардамон, апельсин, мёд',   category: 'tea_author', prices: { M: 1000, L: 1100 }, countsForLoyalty: false },
-  { id: 'tea_mulled',          name: 'Глинтвейн',          description: 'Апельсин, лимон, мята, вишнёвый сок, корица',    category: 'tea_author', prices: { M: 1100, L: 1200 }, countsForLoyalty: false },
-  { id: 'tea_moroccan',        name: 'Марокканский',       description: 'Апельсин, лимон, мята, чай, гвоздика, корица',   category: 'tea_author', prices: { M: 1000, L: 1100 }, countsForLoyalty: false },
-  { id: 'tea_tary',            name: 'Чай тары',           description: 'Тары, молоко, мёд',                              category: 'tea_author', prices: { M: 1300, L: 1400 }, countsForLoyalty: false },
-  { id: 'tea_tangerine',       name: 'Мандариновый',       description: 'Мандарин, лимон, мята',                          category: 'tea_author', prices: { M: 1200, L: 1300 }, countsForLoyalty: false },
-  { id: 'tea_spiced_currant',  name: 'Пряная смородина',   description: 'Смородина, гвоздика, корица',                    category: 'tea_author', prices: { M: 1100, L: 1200 }, countsForLoyalty: false },
-  { id: 'tea_raspberry_ginger', name: 'Малина-имбирь',     description: 'Малина, имбирь, лимон, апельсин',                category: 'tea_author', prices: { M: 1400, L: 1500 }, countsForLoyalty: false },
+  { id: 'author_tea_latte',            name: 'Чай латте',        category: 'author_tea', prices: { M: 550,  L: 650  }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'чай со взбитым молоком и корицей' },
+  { id: 'author_tea_grog',             name: 'Грог',             category: 'author_tea', prices: { M: 1150, L: 1250 }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'чай, имбирь, корица, кардамон, апельсин, лимон, мёд' },
+  { id: 'author_tea_mulled',           name: 'Глинтвейн',        category: 'author_tea', prices: { M: 1350, L: 1450 }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'апельсин, лимон, мята, вишнёвый сок, гвоздика, корица' },
+  { id: 'author_tea_moroccan',         name: 'Марокканский',     category: 'author_tea', prices: { M: 1150, L: 1250 }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'апельсин, лимон, мята, чай, гвоздика, корица' },
+  { id: 'author_tea_spiced_currant',   name: 'Пряная смородина', category: 'author_tea', prices: { M: 1350, L: 1450 }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'смородина, гвоздика, корица' },
+  { id: 'author_tea_tangerine',        name: 'Мандариновый',     category: 'author_tea', prices: { M: 1350, L: 1450 }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'мандарин, лимон, мята' },
+  { id: 'author_tea_raspberry_ginger', name: 'Малиново-имбирный', category: 'author_tea', prices: { M: 1450, L: 1550 }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'малина, имбирь, лимон, апельсин' },
+  { id: 'author_tea_tary',             name: 'Чай тары',         category: 'author_tea', prices: { M: 1250, L: 1350 }, addons: A_HONEY_ONLY, countsForLoyalty: false, composition: 'тары, молоко, мёд' },
 
-  // Матча
-  { id: 'matcha_green', name: 'Зелёная матча', category: 'matcha', prices: { M: 1200, L: 1300 }, countsForLoyalty: false },
-  { id: 'matcha_blue',  name: 'Голубая матча',  category: 'matcha', prices: { M: 1200, L: 1300 }, countsForLoyalty: false },
+  // Матча (Айс матча с isHot: false)
+  { id: 'green_matcha',  name: 'Зелёная матча', category: 'matcha', prices: { M: 1250, L: 1350 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'bumble_matcha', name: 'Бамбл матча',   category: 'matcha', prices: { M: 1450, L: 1650 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'matcha_tonic',  name: 'Матча тоник',   category: 'matcha', prices: { M: 1550, L: 1750 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'ice_matcha',    name: 'Айс матча',     category: 'matcha', prices: { M: 1350, L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false, isHot: false },
 
-  // Айс ти
-  { id: 'ice_tea_berry',    name: 'Ягодный',        category: 'ice_tea', prices: { M: 1050 }, countsForLoyalty: false },
-  { id: 'ice_tea_mango',    name: 'Манго-маракуйя', category: 'ice_tea', prices: { M: 1050 }, countsForLoyalty: false },
-  { id: 'ice_tea_pomegranate', name: 'Гранат',      category: 'ice_tea', prices: { M: 1050 }, countsForLoyalty: false },
-  { id: 'ice_tea_raspberry', name: 'Малиновый',     category: 'ice_tea', prices: { M: 1050 }, countsForLoyalty: false },
-  { id: 'ice_tea_cherry',   name: 'Вишня',          category: 'ice_tea', prices: { M: 1050 }, countsForLoyalty: false },
-  { id: 'ice_tea_lemon',    name: 'Лимонный',       category: 'ice_tea', prices: { M: 1050 }, countsForLoyalty: false },
+  // Айс ти (только L, все 1050₸)
+  { id: 'ice_tea_berry',        name: 'Ягодный',        category: 'ice_tea', prices: { L: 1050 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'ice_tea_mango_passion', name: 'Манго-маракуйя', category: 'ice_tea', prices: { L: 1050 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'ice_tea_pomegranate',  name: 'Гранат',         category: 'ice_tea', prices: { L: 1050 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'ice_tea_raspberry',    name: 'Малиновый',      category: 'ice_tea', prices: { L: 1050 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'ice_tea_cherry',       name: 'Вишня',          category: 'ice_tea', prices: { L: 1050 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'ice_tea_lemon',        name: 'Лимонный',       category: 'ice_tea', prices: { L: 1050 }, addons: A_ALL_OFF, countsForLoyalty: false },
 
-  // Лимонады
-  { id: 'lem_orange',       name: 'Апельсин',           category: 'lemonade', prices: { M: 2050 }, countsForLoyalty: false },
-  { id: 'lem_grapefruit',   name: 'Грейпфрут',          category: 'lemonade', prices: { M: 2050 }, countsForLoyalty: false },
-  { id: 'lem_apple',        name: 'Яблоко',             category: 'lemonade', prices: { M: 1750 }, countsForLoyalty: false },
-  { id: 'lem_orange_grapefruit', name: 'Апельсин-грейпфрут', category: 'lemonade', prices: { M: 1550 }, countsForLoyalty: false },
-  { id: 'lem_orange_apple', name: 'Апельсин-яблоко',    category: 'lemonade', prices: { M: 2050 }, countsForLoyalty: false },
-  { id: 'lem_apple_grapefruit', name: 'Яблоко-грейпфрут', category: 'lemonade', prices: { M: 1950 }, countsForLoyalty: false },
+  // Смузи (addons off — готовые рецепты)
+  { id: 'smoothie_berry_mix',         name: 'Ягодный микс',      category: 'smoothie', prices: { M: 1750, L: 1950 }, addons: A_ALL_OFF, countsForLoyalty: false, composition: 'смородина, клюква, молоко, сливки' },
+  { id: 'smoothie_strawberry_banana', name: 'Клубника-банан',    category: 'smoothie', prices: { M: 1750, L: 1950 }, addons: A_ALL_OFF, countsForLoyalty: false, composition: 'клубника, банан, молоко, сливки' },
+  { id: 'smoothie_fruit_mix',         name: 'Фруктовый микс',    category: 'smoothie', prices: { M: 2050, L: 2250 }, addons: A_ALL_OFF, countsForLoyalty: false, composition: 'банан, киви, фреш апельсиновый, фреш яблочный' },
+  { id: 'smoothie_sorrel_pineapple',  name: 'Щавель-ананас',     category: 'smoothie', prices: { M: 1250, L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false, composition: 'щавель, ананас' },
+  { id: 'smoothie_currant',           name: 'Смородина',         category: 'smoothie', prices: { M: 1850, L: 2050 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'smoothie_apple_raspberry',   name: 'Яблоко-малина',     category: 'smoothie', prices: { M: 1850, L: 2050 }, addons: A_ALL_OFF, countsForLoyalty: false, composition: 'малина, банан, фреш яблочный' },
 
   // Фреши
-  { id: 'fresh_raspberry_passion', name: 'Малина-маракуйя', category: 'fresh', prices: { M: 2250 }, countsForLoyalty: false },
-  { id: 'fresh_berry_boom',  name: 'Ягодный бум',           category: 'fresh', prices: { M: 2250 }, countsForLoyalty: false },
-  { id: 'fresh_orange',      name: 'Апельсин',              category: 'fresh', prices: { M: 1750 }, countsForLoyalty: false },
-  { id: 'fresh_lime_raspberry', name: 'Лайм-малина',        category: 'fresh', prices: { M: 1350 }, countsForLoyalty: false },
-  { id: 'fresh_house',       name: 'Домашний',              category: 'fresh', prices: { M: 1450 }, countsForLoyalty: false },
-  { id: 'fresh_watermelon_kiwi', name: 'Арбуз-киви',        category: 'fresh', prices: { M: 1350 }, countsForLoyalty: false },
-  { id: 'fresh_kiwi',        name: 'Киви',                  category: 'fresh', prices: { M: 1450 }, countsForLoyalty: false },
-  { id: 'fresh_mojito',      name: 'Мохито',                category: 'fresh', prices: { M: 1250 }, countsForLoyalty: false },
+  { id: 'fresh_orange',            name: 'Апельсин',           category: 'fresh', prices: { M: 2050, L: 2250 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'fresh_grapefruit',        name: 'Грейпфрут',          category: 'fresh', prices: { M: 2050, L: 2250 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'fresh_apple',             name: 'Яблоко',             category: 'fresh', prices: { M: 1550, L: 1750 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'fresh_orange_grapefruit', name: 'Апельсин-грейпфрут', category: 'fresh', prices: { M: 2050, L: 2250 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'fresh_orange_apple',      name: 'Апельсин-яблоко',    category: 'fresh', prices: { M: 2050, L: 2250 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'fresh_apple_grapefruit',  name: 'Яблоко-грейпфрут',   category: 'fresh', prices: { M: 1950, L: 2150 }, addons: A_ALL_OFF, countsForLoyalty: false },
 
-  // Смузи
-  { id: 'smoothie_berry_mix',   name: 'Ягодный микс',     description: 'Смородина, клюква, малина, сливки', category: 'smoothie', prices: { M: 1950 }, countsForLoyalty: false },
-  { id: 'smoothie_strawberry_banana', name: 'Клубника-банан', description: 'Клубника, банан, молоко, сливки', category: 'smoothie', prices: { M: 1950 }, countsForLoyalty: false },
-  { id: 'smoothie_fruit_mix',   name: 'Фруктовый микс',   description: 'Банан, киви, апельсиновый фреш, яблочный', category: 'smoothie', prices: { M: 2250 }, countsForLoyalty: false },
-  { id: 'smoothie_banana_syrup', name: 'Банан-сироп',     description: 'Карамель, ваниль, эспрессо',         category: 'smoothie', prices: { M: 2050 }, countsForLoyalty: false },
-  { id: 'smoothie_apple_cranberry', name: 'Яблоко-клюква', description: 'Молоко, банан, яблоко, вишня',      category: 'smoothie', prices: { M: 1450 }, countsForLoyalty: false },
+  // Лимонады (только L)
+  { id: 'lemonade_apple_passion',      name: 'Яблоко-маракуйя',  category: 'lemonade', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_raspberry_passion',  name: 'Малина-маракуйя',  category: 'lemonade', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_berry_boom',         name: 'Ягодный бум',      category: 'lemonade', prices: { L: 1350 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_orange',             name: 'Апельсин',         category: 'lemonade', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_lime_raspberry',     name: 'Лайм-малина',      category: 'lemonade', prices: { L: 1350 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_house',              name: 'Домашний',         category: 'lemonade', prices: { L: 1150 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_watermelon_kiwi',    name: 'Арбуз-киви',       category: 'lemonade', prices: { L: 1350 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_kiwi_aloe',          name: 'Киви-алоэ',        category: 'lemonade', prices: { L: 1550 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'lemonade_mojito',             name: 'Мохито',           category: 'lemonade', prices: { L: 1250 }, addons: A_ALL_OFF, countsForLoyalty: false },
 
-  // Молочные коктейли
-  { id: 'shake_banana',     name: 'Банановый',   category: 'milkshake', prices: { M: 1650 }, countsForLoyalty: false },
-  { id: 'shake_strawberry', name: 'Клубничный',  category: 'milkshake', prices: { M: 1450 }, countsForLoyalty: false },
-  { id: 'shake_chocolate',  name: 'Шоколадный',  category: 'milkshake', prices: { M: 1450 }, countsForLoyalty: false },
-  { id: 'shake_vanilla',    name: 'Ванильный',   category: 'milkshake', prices: { M: 1450 }, countsForLoyalty: false },
-  { id: 'shake_caramel',    name: 'Карамельный', category: 'milkshake', prices: { M: 1450 }, countsForLoyalty: false },
-  { id: 'shake_pistachio',  name: 'Фисташковый', category: 'milkshake', prices: { M: 1450 }, countsForLoyalty: false },
-  { id: 'shake_coconut',    name: 'Кокосовый',   category: 'milkshake', prices: { M: 1450 }, countsForLoyalty: false },
+  // Молочные коктейли (только L)
+  { id: 'milkshake_banana',     name: 'Банановый',   category: 'milkshake', prices: { L: 1650 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'milkshake_strawberry', name: 'Клубничный',  category: 'milkshake', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'milkshake_chocolate',  name: 'Шоколадный',  category: 'milkshake', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'milkshake_vanilla',    name: 'Ванильный',   category: 'milkshake', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'milkshake_caramel',    name: 'Карамельный', category: 'milkshake', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'milkshake_pistachio',  name: 'Фисташковый', category: 'milkshake', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
+  { id: 'milkshake_coconut',    name: 'Кокосовый',   category: 'milkshake', prices: { L: 1450 }, addons: A_ALL_OFF, countsForLoyalty: false },
 ];
 
-// ═══ COLD CATEGORIES — сироп бесплатен ═══
+// ═══ COLD CATEGORIES — дефолт «холодности» по категории ═══
+// isColdItem(item) сначала смотрит item.isHot, потом сверяется с этим set.
 export const COLD_CATEGORIES: ReadonlySet<CategoryId> = new Set<CategoryId>([
   'ice_coffee', 'ice_tea', 'lemonade', 'fresh', 'smoothie', 'milkshake',
 ]);
 
 export function isColdCategory(cat: CategoryId): boolean {
   return COLD_CATEGORIES.has(cat);
+}
+
+/** Холодный ли напиток с учётом per-item override item.isHot. */
+export function isColdItem(item: MenuItem): boolean {
+  if (item.isHot === true) return false;
+  if (item.isHot === false) return true;
+  return COLD_CATEGORIES.has(item.category);
+}
+
+// ═══ LEGACY CATEGORY NORMALIZATION ═══
+// Исторические заказы в Firestore содержат старые ID категорий.
+// normalizeCategoryId маппит их на новые и логирует в Sentry для отслеживания
+// момента, когда легаси полностью выйдет из оборота и хелпер можно будет удалить.
+const LEGACY_CATEGORY_MAP: Record<string, CategoryId> = {
+  coffee_classic: 'classic_coffee',
+  coffee_author: 'author_coffee',
+  tea_home: 'home_tea',
+  tea_author: 'author_tea',
+};
+
+const KNOWN_CATEGORY_IDS: ReadonlySet<string> = new Set(CATEGORIES.map(c => c.id));
+
+export function normalizeCategoryId(raw: string | undefined | null): CategoryId {
+  if (!raw) return 'classic_coffee';
+  if (KNOWN_CATEGORY_IDS.has(raw)) return raw as CategoryId;
+  if (raw in LEGACY_CATEGORY_MAP) {
+    const mapped = LEGACY_CATEGORY_MAP[raw];
+    try {
+      Sentry.captureMessage(`Legacy category encountered: ${raw} → ${mapped}`, {
+        level: 'info',
+        tags: { legacy_category_format: 'true' },
+        extra: { oldId: raw, newId: mapped },
+      });
+    } catch { /* Sentry unavailable — swallow */ }
+    return mapped;
+  }
+  // Неизвестная категория → дефолт + лог ошибки
+  try {
+    Sentry.captureMessage(`Unknown category id: ${raw}`, {
+      level: 'warning',
+      tags: { legacy_category_format: 'unknown' },
+      extra: { oldId: raw },
+    });
+  } catch { /* ignore */ }
+  return 'classic_coffee';
 }
 
 // ═══ UTILITIES ═══
@@ -230,37 +297,27 @@ export function getCategory(id: CategoryId): Category {
   return cat;
 }
 
-export function getModifiersForCategory(categoryId: CategoryId): Modifier[] {
-  const cat = getCategory(categoryId);
-  return MODIFIERS.filter(m => cat.allowedModifierGroups.includes(m.group));
-}
-
-/** Модификаторы с учётом per-item ограничений (availableMilk/availableSyrup) */
+/** Модификаторы, разрешённые для позиции (по per-item addons). */
 export function getModifiersForItem(item: MenuItem): Modifier[] {
-  const all = getModifiersForCategory(item.category);
-  return all.filter(m => {
-    if (m.group === 'milk' && item.availableMilk === false) return false;
-    if (m.group === 'syrup' && item.availableSyrup === false) return false;
-    return true;
+  return MODIFIERS.filter(m => {
+    if (m.group === 'milk') return item.addons.milk;
+    if (m.group === 'syrup') return item.addons.syrup;
+    if (m.group === 'honey') return item.addons.honey;
+    return false;
   });
 }
 
-export function calculateItemTotal(
-  basePrice: number,
-  modifiers: Modifier[]
-): number {
+export function calculateItemTotal(basePrice: number, modifiers: Modifier[]): number {
   return basePrice + modifiers.reduce((sum, m) => sum + m.price, 0);
 }
 
 export function getDefaultSize(item: MenuItem): Size {
-  const cat = getCategory(item.category);
-  const available = cat.sizes.filter(s => item.prices[s] !== undefined);
+  const available = getAvailableSizes(item);
   return available.includes('M') ? 'M' : available[0];
 }
 
 export function getAvailableSizes(item: MenuItem): Size[] {
-  const cat = getCategory(item.category);
-  return cat.sizes.filter(s => item.prices[s] !== undefined);
+  return (['S', 'M', 'L'] as Size[]).filter(s => item.prices[s] !== undefined);
 }
 
 export function getMinPrice(item: MenuItem): number {
@@ -289,7 +346,6 @@ export interface StopList {
   modifiers: string[];
 }
 
-/** Нормализация стоп-листа: если пришёл массив — оборачиваем в объект */
 export function normalizeStopList(raw: unknown): StopList {
   if (Array.isArray(raw)) {
     return { items: raw as string[], modifiers: [] };
@@ -309,3 +365,28 @@ export function normalizeStopList(raw: unknown): StopList {
 export function makeCartKey(itemId: string, size: Size, modifierIds: string[]): string {
   return `${itemId}__${size}__${[...modifierIds].sort().join(',')}`;
 }
+
+// ═══ BUILD-TIME INTEGRITY CHECKS ═══
+// Выполняется при первом импорте модуля. Падает билд если инварианты нарушены.
+// Проверяет корректность isHot override для горячих/холодных позиций в неочевидных категориях.
+(function runMenuIntegrityChecks() {
+  const checks: Array<{ id: string; expected: boolean; label: string }> = [
+    { id: 'hot_chocolate', expected: false, label: 'Горячий шоколад' },
+    { id: 'cocoa',         expected: false, label: 'Какао' },
+    { id: 'ice_matcha',    expected: true,  label: 'Айс матча' },
+    { id: 'green_matcha',  expected: false, label: 'Зелёная матча' },
+    { id: 'frappuccino',   expected: true,  label: 'Фраппучино' },
+  ];
+  for (const c of checks) {
+    const item = MENU_ITEMS.find(i => i.id === c.id);
+    if (!item) {
+      throw new Error(`[menu integrity] missing item: ${c.id} (${c.label})`);
+    }
+    const actual = isColdItem(item);
+    if (actual !== c.expected) {
+      throw new Error(
+        `[menu integrity] isColdItem("${c.id}" / ${c.label}) expected ${c.expected}, got ${actual}`
+      );
+    }
+  }
+})();

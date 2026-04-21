@@ -116,7 +116,11 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
   }
 
   // Update loyalty count + streak (new logic: count coffee items, free = cheapest coffee basePrice)
-  const coffeeCategories = ['coffee_classic', 'coffee_author', 'ice_coffee'];
+  // Includes legacy IDs for historical orders — remove when old orders age out (см. normalizeCategoryId).
+  const coffeeCategories = [
+    'classic_coffee', 'author_coffee', 'ice_coffee',
+    'coffee_classic', 'coffee_author', // legacy
+  ];
   if (userId && userId !== "anonymous") {
     const userRef = db.collection("users").doc(userId);
     await db.runTransaction(async (tx) => {

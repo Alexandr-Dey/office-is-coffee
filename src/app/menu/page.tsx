@@ -16,7 +16,7 @@ import {
   CATEGORIES, MENU_ITEMS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
   type MenuItem, type StopList, type CategoryId, type Size,
   getCategory, getAvailableSizes, getDefaultSize, getMinPrice, formatPrice,
-  normalizeStopList, makeCartKey,
+  normalizeStopList, makeCartKey, normalizeCategoryId,
 } from "@/lib/menu";
 import { getDailyCookie, isCookieCollectedToday } from "@/lib/dailyCookie";
 import { COOKIE_FACTS, type CookieFact } from "@/lib/cookieFacts";
@@ -24,11 +24,11 @@ import CookieButton from "@/components/CookieButton";
 
 /* ═══ CATEGORY ICONS ═══ */
 const CAT_ICONS: Record<CategoryId, string> = {
-  coffee_classic: '☕',
-  coffee_author: '✨',
+  classic_coffee: '☕',
+  author_coffee: '✨',
   ice_coffee: '❄️',
-  tea_home: '🍵',
-  tea_author: '🌿',
+  home_tea: '🍵',
+  author_tea: '🌿',
   matcha: '🍃',
   ice_tea: '🧊',
   lemonade: '🍋',
@@ -158,8 +158,8 @@ const DrinkCard = memo(function DrinkCard({ item, onQuickAdd, onDetail, idx, sto
       )}
       <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-xl mb-2`}>{icon}</div>
       <span className="font-semibold text-sm text-brand-text">{item.name}</span>
-      {item.description && !stopped && (
-        <p className="text-xs text-brand-text/50 line-clamp-1 mt-0.5">{item.description}</p>
+      {item.composition && !stopped && (
+        <p className="text-xs text-brand-text/50 line-clamp-1 mt-0.5">{item.composition}</p>
       )}
       {sizes.length > 1 && !stopped && (
         <div className="flex gap-1 mb-1 mt-1">
@@ -261,7 +261,7 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites, popularIds, stopList }
       const itemId = i.itemId ?? i.name;
       // Подтягиваем актуальную категорию из MENU_ITEMS если в legacy-заказе её нет
       const menuMatch = MENU_ITEMS.find(m => m.id === itemId);
-      const category = i.category ?? menuMatch?.category ?? 'coffee_classic';
+      const category = normalizeCategoryId(i.category ?? menuMatch?.category);
       const cartKey = makeCartKey(itemId, i.size as Size, mods.map(m => m.id));
       return {
         itemId,
@@ -519,7 +519,7 @@ function kzToRu(s: string): string {
 export default function MenuPage() {
   const { user } = useAuth();
   const { cart, addCartItem, removeCartItem, updateQty, setItems, clearCart, totalItems, totalPrice } = useCart();
-  const [cat, setCat] = useState<CategoryId>("coffee_classic");
+  const [cat, setCat] = useState<CategoryId>("classic_coffee");
   const [showCart, setShowCart] = useState(false);
   const [search, setSearch] = useState("");
   const animatedPlaceholder = useTypingPlaceholder([
@@ -559,7 +559,7 @@ export default function MenuPage() {
     const variants = [q, enToRu(q), kzToRu(q)].filter(Boolean);
     return MENU_ITEMS.filter(i => {
       const name = i.name.toLowerCase();
-      const desc = (i.description ?? "").toLowerCase();
+      const desc = (i.composition ?? "").toLowerCase();
       const catName = getCategory(i.category).name.toLowerCase();
       return variants.some(v =>
         name.includes(v) || desc.includes(v) || catName.includes(v)

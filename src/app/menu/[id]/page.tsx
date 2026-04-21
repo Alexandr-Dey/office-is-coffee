@@ -9,17 +9,17 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import {
-  MENU_ITEMS, CATEGORIES, MODIFIERS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
-  type MenuItem, type Modifier, type Size, type StopList, type CategoryId,
+  MENU_ITEMS, GRADIENT_CLASSES, PASTEL_BG, PASTEL_BORDER,
+  type Modifier, type Size, type StopList, type CategoryId,
   getCategory, getModifiersForItem, getAvailableSizes,
   getDefaultSize, formatPrice, normalizeStopList, calculateItemTotal,
-  isColdCategory,
+  isColdItem,
 } from "@/lib/menu";
 
 /* ═══ CATEGORY ICONS ═══ */
 const CAT_ICONS: Record<CategoryId, string> = {
-  coffee_classic: '☕', coffee_author: '✨', ice_coffee: '❄️',
-  tea_home: '🍵', tea_author: '🌿', matcha: '🍃',
+  classic_coffee: '☕', author_coffee: '✨', ice_coffee: '❄️',
+  home_tea: '🍵', author_tea: '🌿', matcha: '🍃',
   ice_tea: '🧊', lemonade: '🍋', fresh: '🍊',
   smoothie: '🍓', milkshake: '🥛',
 };
@@ -79,16 +79,16 @@ export default function MenuItemDetailPage() {
 
   const milkOptions = allModifiers.filter(m => m.group === 'milk');
   const syrupOptions = allModifiers.filter(m => m.group === 'syrup');
-  const addonOptions = allModifiers.filter(m => m.group === 'addon');
+  const addonOptions = allModifiers.filter(m => m.group === 'honey');
 
-  const hasMilk = cat.allowedModifierGroups.includes('milk') && milkOptions.length > 0;
-  const hasSyrup = cat.allowedModifierGroups.includes('syrup') && syrupOptions.length > 0;
-  const hasAddon = cat.allowedModifierGroups.includes('addon') && addonOptions.length > 0;
+  const hasMilk = item.addons.milk && milkOptions.length > 0;
+  const hasSyrup = item.addons.syrup && syrupOptions.length > 0;
+  const hasAddon = item.addons.honey && addonOptions.length > 0;
 
   const basePrice = item.prices[size] ?? 0;
 
-  // Сироп бесплатен в холодных напитках
-  const syrupIsFree = isColdCategory(item.category);
+  // Сироп бесплатен в холодных напитках (учитывает per-item isHot override)
+  const syrupIsFree = isColdItem(item);
 
   const chosenModifiers: Modifier[] = [];
   if (selectedMilk) {
@@ -177,24 +177,19 @@ export default function MenuItemDetailPage() {
           </div>
         )}
 
-        {/* Drink image / emoji */}
+        {/* Drink emoji */}
         <div className="flex justify-center mt-12 mb-6">
-          {item.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.imageUrl} alt={item.name} className="w-[120px] h-[120px] object-contain drop-shadow-lg" />
-          ) : (
-            <div className="w-[120px] h-[120px] rounded-3xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-6xl">
-              {icon}
-            </div>
-          )}
+          <div className="w-[120px] h-[120px] rounded-3xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-6xl">
+            {icon}
+          </div>
         </div>
 
-        {/* Title + description */}
+        {/* Title + composition */}
         <div className="flex items-end justify-between">
           <div className="flex-1">
             <h1 className="font-display text-4xl font-bold text-white">{item.name}</h1>
-            {item.description && (
-              <p className="text-white/80 text-sm mt-1">{item.description}</p>
+            {item.composition && (
+              <p className="text-white/80 text-sm mt-1">{item.composition}</p>
             )}
           </div>
           {sizes.length <= 1 && (

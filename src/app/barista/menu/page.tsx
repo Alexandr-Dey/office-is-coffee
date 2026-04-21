@@ -92,7 +92,7 @@ function ItemRow({ item }: { item: MenuItem }) {
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <span className="font-medium text-sm text-brand-text">{item.name}</span>
-          {item.description && <p className="text-xs text-brand-text/40 truncate">{item.description}</p>}
+          {item.composition && <p className="text-xs text-brand-text/40 truncate">{item.composition}</p>}
         </div>
         <span className="text-xs text-brand-text/40 ml-2">{cat?.name}</span>
       </div>

@@ -15,7 +15,27 @@ import {
 } from "@/lib/menu";
 import { resolveIsOpen, CAFE_OPEN_HOUR, CAFE_OPEN_MIN, CAFE_CLOSE_HOUR, CAFE_CLOSE_MIN } from "@/lib/constants";
 
-interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[] }
+interface OrderModifier { id: string; name: string; price: number }
+interface OrderItem {
+  name: string;
+  size: string;
+  qty: number;
+  price?: number;
+  totalPrice?: number;
+  basePrice?: number;
+  modifiers?: OrderModifier[];
+  // Legacy fields — старые заказы
+  milk?: string;
+  addons?: string[];
+}
+
+const MILK_EMOJI: Record<string, string> = {
+  milk_coconut: "🥥",
+  milk_almond: "🌰",
+  milk_nut: "🥜",
+  milk_oat: "🌾",
+  milk_banana: "🍌",
+};
 interface Order {
   id: string; name: string; userId?: string; items: OrderItem[]; total: number;
   status: "new" | "pending" | "accepted" | "ready" | "paid" | "cancelled"; comment?: string;
@@ -209,21 +229,79 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${sl.color}`}>{sl.label}</span>
         </div>
       </div>
-      <div className="space-y-1 mb-3">
-        {order.items.map((it, i) => (
-          <div key={i} className="flex justify-between text-sm">
-            <span className="text-brand-text/70">
-              {it.name}{it.size !== "—" && ` (${it.size})`}
-              {it.milk && ` · ${it.milk}`}
-              {it.addons && it.addons.length > 0 && ` · ${it.addons.join(", ")}`}
-              {it.qty > 1 && ` ×${it.qty}`}
-            </span>
-            <span className="font-medium text-brand-text">{it.price * it.qty}₸</span>
-          </div>
-        ))}
+      <div className="space-y-2 mb-3">
+        {order.items.map((it, i) => {
+          const mods = it.modifiers ?? [];
+          const milkMods = mods.filter(m => m.id.startsWith("milk_"));
+          const syrupMods = mods.filter(m => m.id.startsWith("syrup_"));
+          const otherMods = mods.filter(m => !m.id.startsWith("milk_") && !m.id.startsWith("syrup_"));
+          const legacyAddons = it.addons ?? [];
+          const unitPrice = it.totalPrice ?? it.price ?? it.basePrice ?? 0;
+          const lineTotal = unitPrice * it.qty;
+          const hasAltMilk = milkMods.length > 0 || !!it.milk;
+          return (
+            <div key={i} className={`rounded-xl p-2.5 ${hasAltMilk ? "bg-amber-50 border border-amber-200" : "bg-brand-bg/60"}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="font-bold text-brand-text text-[15px] leading-tight">{it.name}</span>
+                  {it.size !== "—" && (
+                    <span className="px-2 py-0.5 rounded-md bg-white text-brand-text/70 text-xs font-bold border border-[#d0f0e0]">{it.size}</span>
+                  )}
+                  {it.qty > 1 && (
+                    <span className="px-2 py-0.5 rounded-md bg-brand-pink text-white text-xs font-bold">×{it.qty}</span>
+                  )}
+                </div>
+                <span className="font-bold text-brand-text whitespace-nowrap">{lineTotal}₸</span>
+              </div>
+
+              {hasAltMilk && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {milkMods.map(m => (
+                    <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 text-sm font-bold border border-amber-400">
+                      <span className="text-base leading-none">{MILK_EMOJI[m.id] ?? "🥛"}</span>
+                      {m.name}
+                    </span>
+                  ))}
+                  {it.milk && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 text-sm font-bold border border-amber-400">
+                      🥛 {it.milk}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {syrupMods.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {syrupMods.map(m => (
+                    <span key={m.id} className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 text-brand-pink text-xs font-semibold border border-pink-200">
+                      + {m.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {(otherMods.length > 0 || legacyAddons.length > 0) && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {otherMods.map(m => (
+                    <span key={m.id} className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                      + {m.name}
+                    </span>
+                  ))}
+                  {legacyAddons.map((a, j) => (
+                    <span key={`legacy-${j}`} className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                      + {a}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       {order.comment && (
-        <div className="bg-brand-bg rounded-xl px-3 py-2 text-xs text-brand-text/60 mb-3">💬 {order.comment}</div>
+        <div className="bg-[#fff8e1] border border-[#ffd666] rounded-xl px-3 py-2.5 text-sm text-[#7a5c00] mb-3">
+          <span className="font-bold">💬 Комментарий:</span> {order.comment}
+        </div>
       )}
       {order.cancelReason && (
         <div className="bg-red-50 rounded-xl px-3 py-2 text-xs text-red-600 mb-3">🚫 {order.cancelReason}</div>
@@ -489,9 +567,9 @@ function StopListPanel({ stopList }: { stopList: StopList }) {
 
       {tab === "modifiers" && (
         <div className="space-y-1">
-          {(['milk', 'syrup', 'addon'] as const).map(group => {
+          {(['milk', 'syrup', 'honey'] as const).map(group => {
             const mods = MODIFIERS.filter(m => m.group === group);
-            const label = group === 'milk' ? 'Молоко' : group === 'syrup' ? 'Сиропы' : 'Добавки';
+            const label = group === 'milk' ? 'Молоко' : group === 'syrup' ? 'Сиропы' : 'Мёд';
             return (
               <div key={group} className="mb-3">
                 <p className="text-xs font-bold text-brand-text/50 uppercase mb-1">{label}</p>
