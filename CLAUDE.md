@@ -40,28 +40,28 @@
 
 ## 3. Текущая архитектура (факты, не желания)
 
-### Auth — ФЕЙКОВЫЙ (критический долг)
+### Auth — Firebase Auth (Google OAuth + anonymous)
 
-Пользователь вводит имя, выбирает роль (client/barista/ceo), данные сохраняются в `localStorage['oic_user']`. UID генерится как `user_${timestamp}_${random}`. Firebase Auth НЕ подключён, Custom Claims НЕ существуют.
+`src/lib/auth.tsx` использует настоящий Firebase Auth: `signInWithPopup`/`signInWithRedirect` (Google) + `signInAnonymously` (гостевой вход). Роль определяется по email через `ROLE_ASSIGNMENTS` (захардкожен список barista/ceo emails), остальные получают `client`. Профиль в `users/{uid}`, real-time через `onSnapshot`.
 
-**Последствия**: `firestore.rules` на Custom Claims не работают, любой может писать куда угодно; Cloud Functions через `request.auth` получают null; любой может выбрать себе роль CEO.
+**Долг**: Custom Claims не настроены — `firestore.rules` использует только `isAuthenticated()`, без role-check на сервере. Клиент из DevTools может писать в `menu_overrides`, `orders`, `deposits` и т.д. Ролевая защита сейчас только на клиенте (`useRequireBarista/CEO`). Миграция на Custom Claims — отдельная задача.
 
-**План**: миграция на Firebase Auth (телефон + SMS OTP) — задача P0-1.
+### Cloud Functions — ЗАДЕПЛОЕНЫ (8 функций)
 
-### Cloud Functions — НЕ ЗАДЕПЛОЕНЫ (критический долг)
+Код в `functions/index.js`, задеплоен в проде 2026-04-22 в проект `office-is-coffee`. Список и роли — см. раздел 6.
 
-Код есть в `functions/index.js`, но не задеплоен. Нужен ручной деплой:
+Деплой при изменениях:
 ```bash
 cd functions && npx firebase deploy --only functions
 ```
 
-Пока не задеплоены — автопереход статусов, лояльность, стрик, депозит, бонусы и push не работают.
+### Меню — ХАРДКОД + price-overrides в Firestore
 
-### Меню — ХАРДКОД (долг)
+Массив `MENU_ITEMS` в `src/lib/menu.ts` — **source of truth для структуры**: 11 категорий, 73 позиции. Типы/категории/`addons`/`isHot`/`composition` через PR в git.
 
-Массив `MENU[]` в `src/app/menu/page.tsx`, ~5 категорий, ~20 напитков. Firestore коллекция `menu_items` пустая.
+**Price layer поверх**: коллекция `menu_overrides/{itemId}` (добавлена 2026-04-22) хранит изменения цен. Редактируется баристами/CEO через `/barista/menu` и `/ceo/menu` (PriceEditModal с валидацией и audit-логом). Подробности — `docs/MENU.md`.
 
-Реальное меню Love is Coffee — 13 категорий, ~70 напитков. Полный список — **MENU-DATA.md**. Миграция — задача P1-1.
+Firestore коллекция `menu_items` — всё ещё пустая. Полная миграция структуры меню в Firestore — задача P1-1.
 
 ### PWA иконки — НЕТ
 
@@ -277,11 +277,14 @@ office-is-coffee/
 
 | Функция | Триггер | Что делает |
 |---|---|---|
-| `onOrderCreate` | orders/{id} created | Auto 'pending', push баристам, списание депозита, loyalty +1, streak |
+| `onOrderCreate` | orders/{id} created | Auto 'pending', push баристам, списание депозита, loyalty +N, streak |
 | `onOrderReady` | orders/{id} updated → 'ready' | Бонус баристе +5₸, push клиенту |
 | `onDepositTopup` | HTTPS Callable | Роль barista/ceo, транзакция, push |
 | `scheduledStreakCheck` | Cron 12:00 UTC = 17:00 Алматы | Сброс стрика, push "Стрик под угрозой" |
 | `onCafeOpen` | cafe_status updated: false→true | Push "Кофейня открыта" |
+| `sendManualPush` | HTTPS Callable | Ручная рассылка push (CEO) |
+| `migrateStopList` | HTTPS Callable | One-off миграция формата stop_list |
+| `trackPushOpened` | HTTPS Callable | Логирование открытий push-сообщений |
 
 ### Helpers
 - `getAlmatyDate(date?)` — "YYYY-MM-DD" в UTC+5
@@ -449,9 +452,9 @@ NEXT_PUBLIC_MIXPANEL_TOKEN=
 
 ## 13. Долги (приоритизированы)
 
-**Критичные**: Auth фейковый, CF не задеплоены, VAPID нет, иконки нет
-**Средние**: Меню хардкод, Mixpanel не используется, userId vs uid
-**Низкие**: Avatar page (не трогать), Sentry DSN, Playwright тесты
+**Критичные**: Custom Claims нет (rules без role-check), VAPID key нет, PWA иконки нет
+**Средние**: Меню структура хардкод (цены в Firestore через `menu_overrides`), Mixpanel не используется, Node 20 deprecated → переход на 22 до 2026-10-30, firebase-functions v5 → v6 upgrade
+**Низкие**: Avatar page (не трогать), Sentry DSN, Playwright тесты, legacy-коды категорий (см. `docs/TODO.md`)
 
 ---
 
