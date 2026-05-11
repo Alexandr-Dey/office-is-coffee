@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRequireBarista } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, setDoc, increment, arrayUnion } from "firebase/firestore";
+import { trackEvent } from "@/lib/mixpanel";
 
 export default function BaristaDepositsPage() {
   const { user, loading } = useRequireBarista();
@@ -55,6 +56,11 @@ export default function BaristaDepositsPage() {
       setRecentTopups(prev => [{ name: foundUser.name, amount: amt, time: new Date().toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" }) }, ...prev].slice(0, 5));
       setFoundUser({ ...foundUser, balance: foundUser.balance + amt });
       setAmount("");
+      trackEvent("Deposit Topup", {
+        targetUid: foundUser.uid,
+        amount: amt,
+        newBalance: foundUser.balance + amt,
+      });
       setTimeout(() => setSuccess(false), 3000);
     } catch (e) {
       console.error("Deposit topup error:", e);

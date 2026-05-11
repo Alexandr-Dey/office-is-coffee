@@ -9,6 +9,7 @@ import { collection, query, orderBy, where as fbWhere, limit, onSnapshot, Timest
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { MENU_ITEMS, normalizeCategoryId } from "@/lib/menu";
+import { trackEvent } from "@/lib/mixpanel";
 
 interface OrderItem { name: string; size: string; price: number; qty: number; milk?: string; addons?: string[]; category?: string }
 interface Order {
@@ -112,6 +113,7 @@ export default function OrdersPage() {
     });
     setItems(cartItems);
     sessionStorage.setItem("oic_is_repeat", "true");
+    trackEvent("Order Repeated", { source: "history", itemsCount: cartItems.length });
     router.push("/order");
   };
 

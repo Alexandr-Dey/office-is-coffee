@@ -91,10 +91,21 @@ export async function requestPushPermission(uid: string): Promise<boolean> {
   if (!("Notification" in window)) return false;
 
   const permission = await Notification.requestPermission();
+  // Fire-and-forget трекинг — chip-and-pin: какой бы исход, мы хотим знать
+  import("./mixpanel").then(({ trackEvent }) => {
+    trackEvent("Push Permission Asked", { permission });
+  }).catch(() => {});
+
   if (permission !== "granted") return false;
 
   try {
-    return await saveFcmToken(uid);
+    const saved = await saveFcmToken(uid);
+    if (saved) {
+      import("./mixpanel").then(({ trackEvent }) => {
+        trackEvent("Push Enabled", { uid });
+      }).catch(() => {});
+    }
+    return saved;
   } catch (err) {
     console.warn("FCM registration failed:", err);
     return false;
