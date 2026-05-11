@@ -128,13 +128,17 @@ export default function OrderPage() {
       clearCart();
       router.push(`/order/${docRef.id}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Ошибка";
-      if (msg.includes("Insufficient")) {
-        setOrderError("Недостаточно средств на депозите");
-      } else if (msg.includes("permission")) {
-        setOrderError("Нет прав для создания заказа. Попробуй перелогиниться.");
+      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+      if (msg.includes("insufficient")) {
+        setOrderError("На депозите не хватает. Пополни у баристы или выбери «Наличными».");
+      } else if (msg.includes("permission") || msg.includes("permission-denied")) {
+        setOrderError("Сессия истекла — перезайди через Google в профиле.");
+      } else if (msg.includes("network") || msg.includes("offline") || msg.includes("unavailable")) {
+        setOrderError("Нет интернета. Подожди пару секунд и попробуй ещё раз.");
+      } else if (msg.includes("quota") || msg.includes("resource-exhausted")) {
+        setOrderError("Сервер перегружен. Попробуй через минуту.");
       } else {
-        setOrderError(`Не удалось создать заказ: ${msg}`);
+        setOrderError("Не удалось создать заказ. Обнови страницу и попробуй снова.");
       }
       console.error("Order error:", err);
       setSending(false);
