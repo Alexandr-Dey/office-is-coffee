@@ -11,6 +11,7 @@ import {
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
   MENU_ITEMS, MODIFIERS, CATEGORIES, normalizeStopList, formatPrice,
+  isColdItem, isColdCategory, normalizeCategoryId,
   type StopList, type CategoryId,
 } from "@/lib/menu";
 import { resolveIsOpen, CAFE_OPEN_HOUR, CAFE_OPEN_MIN, CAFE_CLOSE_HOUR, CAFE_CLOSE_MIN } from "@/lib/constants";
@@ -24,9 +25,46 @@ interface OrderItem {
   totalPrice?: number;
   basePrice?: number;
   modifiers?: OrderModifier[];
+  itemId?: string;
+  category?: string;
   // Legacy fields — старые заказы
   milk?: string;
   addons?: string[];
+}
+
+/** Холодный ли элемент заказа. Сначала пробуем найти позицию в меню по
+ * itemId (учитывает per-item isHot override типа «Айс матча» или
+ * «Горячий шоколад»), потом fallback на category, потом по умолчанию hot. */
+function isOrderItemCold(it: OrderItem): boolean {
+  if (it.itemId) {
+    const mi = MENU_ITEMS.find(m => m.id === it.itemId);
+    if (mi) return isColdItem(mi);
+  }
+  if (it.category) {
+    const norm = normalizeCategoryId(it.category);
+    if (norm) return isColdCategory(norm as CategoryId);
+  }
+  return false;
+}
+
+function hasItemAltMilk(it: OrderItem): boolean {
+  const mods = it.modifiers ?? [];
+  return mods.some(m => m.id?.startsWith("milk_")) || !!it.milk;
+}
+
+/** Сводка по заказу для шапки: «3 напитка · 2🔥 + 1🧊 · ⚠ 1 на альт. молоке» */
+function getOrderSummary(items: OrderItem[]): {
+  hotCount: number;
+  coldCount: number;
+  altMilkCount: number;
+} {
+  let hot = 0, cold = 0, altMilk = 0;
+  for (const it of items) {
+    const q = it.qty || 1;
+    if (isOrderItemCold(it)) cold += q; else hot += q;
+    if (hasItemAltMilk(it)) altMilk += q;
+  }
+  return { hotCount: hot, coldCount: cold, altMilkCount: altMilk };
 }
 
 const MILK_EMOJI: Record<string, string> = {
@@ -203,6 +241,8 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
   const waitMin = getWaitMinutes(order.createdAt);
   const urgency = ["new", "pending"].includes(order.status) ? getUrgencyClass(waitMin) : "";
   const remaining = getRemainingMin(order.acceptedAt, order.estimatedMinutes);
+  const summary = getOrderSummary(order.items);
+  const mixedTemp = summary.hotCount > 0 && summary.coldCount > 0;
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 100 }}
@@ -229,6 +269,28 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${sl.color}`}>{sl.label}</span>
         </div>
       </div>
+
+      {/* Order-level summary: горячих / холодных / альт. молоко */}
+      {(mixedTemp || summary.altMilkCount > 0) && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {summary.hotCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 text-xs font-bold border border-orange-200">
+              🔥 {summary.hotCount} горяч{summary.hotCount === 1 ? "ий" : summary.hotCount < 5 ? "их" : "их"}
+            </span>
+          )}
+          {summary.coldCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-bold border border-sky-200">
+              🧊 {summary.coldCount} холодн{summary.coldCount === 1 ? "ый" : summary.coldCount < 5 ? "ых" : "ых"}
+            </span>
+          )}
+          {summary.altMilkCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-extrabold border-2 border-red-300 animate-pulse">
+              ⚠️ {summary.altMilkCount} на альт. молоке
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="space-y-2 mb-3">
         {order.items.map((it, i) => {
           const mods = it.modifiers ?? [];
@@ -239,10 +301,24 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
           const unitPrice = it.totalPrice ?? it.price ?? it.basePrice ?? 0;
           const lineTotal = unitPrice * it.qty;
           const hasAltMilk = milkMods.length > 0 || !!it.milk;
+          const isCold = isOrderItemCold(it);
+          // Полоса слева: красная если альт. молоко (loudest), иначе по температуре.
+          const stripe = hasAltMilk ? "border-l-[5px] border-l-red-500"
+            : isCold ? "border-l-[5px] border-l-sky-500"
+            : "border-l-[5px] border-l-orange-500";
+          const bg = hasAltMilk ? "bg-red-50"
+            : isCold ? "bg-sky-50"
+            : "bg-orange-50/50";
           return (
-            <div key={i} className={`rounded-xl p-2.5 ${hasAltMilk ? "bg-amber-50 border border-amber-200" : "bg-brand-bg/60"}`}>
+            <div key={i} className={`rounded-xl p-2.5 ${stripe} ${bg}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  {/* Термо-бейдж: первое что видит бариста */}
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wide ${
+                    isCold ? "bg-sky-500 text-white" : "bg-orange-500 text-white"
+                  }`}>
+                    {isCold ? "🧊 ХОЛОД" : "🔥 ГОРЯЧ"}
+                  </span>
                   <span className="font-bold text-brand-text text-[15px] leading-tight">{it.name}</span>
                   {it.size !== "—" && (
                     <span className="px-2 py-0.5 rounded-md bg-white text-brand-text/70 text-xs font-bold border border-[#d0f0e0]">{it.size}</span>
@@ -255,15 +331,16 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
               </div>
 
               {hasAltMilk && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[11px] font-extrabold text-red-700 uppercase tracking-wide">⚠ Альт. молоко:</span>
                   {milkMods.map(m => (
-                    <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 text-sm font-bold border border-amber-400">
+                    <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-extrabold border-2 border-red-600 shadow-sm">
                       <span className="text-base leading-none">{MILK_EMOJI[m.id] ?? "🥛"}</span>
                       {m.name}
                     </span>
                   ))}
                   {it.milk && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 text-sm font-bold border border-amber-400">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-extrabold border-2 border-red-600 shadow-sm">
                       🥛 {it.milk}
                     </span>
                   )}
