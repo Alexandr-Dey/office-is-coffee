@@ -53,10 +53,19 @@ service cloud.firestore {
       allow write: if isBaristaOrCeo();
     }
 
-    // barista_hearts — public read, auth write (clients tap baristas)
+    // barista_hearts — public read, write только залогиненным со строгой
+    // валидацией структуры: docId формата `vitaliy_YYYY-MM-DD` или `aslan_YYYY-MM-DD`,
+    // baristaName из whitelist, date matches docId-suffix. Защита от спама/мусора.
     match /barista_hearts/{docId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated()
+        && docId.matches('^(vitaliy|aslan)_\\d{4}-\\d{2}-\\d{2}$')
+        && request.resource.data.baristaName in ['Виталий', 'Аслан']
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && request.resource.data.count is number
+        && request.resource.data.count >= 0
+        && request.resource.data.count < 100000;
     }
 
     // cafe_status — public read, write только barista/ceo (открывает/закрывает,
