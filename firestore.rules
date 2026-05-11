@@ -10,6 +10,14 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
+    function hasRole(role) {
+      return request.auth != null && request.auth.token.role == role;
+    }
+
+    function isBaristaOrCeo() {
+      return hasRole('barista') || hasRole('ceo');
+    }
+
     // users — anyone auth can read (needed for CEO client list, barista deposits)
     // write: own doc only, protected fields checked
     match /users/{uid} {
@@ -32,16 +40,17 @@ service cloud.firestore {
     }
 
     // deposits — anyone auth can read (barista top-up flow)
-    // write: auth only (barista tops up, CF deducts)
+    // write: barista/ceo only (через Custom Claims; CF использует admin SDK
+    // и обходит rules)
     match /deposits/{uid} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isBaristaOrCeo();
     }
 
-    // barista_bonuses — auth read/write (barista requests payout, CEO approves)
+    // barista_bonuses — barista/ceo write (barista requests payout, CEO approves)
     match /barista_bonuses/{uid} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isBaristaOrCeo();
     }
 
     // barista_hearts — public read, auth write (clients tap baristas)
@@ -69,12 +78,11 @@ service cloud.firestore {
     }
 
     // menu_overrides — публичное чтение (клиенты видят актуальные цены);
-    // write: только auth (UI защищён useRequireBarista/CEO, дополнительный
-    // role-check на сервере появится когда перейдём на настоящий Firebase Auth
-    // с Custom Claims — сейчас локально-сторидж-auth не позволяет).
+    // write: barista/ceo через Custom Claims (выставляются скриптом
+    // scripts/set-roles.ts).
     match /menu_overrides/{itemId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isBaristaOrCeo();
     }
 
     // push_log — auth read/write
@@ -101,10 +109,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // promo_codes
+    // promo_codes — read любому auth (применение кода клиентом),
+    // write только CEO
     match /promo_codes/{code} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if hasRole('ceo');
     }
 
     // feedback — клиент создаёт жалобы/предложения; читать может любой auth
