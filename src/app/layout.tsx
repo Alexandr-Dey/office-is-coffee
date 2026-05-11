@@ -25,9 +25,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1a7a44",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#1a7a44" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f3a20" },
+  ],
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover", // iPhone notch / Dynamic Island
 };
 
 export default function RootLayout({
