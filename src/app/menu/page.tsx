@@ -278,34 +278,55 @@ function QuickOrderStrip({ onRepeat, onDetail, favorites, popularIds, stopList }
       };
     });
     onRepeat(cartItems);
+    trackEvent("Order Repeated", { source: "menu_hero", itemsCount: cartItems.length });
     router.push("/order");
   };
 
+  const hasRepeat = recentOrders.length > 0;
   return (
     <section className="mt-2 px-3" aria-label="Быстрый заказ">
-      <h2 className="text-sm font-bold text-brand-text mb-2">⚡ Быстрый заказ</h2>
-      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2">
-        {recentOrders.map((order) => (
-          <motion.button
-            key={order.key}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleRepeat(order)}
-            className="flex-shrink-0 w-40 rounded-2xl p-3 text-left bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-white"
-            style={{ boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}
-          >
-            <span className="text-lg">🔁</span>
-            <p className="text-xs font-bold truncate mt-1">{order.label}</p>
-            {order.sub && <p className="text-[10px] text-white/70 truncate">{order.sub}</p>}
-            <p className="text-sm font-bold mt-1">{formatPrice(order.total)} →</p>
-          </motion.button>
-        ))}
-        {favoriteItems.map((item) => (
-          <CarouselCard key={item.id} item={item} badge="❤️" onClick={() => onDetail(item)} />
-        ))}
-        {popularItems.map((item) => (
-          <CarouselCard key={`pop-${item.id}`} item={item} badge="🔥" badgeStyle="hot" onClick={() => onDetail(item)} />
-        ))}
-      </div>
+      {/* Hero card — «Твоё обычное», full-width, доминирует над всем strip */}
+      {hasRepeat && (
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleRepeat(recentOrders[0])}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full rounded-2xl p-4 text-left bg-gradient-to-br from-[#f59e0b] to-[#f97316] text-white mb-3 flex items-center gap-3"
+          style={{ boxShadow: "0 6px 18px rgba(245,158,11,0.32)" }}
+        >
+          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+            🔁
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-white/75 font-bold">Твоё обычное</p>
+            <p className="text-base font-extrabold truncate">{recentOrders[0].label}</p>
+            {recentOrders[0].sub && (
+              <p className="text-xs text-white/80 truncate">+ {recentOrders[0].sub}</p>
+            )}
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-base font-extrabold">{formatPrice(recentOrders[0].total)}</p>
+            <p className="text-[10px] text-white/80 font-bold">Заказать →</p>
+          </div>
+        </motion.button>
+      )}
+
+      {(favoriteItems.length > 0 || popularItems.length > 0) && (
+        <>
+          <h2 className="text-sm font-bold text-brand-text mb-2">
+            {favoriteItems.length > 0 ? "❤️ Любимое" : "🔥 Популярное"}
+          </h2>
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2">
+            {favoriteItems.map((item) => (
+              <CarouselCard key={item.id} item={item} badge="❤️" onClick={() => onDetail(item)} />
+            ))}
+            {popularItems.map((item) => (
+              <CarouselCard key={`pop-${item.id}`} item={item} badge="🔥" badgeStyle="hot" onClick={() => onDetail(item)} />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }
