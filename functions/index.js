@@ -75,8 +75,11 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
     const qty = typeof i.qty === "number" && i.qty > 0 ? i.qty : 1;
     return sum + tp * qty;
   }, 0);
-  // Допуск 1₸ на округление; если клиент прислал меньше — отклоняем
-  if (typeof data.total !== "number" || data.total < 0 || data.total > computedTotal + 1) {
+  // Допуск ±1₸ на округление в обе стороны. Раньше пропускали занижение —
+  // клиент через DevTools мог прислать total=0 на cash-заказ и получить
+  // его бесплатно. Теперь любое расхождение >1₸ отклоняем.
+  if (typeof data.total !== "number" || data.total < 0
+      || Math.abs(data.total - computedTotal) > 1) {
     await orderRef.update({
       status: "cancelled",
       cancelReason: `Несоответствие total (${data.total} vs ${computedTotal})`,
@@ -307,8 +310,36 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
     await sendPushMulti(tokens, "Заказ готов к выдаче", `${clientName} — можно выдавать`);
   }
 
-  /* ── cancelled → refund депозита (если списывали) + push клиенту ── */
+  /* ── cancelled → refund депозита + откат лояльности + push клиенту ── */
   if (after.status === "cancelled" && before.status !== "cancelled") {
+    // Откат лояльности (только один раз, флаг loyaltyRolledBackAt)
+    // Если был применён бесплатный — возвращаем 8 поинтов, минус то что
+    // начислил этот заказ. Иначе просто отнимаем coffeeQty.
+    if (userId && userId !== "anonymous" && !after.loyaltyRolledBackAt) {
+      const coffeeCats = ['classic_coffee', 'author_coffee', 'ice_coffee'];
+      const coffeeQty = (after.items || [])
+        .filter((i) => coffeeCats.includes(i.category))
+        .reduce((s, i) => s + (i.qty || 1), 0);
+      const wasFree = !!after.isFreeByLoyalty;
+      // delta при создании: +coffeeQty - (wasFree ? 8 : 0)
+      // откат: -delta = -coffeeQty + (wasFree ? 8 : 0)
+      const rollback = (wasFree ? 8 : 0) - coffeeQty;
+      if (rollback !== 0) {
+        const userRef = db.collection("users").doc(userId);
+        const orderRef = event.data.after.ref;
+        await db.runTransaction(async (tx) => {
+          const orderSnap = await tx.get(orderRef);
+          if (orderSnap.exists && orderSnap.data().loyaltyRolledBackAt) return;
+          const userSnap = await tx.get(userRef);
+          if (!userSnap.exists) return;
+          const current = userSnap.data().loyaltyCount || 0;
+          tx.update(userRef, { loyaltyCount: Math.max(0, current + rollback) });
+          tx.update(orderRef, { loyaltyRolledBackAt: new Date().toISOString() });
+        });
+        console.log(`Loyalty rolled back ${rollback} for ${userId} on cancelled order ${orderId}`);
+      }
+    }
+
     // Возврат депозита, если он был списан в onOrderCreate
     if (after.depositDeductedAt && !after.depositRefundedAt
         && after.total > 0 && userId && userId !== "anonymous") {
