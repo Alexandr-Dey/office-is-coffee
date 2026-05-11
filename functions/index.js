@@ -98,6 +98,48 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
     return;
   }
 
+  // Deposit pre-flight + списание ПЕРЕД pending-переходом и пушем баристам:
+  // если депозита нет / не хватает — сразу отменяем с понятной причиной,
+  // не дёргая баристов зря. История триммируется до последних 100 записей
+  // чтобы документ не упёрся в лимит 1MB.
+  if (data.paymentMethod === "deposit" && !data.isFreeByLoyalty && data.total > 0 && userId) {
+    const depRef = db.collection("deposits").doc(userId);
+    let depositFailed = null; // { reason, bal }
+    try {
+      await db.runTransaction(async (tx) => {
+        const depSnap = await tx.get(depRef);
+        const bal = depSnap.exists ? (depSnap.data().balance || 0) : 0;
+        if (!depSnap.exists || bal < data.total) {
+          depositFailed = { bal };
+          throw new Error("INSUFFICIENT");
+        }
+        const existing = depSnap.data().history || [];
+        const newHistory = [
+          ...existing,
+          { type: "payment", amount: data.total, date: new Date().toISOString(), orderId },
+        ].slice(-100);
+        tx.update(depRef, {
+          balance: bal - data.total,
+          totalSpent: (depSnap.data().totalSpent || 0) + data.total,
+          history: newHistory,
+        });
+        tx.update(orderRef, { depositDeductedAt: new Date().toISOString() });
+      });
+    } catch (e) {
+      if (!depositFailed) throw e;
+    }
+    if (depositFailed) {
+      const reason = depositFailed.bal === 0
+        ? "На депозите 0₸. Пополни у баристы или выбери наличными"
+        : `На депозите ${depositFailed.bal}₸, нужно ${data.total}₸ — не хватает ${data.total - depositFailed.bal}₸`;
+      await orderRef.update({ status: "cancelled", cancelReason: reason });
+      if (userId && userId !== "anonymous") {
+        await sendPush(userId, "Заказ не оформлен 😔", reason, { type: "order_cancelled", orderId });
+      }
+      return; // не идём дальше — баристов не дёргаем
+    }
+  }
+
   // Auto-transition new → pending
   await orderRef.update({ status: "pending" });
 
@@ -105,26 +147,6 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
   const tokens = await getBaristaTokens();
   const itemNames = (data.items || []).map((i) => i.name).join(", ");
   await sendPushMulti(tokens, "Новый заказ!", `${itemNames} от ${data.name || "Клиент"}`);
-
-  // Deposit payment: deduct balance atomically + проставить флаг depositDeductedAt
-  // (нужен для refund при cancel — см. onOrderReady).
-  if (data.paymentMethod === "deposit" && !data.isFreeByLoyalty && data.total > 0 && userId) {
-    const depRef = db.collection("deposits").doc(userId);
-    await db.runTransaction(async (tx) => {
-      const depSnap = await tx.get(depRef);
-      if (!depSnap.exists) throw new Error("No deposit account");
-      const bal = depSnap.data().balance || 0;
-      if (bal < data.total) throw new Error("Insufficient balance");
-      tx.update(depRef, {
-        balance: bal - data.total,
-        totalSpent: (depSnap.data().totalSpent || 0) + data.total,
-        history: FieldValue.arrayUnion({
-          type: "payment", amount: data.total, date: new Date().toISOString(), orderId,
-        }),
-      });
-      tx.update(orderRef, { depositDeductedAt: new Date().toISOString() });
-    });
-  }
 
   // Update loyalty count + streak (new logic: count coffee items, free = cheapest coffee basePrice)
   // Includes legacy IDs for historical orders — remove when old orders age out (см. normalizeCategoryId).
@@ -301,16 +323,21 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
         if (orderSnap.exists && orderSnap.data().depositRefundedAt) return;
         const depSnap = await tx.get(depRef);
         if (!depSnap.exists) return;
-        tx.update(depRef, {
-          balance: (depSnap.data().balance || 0) + after.total,
-          totalSpent: Math.max(0, (depSnap.data().totalSpent || 0) - after.total),
-          history: FieldValue.arrayUnion({
+        const existing = depSnap.data().history || [];
+        const newHistory = [
+          ...existing,
+          {
             type: "refund",
             amount: after.total,
             date: new Date().toISOString(),
             orderId,
             reason: after.cancelReason || "cancelled",
-          }),
+          },
+        ].slice(-100);
+        tx.update(depRef, {
+          balance: (depSnap.data().balance || 0) + after.total,
+          totalSpent: Math.max(0, (depSnap.data().totalSpent || 0) - after.total),
+          history: newHistory,
         });
         tx.update(orderRef, { depositRefundedAt: new Date().toISOString() });
       });
@@ -349,25 +376,29 @@ exports.onDepositTopup = onCall(async (request) => {
   }
 
   const { targetUid, amount } = request.data;
-  if (!targetUid || !amount || amount <= 0) throw new HttpsError("invalid-argument", "Bad args");
+  if (typeof amount !== "number" || !targetUid || amount <= 0) {
+    throw new HttpsError("invalid-argument", "Bad args");
+  }
+  // Sanity cap: одно пополнение ≤ 500 000₸ (защита от опечатки в админке)
+  if (amount > 500000) throw new HttpsError("invalid-argument", "Сумма слишком большая");
 
   const depRef = db.collection("deposits").doc(targetUid);
   await db.runTransaction(async (tx) => {
     const depSnap = await tx.get(depRef);
+    const entry = { type: "topup", amount, date: new Date().toISOString(), baristaid: callerUid };
     if (depSnap.exists) {
+      const existing = depSnap.data().history || [];
       tx.update(depRef, {
         balance: FieldValue.increment(amount),
         totalTopup: FieldValue.increment(amount),
         lastTopupAt: new Date().toISOString(),
-        history: FieldValue.arrayUnion({
-          type: "topup", amount, date: new Date().toISOString(), baristaid: callerUid,
-        }),
+        history: [...existing, entry].slice(-100),
       });
     } else {
       tx.set(depRef, {
         balance: amount, totalTopup: amount, totalSpent: 0,
         lastTopupAt: new Date().toISOString(),
-        history: [{ type: "topup", amount, date: new Date().toISOString(), baristaid: callerUid }],
+        history: [entry],
       });
     }
   });
