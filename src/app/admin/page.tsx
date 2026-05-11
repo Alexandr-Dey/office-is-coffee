@@ -15,6 +15,7 @@ import {
   type StopList, type CategoryId,
 } from "@/lib/menu";
 import { resolveIsOpen, CAFE_OPEN_HOUR, CAFE_OPEN_MIN, CAFE_CLOSE_HOUR, CAFE_CLOSE_MIN } from "@/lib/constants";
+import { trackEvent } from "@/lib/mixpanel";
 
 interface OrderModifier { id: string; name: string; price: number }
 interface OrderItem {
@@ -227,6 +228,12 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
         cancelReason: cancelReason.trim() || "Нет в наличии",
         cancelledAt: new Date().toISOString(),
         cancelledBy: baristaId,
+      });
+      trackEvent("Order Cancelled", {
+        orderId: order.id,
+        reason: cancelReason.trim() || "Нет в наличии",
+        paymentMethod: order.paymentMethod,
+        total: order.total,
       });
     } catch (e) {
       console.error("cancelOrder error:", e);
@@ -780,6 +787,31 @@ export default function AdminPage() {
     }
     return () => stopAlert();
   }, [newOrdersCount, startAlert, stopAlert]);
+
+  // Title flash — даже когда вкладка не в фокусе бариста видит мерцающий
+  // заголовок в трее браузера. Возвращаем оригинальный title когда заказов
+  // нет или компонент unmount'ится.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const original = "Админ — Love is Coffee";
+    if (newOrdersCount === 0) {
+      document.title = original;
+      return;
+    }
+    let on = true;
+    const tick = () => {
+      document.title = on
+        ? `🔔 ${newOrdersCount} новый${newOrdersCount === 1 ? "" : "х"} заказ${newOrdersCount === 1 ? "" : newOrdersCount < 5 ? "а" : "ов"}`
+        : original;
+      on = !on;
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearInterval(id);
+      document.title = original;
+    };
+  }, [newOrdersCount]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(getFirebaseDb(), "cafe_status", "aksay_main"), (snap) => {
