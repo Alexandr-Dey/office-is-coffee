@@ -34,6 +34,29 @@ function getAlmatyToday(): string {
   return utc5.toISOString().slice(0, 10);
 }
 
+/** Унифицированно резолвит дату и час Алматы из любого формата
+ * createdAt (Timestamp / ISO string). Раньше две ветки давали
+ * разные результаты — гистограмма по часам врала.
+ */
+function toAlmaty(createdAt: unknown): { date: string; hour: number } | null {
+  if (!createdAt) return null;
+  let ms: number;
+  if (createdAt instanceof Timestamp) {
+    ms = createdAt.toMillis();
+  } else if (typeof createdAt === "string") {
+    const t = new Date(createdAt).getTime();
+    if (Number.isNaN(t)) return null;
+    ms = t;
+  } else {
+    return null;
+  }
+  const shifted = new Date(ms + 5 * 60 * 60 * 1000);
+  return {
+    date: shifted.toISOString().slice(0, 10),
+    hour: shifted.getUTCHours(),
+  };
+}
+
 export default function CEOPage() {
   const { user, loading } = useRequireCEO();
   const [bonuses, setBonuses] = useState<BaristaBonus[]>([]);
@@ -87,18 +110,10 @@ export default function CEOPage() {
         totalRevenue += amount;
         totalOrders++;
 
-        if (!o.createdAt) continue;
-        let orderDate = "";
-        let orderHour = -1;
-        if (o.createdAt instanceof Timestamp) {
-          const d = new Date(o.createdAt.toMillis() + 5 * 60 * 60 * 1000);
-          orderDate = d.toISOString().slice(0, 10);
-          orderHour = d.getUTCHours();
-        } else if (typeof o.createdAt === "string") {
-          orderDate = o.createdAt.slice(0, 10);
-          const t = new Date(o.createdAt);
-          if (!isNaN(t.getTime())) orderHour = (t.getUTCHours() + 5) % 24;
-        }
+        const almaty = toAlmaty(o.createdAt);
+        if (!almaty) continue;
+        const orderDate = almaty.date;
+        const orderHour = almaty.hour;
         if (orderDate === today) {
           todayRevenue += amount;
           todayOrders++;

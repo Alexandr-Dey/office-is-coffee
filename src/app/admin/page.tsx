@@ -789,11 +789,13 @@ export default function AdminPage() {
   }, [newOrdersCount, startAlert, stopAlert]);
 
   // Title flash — даже когда вкладка не в фокусе бариста видит мерцающий
-  // заголовок в трее браузера. Возвращаем оригинальный title когда заказов
-  // нет или компонент unmount'ится.
+  // заголовок в трее браузера. Захватываем оригинальный title один раз при
+  // mount, восстанавливаем его при cleanup или когда заказов нет.
+  const originalTitleRef = useRef<string>("");
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const original = "Админ — Love is Coffee";
+    if (!originalTitleRef.current) originalTitleRef.current = document.title;
+    const original = originalTitleRef.current;
     if (newOrdersCount === 0) {
       document.title = original;
       return;
