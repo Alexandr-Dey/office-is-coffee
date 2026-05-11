@@ -89,6 +89,15 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
     return;
   }
 
+  // Cafe-closed guard: фронт уже проверяет, но между render и create могла
+  // случиться смена состояния (auto-close по расписанию / ручное закрытие).
+  // Защищаем сервер.
+  const cafeSnap = await db.collection("cafe_status").doc("aksay_main").get();
+  if (cafeSnap.exists && cafeSnap.data().isOpen === false) {
+    await orderRef.update({ status: "cancelled", cancelReason: "Кофейня закрыта" });
+    return;
+  }
+
   // Auto-transition new → pending
   await orderRef.update({ status: "pending" });
 
@@ -97,7 +106,8 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
   const itemNames = (data.items || []).map((i) => i.name).join(", ");
   await sendPushMulti(tokens, "Новый заказ!", `${itemNames} от ${data.name || "Клиент"}`);
 
-  // Deposit payment: deduct balance atomically
+  // Deposit payment: deduct balance atomically + проставить флаг depositDeductedAt
+  // (нужен для refund при cancel — см. onOrderReady).
   if (data.paymentMethod === "deposit" && !data.isFreeByLoyalty && data.total > 0 && userId) {
     const depRef = db.collection("deposits").doc(userId);
     await db.runTransaction(async (tx) => {
@@ -112,6 +122,7 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
           type: "payment", amount: data.total, date: new Date().toISOString(), orderId,
         }),
       });
+      tx.update(orderRef, { depositDeductedAt: new Date().toISOString() });
     });
   }
 
@@ -141,8 +152,10 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
       if (lastOrder === yesterday) newStreak = (userData.streak || 0) + 1;
       else if (lastOrder === today) newStreak = userData.streak || 1;
 
-      // Loyalty: increment by coffeeQty (or 1 if no coffee items — backward compat)
-      const loyaltyIncrement = coffeeQty > 0 ? coffeeQty : (items.length > 0 ? 1 : 0);
+      // Лояльность считаем ТОЛЬКО по кофейным позициям. Лимонад/смузи/фреш
+      // не дают баллы — иначе клиент мог бы заработать бесплатный кофе без
+      // кофе.
+      const loyaltyIncrement = coffeeQty;
       let lc = (userData.loyaltyCount || 0) + loyaltyIncrement;
       let discount = 0;
 
@@ -152,11 +165,7 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
           (i.basePrice || i.totalPrice || i.price || 0) < (min.basePrice || min.totalPrice || min.price || 0) ? i : min
         );
         discount = cheapest.basePrice || cheapest.totalPrice || cheapest.price || 0;
-        lc = lc - 8; // Carry over remainder
-      } else if (lc >= 8) {
-        // No coffee in this order but loyalty reached 8 — defer free coffee
-        // Don't reset, wait for order with coffee
-        lc = Math.min(lc, 8); // Cap at 8, free will apply next order with coffee
+        lc = lc - 8; // carry over остаток
       }
 
       tx.update(userRef, {
@@ -276,11 +285,40 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
     await sendPushMulti(tokens, "Заказ готов к выдаче", `${clientName} — можно выдавать`);
   }
 
-  /* ── cancelled → push client ── */
-  if (after.status === "cancelled") {
+  /* ── cancelled → refund депозита (если списывали) + push клиенту ── */
+  if (after.status === "cancelled" && before.status !== "cancelled") {
+    // Возврат депозита, если он был списан в onOrderCreate
+    if (after.depositDeductedAt && !after.depositRefundedAt
+        && after.total > 0 && userId && userId !== "anonymous") {
+      const depRef = db.collection("deposits").doc(userId);
+      const orderRef = event.data.after.ref;
+      await db.runTransaction(async (tx) => {
+        const orderSnap = await tx.get(orderRef);
+        if (orderSnap.exists && orderSnap.data().depositRefundedAt) return;
+        const depSnap = await tx.get(depRef);
+        if (!depSnap.exists) return;
+        tx.update(depRef, {
+          balance: (depSnap.data().balance || 0) + after.total,
+          totalSpent: Math.max(0, (depSnap.data().totalSpent || 0) - after.total),
+          history: FieldValue.arrayUnion({
+            type: "refund",
+            amount: after.total,
+            date: new Date().toISOString(),
+            orderId,
+            reason: after.cancelReason || "cancelled",
+          }),
+        });
+        tx.update(orderRef, { depositRefundedAt: new Date().toISOString() });
+      });
+      console.log(`Refunded ${after.total}₸ to ${userId} for cancelled order ${orderId}`);
+    }
+
     if (userId && userId !== "anonymous") {
       const reason = after.cancelReason || "Нет в наличии";
-      await sendPush(userId, "Заказ отменён 😔", reason);
+      const refundNote = after.depositDeductedAt && after.total > 0
+        ? ` Депозит возвращён: +${after.total}₸`
+        : "";
+      await sendPush(userId, "Заказ отменён 😔", `${reason}${refundNote}`);
     }
   }
 
