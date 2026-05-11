@@ -4,7 +4,10 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import {
+  doc, onSnapshot, updateDoc,
+  collection, query, where, orderBy, limit, Timestamp,
+} from "firebase/firestore";
 import { useToast } from "@/components/Toast";
 import CoffeeScene, { type BaristaState } from "@/components/CoffeeScene";
 import GameWrapper from "@/components/game/GameWrapper";
@@ -39,7 +42,11 @@ interface OrderData {
   paymentMethod?: string;
   isFreeByLoyalty?: boolean;
   cancelReason?: string;
+  createdAt?: Timestamp;
 }
+
+// Средняя оценка времени на один заказ в очереди (минуты).
+const AVG_MIN_PER_ORDER = 4;
 
 const STATUS_TEXT: Record<string, { title: string; sub: string; emoji: string }> = {
   new: { title: "Заказ отправлен", sub: "Бариста скоро увидит...", emoji: "📨" },
@@ -164,6 +171,7 @@ export default function OrderWaitPage() {
     }
   }, [user?.uid]);
 
+  const freeTracked = useRef(false);
   useEffect(() => {
     if (!orderId) return;
     const unsub = onSnapshot(
@@ -178,6 +186,16 @@ export default function OrderWaitPage() {
             feedbackTimer.current = setTimeout(() => setShowFeedback(true), 120000);
           }
         }
+        // Бесплатный кофе по лояльности — фиксируем один раз
+        if (data.isFreeByLoyalty && !freeTracked.current) {
+          freeTracked.current = true;
+          trackEvent("Free Coffee Redeemed", { orderId });
+        }
+        if (prevStatus.current !== "cancelled" && data.status === "cancelled") {
+          trackEvent("Order Cancelled Client View", {
+            orderId, reason: data.cancelReason,
+          });
+        }
         prevStatus.current = data.status;
         setOrder(data);
       },
@@ -187,6 +205,32 @@ export default function OrderWaitPage() {
   }, [orderId]);
 
   const dismissFeedback = useCallback(() => setShowFeedback(false), []);
+
+  // Live ETA — сколько заказов передо мной в очереди, и оценка времени.
+  const [queueAhead, setQueueAhead] = useState<number | null>(null);
+  useEffect(() => {
+    if (!order || !order.createdAt) return;
+    if (order.status !== "pending" && order.status !== "new") {
+      setQueueAhead(null);
+      return;
+    }
+    const myMs = order.createdAt.toMillis();
+    const q = query(
+      collection(getFirebaseDb(), "orders"),
+      where("status", "in", ["pending", "accepted"]),
+      orderBy("createdAt", "asc"),
+      limit(50),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const ahead = snap.docs.filter((d) => {
+        if (d.id === orderId) return false;
+        const ts = (d.data().createdAt as Timestamp | undefined);
+        return !!ts && ts.toMillis() < myMs;
+      }).length;
+      setQueueAhead(ahead);
+    }, () => {});
+    return () => unsub();
+  }, [order, orderId]);
 
   if (notFound) {
     return (
@@ -281,6 +325,25 @@ export default function OrderWaitPage() {
               <p className="text-brand-text/50">{st.sub}</p>
             </motion.div>
           </AnimatePresence>
+
+          {/* Live ETA пока статус new/pending — показываем место в очереди */}
+          {(order.status === "new" || order.status === "pending") && queueAhead !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#d0f0e0] mb-6 text-xs text-brand-text/70"
+              style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}
+            >
+              {queueAhead === 0 ? (
+                <span>🥇 Ты следующий — обычно через ~{AVG_MIN_PER_ORDER} мин</span>
+              ) : (
+                <span>
+                  Впереди <span className="font-bold text-brand-dark">{queueAhead}</span>{" "}
+                  заказ{queueAhead === 1 ? "" : queueAhead < 5 ? "а" : "ов"} · ~{(queueAhead + 1) * AVG_MIN_PER_ORDER} мин
+                </span>
+              )}
+            </motion.div>
+          )}
 
           {order.status === "accepted" && order.estimatedMinutes && order.acceptedAt && (
             <CountdownTimer estimatedMinutes={order.estimatedMinutes} acceptedAt={order.acceptedAt} />
