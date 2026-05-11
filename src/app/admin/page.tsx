@@ -270,24 +270,12 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
         </div>
       </div>
 
-      {/* Order-level summary: горячих / холодных / альт. молоко */}
-      {(mixedTemp || summary.altMilkCount > 0) && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {summary.hotCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 text-xs font-bold border border-orange-200">
-              🔥 {summary.hotCount} горяч{summary.hotCount === 1 ? "ий" : summary.hotCount < 5 ? "их" : "их"}
-            </span>
-          )}
-          {summary.coldCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 text-xs font-bold border border-sky-200">
-              🧊 {summary.coldCount} холодн{summary.coldCount === 1 ? "ый" : summary.coldCount < 5 ? "ых" : "ых"}
-            </span>
-          )}
-          {summary.altMilkCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-extrabold border-2 border-red-300 animate-pulse">
-              ⚠️ {summary.altMilkCount} на альт. молоке
-            </span>
-          )}
+      {/* Только напоминание про альт. молоко — hot/cold уже видно по элементам */}
+      {summary.altMilkCount > 0 && (
+        <div className="mb-3">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-[11px] font-bold border border-rose-200">
+            🥛 {summary.altMilkCount} на альт. молоке
+          </span>
         </div>
       )}
 
@@ -302,22 +290,21 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
           const lineTotal = unitPrice * it.qty;
           const hasAltMilk = milkMods.length > 0 || !!it.milk;
           const isCold = isOrderItemCold(it);
-          // Полоса слева: красная если альт. молоко (loudest), иначе по температуре.
-          const stripe = hasAltMilk ? "border-l-[5px] border-l-red-500"
-            : isCold ? "border-l-[5px] border-l-sky-500"
-            : "border-l-[5px] border-l-orange-500";
-          const bg = hasAltMilk ? "bg-red-50"
-            : isCold ? "bg-sky-50"
-            : "bg-orange-50/50";
+          // Тонкая полоса слева: rose для альт. молока (приоритет), иначе термо-цвет.
+          const stripe = hasAltMilk ? "border-l-[3px] border-l-rose-400"
+            : isCold ? "border-l-[3px] border-l-sky-300"
+            : "border-l-[3px] border-l-orange-300";
+          // Лёгкая заливка — чтобы тип ловился боковым зрением, не кричал.
+          const bg = hasAltMilk ? "bg-rose-50/60"
+            : isCold ? "bg-sky-50/40"
+            : "bg-orange-50/30";
           return (
             <div key={i} className={`rounded-xl p-2.5 ${stripe} ${bg}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  {/* Термо-бейдж: первое что видит бариста */}
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wide ${
-                    isCold ? "bg-sky-500 text-white" : "bg-orange-500 text-white"
-                  }`}>
-                    {isCold ? "🧊 ХОЛОД" : "🔥 ГОРЯЧ"}
+                  {/* Термо-маркер: одна emoji в строке названия */}
+                  <span className="text-base leading-none" title={isCold ? "Холодный" : "Горячий"}>
+                    {isCold ? "🧊" : "🔥"}
                   </span>
                   <span className="font-bold text-brand-text text-[15px] leading-tight">{it.name}</span>
                   {it.size !== "—" && (
@@ -331,16 +318,14 @@ function OrderCard({ order, baristaId }: { order: Order; baristaId: string }) {
               </div>
 
               {hasAltMilk && (
-                <div className="mt-2 flex flex-wrap gap-1.5 items-center">
-                  <span className="text-[11px] font-extrabold text-red-700 uppercase tracking-wide">⚠ Альт. молоко:</span>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {milkMods.map(m => (
-                    <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-extrabold border-2 border-red-600 shadow-sm">
-                      <span className="text-base leading-none">{MILK_EMOJI[m.id] ?? "🥛"}</span>
-                      {m.name}
+                    <span key={m.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold border border-rose-300">
+                      {MILK_EMOJI[m.id] ?? "🥛"} {m.name}
                     </span>
                   ))}
                   {it.milk && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-extrabold border-2 border-red-600 shadow-sm">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold border border-rose-300">
                       🥛 {it.milk}
                     </span>
                   )}
