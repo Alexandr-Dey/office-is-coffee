@@ -23,6 +23,9 @@ interface OrderStats {
   totalOrders: number;
   todayOrders: number;
   avgCheck: number;
+  todayAvgCheck: number;
+  todayTopItems: { name: string; qty: number }[];
+  todayByHour: number[]; // 24 элемента, индекс = час Алматы
 }
 
 function getAlmatyToday(): string {
@@ -75,30 +78,43 @@ export default function CEOPage() {
       let todayRevenue = 0;
       let totalOrders = 0;
       let todayOrders = 0;
+      const itemTally: Record<string, number> = {};
+      const byHour = Array(24).fill(0);
 
       for (const o of orders) {
-        if (o.status === "paid") {
-          const amount = o.total ?? 0;
-          totalRevenue += amount;
-          totalOrders++;
+        if (o.status !== "paid") continue;
+        const amount = o.total ?? 0;
+        totalRevenue += amount;
+        totalOrders++;
 
-          if (o.createdAt) {
-            let orderDate: string;
-            if (o.createdAt instanceof Timestamp) {
-              const d = new Date(o.createdAt.toMillis() + 5 * 60 * 60 * 1000);
-              orderDate = d.toISOString().slice(0, 10);
-            } else if (typeof o.createdAt === "string") {
-              orderDate = o.createdAt.slice(0, 10);
-            } else {
-              orderDate = "";
-            }
-            if (orderDate === today) {
-              todayRevenue += amount;
-              todayOrders++;
-            }
+        if (!o.createdAt) continue;
+        let orderDate = "";
+        let orderHour = -1;
+        if (o.createdAt instanceof Timestamp) {
+          const d = new Date(o.createdAt.toMillis() + 5 * 60 * 60 * 1000);
+          orderDate = d.toISOString().slice(0, 10);
+          orderHour = d.getUTCHours();
+        } else if (typeof o.createdAt === "string") {
+          orderDate = o.createdAt.slice(0, 10);
+          const t = new Date(o.createdAt);
+          if (!isNaN(t.getTime())) orderHour = (t.getUTCHours() + 5) % 24;
+        }
+        if (orderDate === today) {
+          todayRevenue += amount;
+          todayOrders++;
+          if (orderHour >= 0 && orderHour < 24) byHour[orderHour]++;
+          for (const it of (o.items as { name?: string; qty?: number }[] | undefined) ?? []) {
+            const name = it?.name?.trim();
+            if (!name) continue;
+            itemTally[name] = (itemTally[name] || 0) + (it.qty || 1);
           }
         }
       }
+
+      const todayTopItems = Object.entries(itemTally)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, qty]) => ({ name, qty }));
 
       setStats({
         totalRevenue,
@@ -106,6 +122,9 @@ export default function CEOPage() {
         totalOrders,
         todayOrders,
         avgCheck: totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0,
+        todayAvgCheck: todayOrders > 0 ? Math.round(todayRevenue / todayOrders) : 0,
+        todayTopItems,
+        todayByHour: byHour,
       });
     }
     loadStats().catch(() => {});
@@ -177,6 +196,61 @@ export default function CEOPage() {
                 <p className="text-xs text-white/70">К выплате</p>
                 <p className="text-2xl font-bold">{fmt(totalPending)}₸</p>
                 <p className="text-xs text-white/60">баристам</p>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Today's drill-down */}
+          {stats && stats.todayOrders > 0 && (
+            <div className="grid grid-cols-1 gap-3 mb-6">
+              {/* Top items today */}
+              {stats.todayTopItems.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                  className="bg-white rounded-2xl border border-[#d0f0e0] p-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+                  <p className="text-xs text-brand-text/50 mb-2">Топ напитков сегодня</p>
+                  <div className="space-y-1.5">
+                    {stats.todayTopItems.map((it, i) => (
+                      <div key={it.name} className="flex items-center gap-2">
+                        <span className="text-lg w-5 text-center">{["🥇", "🥈", "🥉"][i]}</span>
+                        <span className="flex-1 text-sm font-medium text-brand-text truncate">{it.name}</span>
+                        <span className="text-sm font-bold text-brand-dark">×{it.qty}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-brand-text/40 mt-2">
+                    Средний чек сегодня: <span className="font-bold text-brand-dark">{fmt(stats.todayAvgCheck)}₸</span>
+                  </p>
+                </motion.div>
+              )}
+
+              {/* By-hour bars */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                className="bg-white rounded-2xl border border-[#d0f0e0] p-4" style={{ boxShadow: "0 2px 8px rgba(30,120,70,0.06)" }}>
+                <p className="text-xs text-brand-text/50 mb-3">Заказы по часам (Алматы)</p>
+                {(() => {
+                  const max = Math.max(1, ...stats.todayByHour);
+                  // Показываем рабочее окно 7-23
+                  const hours = Array.from({ length: 17 }, (_, i) => i + 7);
+                  return (
+                    <div className="flex items-end gap-0.5 h-20">
+                      {hours.map((h) => {
+                        const v = stats.todayByHour[h] || 0;
+                        const heightPct = v === 0 ? 4 : Math.round((v / max) * 100);
+                        return (
+                          <div key={h} className="flex-1 flex flex-col items-center gap-1" title={`${h}:00 — ${v}`}>
+                            <div
+                              className={`w-full rounded-t ${v > 0 ? "bg-brand-dark" : "bg-[#d0f0e0]"}`}
+                              style={{ height: `${heightPct}%`, minHeight: 2 }}
+                            />
+                            {h % 3 === 0 && (
+                              <span className="text-[8px] text-brand-text/40 leading-none">{h}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </motion.div>
             </div>
           )}
