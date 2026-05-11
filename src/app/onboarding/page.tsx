@@ -5,254 +5,155 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { getFirebaseDb } from "@/lib/firebase";
-import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import confetti from "canvas-confetti";
 import { requestPushPermission } from "@/lib/push";
 import { trackEvent } from "@/lib/mixpanel";
 
 /* ───────────────────────────────────────────
-   ONBOARDING — Love is Coffee
-   4 шага контента + встроенные разрешения
-   Фото: /public/photos/logo-wall.jpg
-         /public/photos/baristas.jpg
-         /public/photos/barista-drink.jpg
+   ONBOARDING v2 — три экрана:
+   1. welcome  — бренд + адрес
+   2. install  — добавление на главный экран (iOS / Android / Desktop)
+   3. done     — push + переход в меню
+   Если PWA уже установлена (display-mode: standalone) — install шаг
+   пропускается автоматически.
    ─────────────────────────────────────────── */
 
-const STEPS = ["welcome", "team", "features", "permissions", "done"] as const;
-type Step = (typeof STEPS)[number];
+type Step = "welcome" | "install" | "done";
+type Platform = "ios" | "android" | "desktop";
 
-/* ── iOS detection: push не работает в Safari вне PWA ── */
-type StandaloneNavigator = Navigator & { standalone?: boolean };
-function detectIOSNeedsInstall(): boolean {
-  if (typeof window === "undefined") return false;
-  const ua = window.navigator.userAgent;
-  const isIOS = /iPad|iPhone|iPod/.test(ua)
-    || (ua.includes("Mac") && "ontouchend" in document); // iPadOS маскируется под Mac
-  const standalone = (window.navigator as StandaloneNavigator).standalone === true
-    || window.matchMedia?.("(display-mode: standalone)").matches;
-  return isIOS && !standalone;
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-/* ── Framer variants ── */
-const slideVariants = {
-  enter: (dir: number) => ({
-    x: dir > 0 ? 80 : -80,
-    opacity: 0,
-  }),
+type NavigatorWithStandalone = Navigator & { standalone?: boolean };
+
+function detectPlatform(): Platform {
+  if (typeof window === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua) || (ua.includes("Mac") && "ontouchend" in document)) return "ios";
+  if (/android/i.test(ua)) return "android";
+  return "desktop";
+}
+
+function detectStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    (navigator as NavigatorWithStandalone).standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches === true
+  );
+}
+
+/* ── slide variants ── */
+const slide = {
+  enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({
-    x: dir < 0 ? 80 : -80,
-    opacity: 0,
-  }),
+  exit: (dir: number) => ({ x: dir < 0 ? 60 : -60, opacity: 0 }),
 };
 
-/* ── Photo component with gradient fallback ──
-   Когда фото появятся в /public/photos/, поменяй usePhoto = true */
-const usePhotos = true;
-
-function CafePhoto({
-  src,
-  fallbackEmoji,
-  fallbackLabel,
-  className = "",
-}: {
-  src: string;
-  fallbackEmoji: string;
-  fallbackLabel: string;
-  className?: string;
-}) {
-  if (usePhotos) {
-    return (
-      <div className={`overflow-hidden rounded-2xl ${className}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={fallbackLabel}
-          className="w-full h-full object-cover"
-          loading="eager"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`overflow-hidden rounded-2xl flex flex-col items-center justify-center ${className}`}
-      style={{
-        background: "linear-gradient(145deg, #c0392b 0%, #e74c3c 40%, #d42b4f 100%)",
-        boxShadow: "0 8px 28px rgba(196,49,49,0.18), inset 0 1px 0 rgba(255,255,255,0.12)",
-      }}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent rounded-2xl" />
-      <span className="text-4xl mb-1 relative z-10 drop-shadow-md">{fallbackEmoji}</span>
-      <span className="text-[10px] text-white/70 font-semibold relative z-10 text-center px-4 leading-tight">
-        {fallbackLabel}
-      </span>
-      <span className="absolute bottom-2 right-3 text-[7px] text-white/25 font-bold tracking-wider">
-        LOVE IS COFFEE
-      </span>
-    </div>
-  );
-}
-
-/* ── Loyalty dots preview ── */
-function LoyaltyPreview() {
-  return (
-    <div className="bg-[#d42b4f]/5 rounded-2xl p-4 border border-[#d42b4f]/10">
-      <p className="text-[10px] font-extrabold text-[#d42b4f] uppercase tracking-[2px] mb-3 text-center">
-        Программа лояльности
-      </p>
-      <div className="flex gap-1.5 justify-center">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-          <div
-            key={n}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-              n === 8
-                ? "bg-gradient-to-br from-[#d42b4f] to-[#e85d7a] text-white shadow-md"
-                : "bg-[#f0e8e0] text-[#bbb]"
-            }`}
-            style={n === 8 ? { boxShadow: "0 2px 8px rgba(212,43,79,0.3)" } : {}}
-          >
-            {n === 8 ? "🎁" : "☕"}
-          </div>
-        ))}
-      </div>
-      <p className="text-center text-[11px] text-gray-500 mt-2">
-        Каждый 8-й напиток — наш подарок
-      </p>
-    </div>
-  );
-}
-
-/* ── Feature row ── */
-function Feature({
-  icon,
-  title,
-  desc,
-  gradient,
-}: {
-  icon: string;
-  title: string;
-  desc: string;
-  gradient: string;
-}) {
-  return (
-    <div className="flex items-center gap-3.5 bg-white rounded-2xl p-3.5 border border-[#f0e8e0] shadow-sm">
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0"
-        style={{ background: gradient, boxShadow: "0 3px 10px rgba(0,0,0,0.08)" }}
-      >
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-bold text-[#0f3a20]">{title}</p>
-        <p className="text-xs text-gray-500 leading-tight mt-0.5">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
 /* ═══════════════════════════════════════
-   MAIN COMPONENT
+   MAIN
    ═══════════════════════════════════════ */
 export default function OnboardingPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("welcome");
   const [dir, setDir] = useState(1);
-  const [geoAsked, setGeoAsked] = useState(false);
-  const [pushAsked, setPushAsked] = useState(false);
-  const [iosNeedsInstall, setIosNeedsInstall] = useState(false);
+  const [platform, setPlatform] = useState<Platform>("desktop");
+  const [standalone, setStandalone] = useState(false);
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [busy, setBusy] = useState(false);
 
+  /* Detect platform + capture beforeinstallprompt */
   useEffect(() => {
-    setIosNeedsInstall(detectIOSNeedsInstall());
+    setPlatform(detectPlatform());
+    setStandalone(detectStandalone());
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallEvent(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
+  /* Redirects */
   useEffect(() => {
     if (user && (user.role === "barista" || user.role === "ceo")) {
       router.replace("/admin");
       return;
     }
-    if (user && user.onboardingDone) {
-      router.replace("/menu");
-    }
+    if (user && user.onboardingDone) router.replace("/menu");
   }, [user, router]);
 
-  const currentIdx = STEPS.indexOf(step);
+  const goTo = useCallback((target: Step, direction = 1) => {
+    setDir(direction);
+    setStep(target);
+  }, []);
 
-  const goTo = useCallback(
-    (target: Step) => {
-      const targetIdx = STEPS.indexOf(target);
-      setDir(targetIdx > currentIdx ? 1 : -1);
-      setStep(target);
-    },
-    [currentIdx],
-  );
+  const goFromWelcome = useCallback(() => {
+    // Если PWA уже установлена — install шаг не нужен
+    goTo(standalone ? "done" : "install", 1);
+  }, [standalone, goTo]);
 
-  const next = useCallback(() => {
-    if (currentIdx < STEPS.length - 1) {
-      const nextStep = STEPS[currentIdx + 1];
-      setDir(1);
-      setStep(nextStep);
-    }
-  }, [currentIdx]);
+  const goFromInstall = useCallback(() => goTo("done", 1), [goTo]);
 
   const back = useCallback(() => {
-    if (currentIdx > 0) {
-      setDir(-1);
-      setStep(STEPS[currentIdx - 1]);
-    }
-  }, [currentIdx]);
+    if (step === "install") goTo("welcome", -1);
+    else if (step === "done") goTo(standalone ? "welcome" : "install", -1);
+  }, [step, standalone, goTo]);
 
-  /* Permission handlers */
-  const handleGeo = async (allow: boolean) => {
-    setGeoAsked(true);
-    if (allow && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        () => {
-          if (user)
-            setDoc(doc(getFirebaseDb(), "users", user.uid), {
-              geolocationAllowed: true,
-            }, { merge: true }).catch(() => {});
-        },
-        () => {},
-        { timeout: 10000 },
-      );
-    }
-  };
+  const triggerNativeInstall = useCallback(async () => {
+    if (!installEvent) return;
+    setBusy(true);
+    try {
+      await installEvent.prompt();
+      const choice = await installEvent.userChoice;
+      trackEvent("PWA Install Prompt", { outcome: choice.outcome });
+      if (choice.outcome === "accepted") setStandalone(true);
+    } catch { /* ignore */ }
+    setInstallEvent(null);
+    setBusy(false);
+    goFromInstall();
+  }, [installEvent, goFromInstall]);
 
-  const handlePush = async (allow: boolean) => {
-    setPushAsked(true);
-    if (allow && user) {
-      await requestPushPermission(user.uid).catch(() => {});
-    }
-  };
+  const finish = useCallback(
+    async (askedPush: boolean) => {
+      setBusy(true);
+      if (user) {
+        if (askedPush) {
+          await requestPushPermission(user.uid).catch(() => {});
+        }
+        await setDoc(
+          doc(getFirebaseDb(), "users", user.uid),
+          { onboardingDone: true },
+          { merge: true },
+        ).catch(() => {});
+      }
+      trackEvent("Onboarding Completed", { askedPush, standalone, platform });
+      confetti({
+        particleCount: 90,
+        spread: 70,
+        colors: ["#d42b4f", "#e85d7a", "#1a7a44", "#3ecf82"],
+      });
+      setTimeout(() => router.replace("/menu"), 500);
+    },
+    [user, standalone, platform, router],
+  );
 
-  const handleDone = async () => {
-    if (user) {
-      try {
-        await setDoc(doc(getFirebaseDb(), "users", user.uid), { onboardingDone: true }, { merge: true });
-      } catch { /* ignore */ }
-    }
-    trackEvent("Onboarding Completed", { stepsCompleted: STEPS.length });
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      colors: ["#d42b4f", "#e85d7a", "#1a7a44", "#3ecf82", "#f59e0b"],
-    });
-    // Wait for confetti then navigate — no setTimeout race
-    setTimeout(() => router.replace("/menu"), 600);
-  };
-
-  /* Swipe support */
+  /* Swipe */
   const [touchX, setTouchX] = useState<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => setTouchX(e.touches[0].clientX);
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchX === null) return;
     const d = touchX - e.changedTouches[0].clientX;
     if (Math.abs(d) > 60) {
-      if (d > 0 && step !== "done") next();
-      else if (d < 0 && step !== "welcome") back();
+      if (d > 0) {
+        if (step === "welcome") goFromWelcome();
+        else if (step === "install") goFromInstall();
+      } else {
+        back();
+      }
     }
     setTouchX(null);
   };
@@ -264,13 +165,16 @@ export default function OnboardingPage() {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-5 pt-[env(safe-area-inset-top,12px)] mt-10 mb-1">
-        {currentIdx > 0 ? (
+      {/* Top bar */}
+      <div
+        className="flex items-center justify-between px-5 pt-3 mb-1"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+      >
+        {step !== "welcome" ? (
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={back}
-            className="w-9 h-9 rounded-xl bg-[#d42b4f]/8 flex items-center justify-center text-[#d42b4f] text-base"
+            className="w-9 h-9 rounded-xl bg-[#d42b4f]/8 flex items-center justify-center text-[#d42b4f]"
           >
             ←
           </motion.button>
@@ -278,24 +182,29 @@ export default function OnboardingPage() {
           <div className="w-9" />
         )}
 
-        {/* Progress dots */}
+        {/* Progress */}
         <div className="flex gap-2">
-          {STEPS.map((s, i) => (
-            <motion.div
-              key={s}
-              animate={{
-                width: i === currentIdx ? 28 : 8,
-                backgroundColor: i === currentIdx ? "#d42b4f" : "rgba(212,43,79,0.15)",
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="h-2 rounded-full"
-            />
-          ))}
+          {(["welcome", "install", "done"] as Step[]).map((s) => {
+            const visible = s !== "install" || !standalone;
+            if (!visible) return null;
+            const active = s === step;
+            return (
+              <motion.div
+                key={s}
+                animate={{
+                  width: active ? 28 : 8,
+                  backgroundColor: active ? "#d42b4f" : "rgba(212,43,79,0.15)",
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className="h-2 rounded-full"
+              />
+            );
+          })}
         </div>
 
         {step !== "done" ? (
           <button
-            onClick={() => goTo("permissions")}
+            onClick={() => goTo("done", 1)}
             className="text-xs text-gray-400 font-semibold"
           >
             Пропустить
@@ -305,516 +214,284 @@ export default function OnboardingPage() {
         )}
       </div>
 
-      {/* ── Step content ── */}
+      {/* Body */}
       <div className="flex-1 relative overflow-hidden">
         <AnimatePresence mode="wait" custom={dir}>
-          {/* ═══ STEP 1: Welcome ═══ */}
           {step === "welcome" && (
             <motion.div
               key="welcome"
               custom={dir}
-              variants={slideVariants}
+              variants={slide}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.28 }}
               className="absolute inset-0 flex flex-col items-center justify-center text-center px-6"
             >
-              {/* Cafe photo */}
               <motion.div
                 initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                className="mb-6"
+                className="mb-6 overflow-hidden rounded-2xl w-[260px] h-[160px]"
               >
-                <CafePhoto
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src="/photos/logo-wall.jpg"
-                  fallbackEmoji="❤️☕"
-                  fallbackLabel="Логотип на красной стене"
-                  className="w-[270px] h-[170px] relative"
+                  alt="Love is Coffee"
+                  className="w-full h-full object-cover"
+                  loading="eager"
                 />
               </motion.div>
 
-              <motion.h1
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="font-display text-[28px] font-extrabold text-[#d42b4f] leading-tight"
-              >
+              <h1 className="font-display text-[28px] font-extrabold text-[#d42b4f] leading-tight">
                 Love is Coffee
-              </motion.h1>
+              </h1>
+              <p className="text-sm text-[#5a5048] mt-2 max-w-[280px]">
+                Кофейня с душой в центре Алматы
+              </p>
 
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="text-sm text-[#5a5048] mt-3 max-w-[280px] leading-relaxed"
-              >
-                Кофейня с душой в самом центре Алматы
-              </motion.p>
-
-              {/* Divider */}
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: 0.35 }}
-                className="w-10 h-[3px] rounded-full my-5"
-                style={{ background: "linear-gradient(90deg, #d42b4f, #e85d7a)" }}
-              />
-
-              {/* Mission quote */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-[#d42b4f]/[0.04] rounded-2xl px-5 py-4 border-l-[3px] border-[#d42b4f] max-w-[310px]"
-              >
-                <p className="text-[13px] italic text-[#5a4a42] leading-relaxed">
-                  «Мы верим, что лучший кофе — тот, который сделан с заботой.
-                  Не просто напиток, а маленький ритуал, который делает день теплее»
-                </p>
-              </motion.div>
-
-              {/* Address */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="mt-5 flex items-center gap-3 bg-white rounded-2xl px-5 py-3 shadow-sm border border-[#f0e8e0]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[#d42b4f]/10 flex items-center justify-center text-lg">
+              <div className="mt-5 flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm border border-[#f0e8e0]">
+                <div className="w-9 h-9 rounded-xl bg-[#d42b4f]/10 flex items-center justify-center">
                   📍
                 </div>
                 <div className="text-left">
-                  <p className="text-[13px] font-bold text-[#0f3a20]">
-                    ул. Назарбаева 226
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    Холл БанкЦентрКредит · Алматы
-                  </p>
+                  <p className="text-[13px] font-bold text-[#0f3a20]">ул. Назарбаева 226</p>
+                  <p className="text-[11px] text-gray-500">ТРЦ Самал Молл · холл БЦК</p>
                 </div>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* ═══ STEP 2: Team ═══ */}
-          {step === "team" && (
-            <motion.div
-              key="team"
-              custom={dir}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 overflow-y-auto px-5 pt-2 pb-4"
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-center mb-5"
-              >
-                <span className="text-3xl">❤️</span>
-                <h2 className="font-display text-[22px] font-extrabold text-[#d42b4f] mt-2">
-                  Наша команда
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  Знаем имена гостей и помним любимые напитки
-                </p>
-              </motion.div>
-
-              {/* Baristas photo */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mb-4"
-              >
-                <CafePhoto
-                  src="/photos/baristas.jpg"
-                  fallbackEmoji="👨‍🍳👨‍🍳"
-                  fallbackLabel="Баристы за кофемашиной"
-                  className="w-full h-[190px] relative"
-                />
-              </motion.div>
-
-              {/* Barista cards */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="grid grid-cols-2 gap-3 mb-4"
-              >
-                <div className="bg-white rounded-2xl p-4 text-center shadow-sm border border-[#f0e8e0]">
-                  <span className="text-3xl">👨‍🍳</span>
-                  <p className="text-sm font-extrabold text-[#0f3a20] mt-1">Виталий</p>
-                  <p className="text-[10px] font-bold text-[#2980b9] uppercase tracking-wider">
-                    Бариста
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-1 leading-tight">
-                    Мастер латте-арта
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl p-4 text-center shadow-sm border border-[#f0e8e0]">
-                  <span className="text-3xl">👨‍🍳</span>
-                  <p className="text-sm font-extrabold text-[#0f3a20] mt-1">Аслан</p>
-                  <p className="text-[10px] font-bold text-[#27ae60] uppercase tracking-wider">
-                    Бариста
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-1 leading-tight">
-                    Гуру авторских напитков
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* Barista with drink photo */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <CafePhoto
-                  src="/photos/barista-drink.jpg"
-                  fallbackEmoji="🧋✨"
-                  fallbackLabel="Бариста с готовым напитком"
-                  className="w-full h-[170px] relative"
-                />
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* ═══ STEP 3: Features ═══ */}
-          {step === "features" && (
-            <motion.div
-              key="features"
-              custom={dir}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 overflow-y-auto px-5 pt-2 pb-4"
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-center mb-5"
-              >
-                <span className="text-3xl">✨</span>
-                <h2 className="font-display text-[22px] font-extrabold text-[#d42b4f] mt-2">
-                  Что внутри
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  Всё для идеального кофейного ритуала
-                </p>
-              </motion.div>
-
-              <div className="space-y-2.5 mb-4">
-                <Feature
-                  icon="☕"
-                  title="Заказ в пару тапов"
-                  desc="Выбрал, настроил, отправил — жди push"
-                  gradient="linear-gradient(135deg, #d42b4f, #e85d7a)"
-                />
-                <Feature
-                  icon="❤️"
-                  title="Тапай баристов"
-                  desc="Нажми на баристу в сцене — полетят сердечки!"
-                  gradient="linear-gradient(135deg, #ec4899, #f472b6)"
-                />
-                <Feature
-                  icon="🍪"
-                  title="Печенька дня"
-                  desc="Каждый день прячется в одном напитке — найди и забери"
-                  gradient="linear-gradient(135deg, #f59e0b, #fbbf24)"
-                />
-                <Feature
-                  icon="🎮"
-                  title="Мини-игра"
-                  desc="Match-3 с кофейными элементами пока ждёшь заказ"
-                  gradient="linear-gradient(135deg, #a855f7, #c084fc)"
-                />
-                <Feature
-                  icon="🌤"
-                  title="Живая сцена"
-                  desc="Баристы двигаются, погода за окном меняется в реальном времени"
-                  gradient="linear-gradient(135deg, #3b82f6, #60a5fa)"
-                />
-                <Feature
-                  icon="⭐"
-                  title="Избранное и повтор"
-                  desc="Добавь любимые напитки и заказывай в один тап"
-                  gradient="linear-gradient(135deg, #1a7a44, #2d9e5a)"
-                />
               </div>
             </motion.div>
           )}
 
-          {/* ═══ STEP 4: Permissions ═══ */}
-          {step === "permissions" && (
+          {step === "install" && (
             <motion.div
-              key="permissions"
+              key="install"
               custom={dir}
-              variants={slideVariants}
+              variants={slide}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 overflow-y-auto px-5 pt-2 pb-4"
+              transition={{ duration: 0.28 }}
+              className="absolute inset-0 overflow-y-auto px-5 pt-2 pb-4 flex flex-col"
             >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-center mb-6"
-              >
-                <span className="text-4xl">⚡</span>
-                <h2 className="font-display text-[22px] font-extrabold text-[#d42b4f] mt-3">
-                  Два важных шага
+              <div className="text-center mb-5">
+                <span className="text-4xl block mb-2">📲</span>
+                <h2 className="font-display text-[22px] font-extrabold text-[#d42b4f]">
+                  Добавь на главный экран
                 </h2>
                 <p className="text-xs text-gray-500 mt-1 max-w-[280px] mx-auto">
-                  Разреши и не пропустишь ни одного кофе
+                  Открывается как обычное приложение и шлёт уведомления
                 </p>
-              </motion.div>
-
-              <div className="w-full space-y-4">
-                {/* Push — BIG card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className={`rounded-2xl p-5 border-2 ${pushAsked ? "bg-green-50 border-green-200" : iosNeedsInstall ? "bg-gradient-to-br from-[#2980b9] to-[#3498db] border-transparent" : "bg-gradient-to-br from-[#d42b4f] to-[#e85d7a] border-transparent"}`}
-                  style={!pushAsked ? { boxShadow: "0 8px 24px rgba(212,43,79,0.25)" } : {}}
-                >
-                  {pushAsked ? (
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">✅</span>
-                      <div>
-                        <p className="font-bold text-green-700">Уведомления включены</p>
-                        <p className="text-xs text-green-600">Мы сообщим когда кофе будет готов</p>
-                      </div>
-                    </div>
-                  ) : iosNeedsInstall ? (
-                    <>
-                      <div className="text-center mb-4">
-                        <span className="text-5xl block mb-2">📲</span>
-                        <p className="font-extrabold text-xl text-white">Добавь на главный экран</p>
-                        <p className="text-sm text-white/85 mt-1 leading-relaxed">
-                          На iPhone уведомления работают только из PWA. Открой ⎙ в Safari → «На экран „Домой“».
-                        </p>
-                      </div>
-                      <div className="bg-white/15 rounded-xl p-3 text-sm text-white space-y-1.5">
-                        <div className="flex items-center gap-2"><span>1.</span> Нажми <span className="px-2 py-0.5 bg-white/20 rounded">⎙</span> внизу Safari</div>
-                        <div className="flex items-center gap-2"><span>2.</span> «На экран „Домой“»</div>
-                        <div className="flex items-center gap-2"><span>3.</span> Открой иконку с рабочего стола</div>
-                      </div>
-                      <button
-                        onClick={() => setPushAsked(true)}
-                        className="w-full mt-4 py-3 rounded-2xl bg-white/15 text-white text-sm font-semibold"
-                      >
-                        Я добавлю позже
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-center mb-4">
-                        <span className="text-5xl block mb-2">🔔</span>
-                        <p className="font-extrabold text-xl text-white">Узнай когда кофе готов</p>
-                        <p className="text-sm text-white/80 mt-1">Пришлём уведомление — не нужно проверять</p>
-                      </div>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handlePush(true)}
-                        className="w-full py-4 rounded-2xl bg-white text-[#d42b4f] font-extrabold text-lg shadow-md min-h-[56px]"
-                      >
-                        Разрешить уведомления
-                      </motion.button>
-                    </>
-                  )}
-                </motion.div>
-
-                {/* Geo — BIG card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className={`rounded-2xl p-5 border-2 ${geoAsked ? "bg-green-50 border-green-200" : "bg-gradient-to-br from-[#1a7a44] to-[#2d9e5a] border-transparent"}`}
-                  style={!geoAsked ? { boxShadow: "0 8px 24px rgba(26,122,68,0.25)" } : {}}
-                >
-                  {geoAsked ? (
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">✅</span>
-                      <div>
-                        <p className="font-bold text-green-700">Геолокация включена</p>
-                        <p className="text-xs text-green-600">Покажем когда кофейня рядом</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="text-center mb-4">
-                        <span className="text-5xl block mb-2">📍</span>
-                        <p className="font-extrabold text-xl text-white">Кофейня рядом?</p>
-                        <p className="text-sm text-white/80 mt-1">Покажем расстояние и напомним зайти</p>
-                      </div>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleGeo(true)}
-                        className="w-full py-4 rounded-2xl bg-white text-[#1a7a44] font-extrabold text-lg shadow-md min-h-[56px]"
-                      >
-                        Разрешить геолокацию
-                      </motion.button>
-                    </>
-                  )}
-                </motion.div>
-
-                {/* Skip note */}
-                {!geoAsked && !pushAsked && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="text-center text-[11px] text-gray-400 mt-2"
-                  >
-                    Можно включить позже в профиле
-                  </motion.p>
-                )}
               </div>
+
+              {platform === "ios" && <IOSInstructions />}
+              {platform === "android" && (
+                <AndroidInstructions
+                  canAutoInstall={!!installEvent}
+                  onAutoInstall={triggerNativeInstall}
+                  busy={busy}
+                />
+              )}
+              {platform === "desktop" && <DesktopInstructions />}
             </motion.div>
           )}
 
-          {/* ═══ STEP 5: Done ═══ */}
           {step === "done" && (
             <motion.div
               key="done"
               custom={dir}
-              variants={slideVariants}
+              variants={slide}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.28 }}
               className="absolute inset-0 flex flex-col items-center justify-center text-center px-6"
             >
               <motion.div
                 initial={{ scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                className="w-[110px] h-[110px] rounded-[32px] flex items-center justify-center text-[52px] mb-6"
+                className="w-[100px] h-[100px] rounded-[28px] flex items-center justify-center text-[48px] mb-6"
                 style={{
                   background: "linear-gradient(145deg, #d42b4f, #e85d7a)",
-                  boxShadow: "0 12px 40px rgba(212,43,79,0.3)",
+                  boxShadow: "0 12px 36px rgba(212,43,79,0.28)",
                 }}
               >
                 ☕
               </motion.div>
 
-              <motion.h2
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="font-display text-[26px] font-extrabold text-[#d42b4f]"
-              >
-                Всё готово!
-              </motion.h2>
-
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-sm text-[#5a5048] mt-2 max-w-[260px] leading-relaxed"
-              >
-                {user ? `${user.displayName}, добро пожаловать!` : "Добро пожаловать!"}{" "}
-                Выбери свой первый напиток — мы уже ждём.
-              </motion.p>
-
-              {/* Tips */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="mt-6 space-y-2 w-full max-w-[300px]"
-              >
-                <div className="flex items-center gap-2.5 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-[#f0e8e0]">
-                  <span className="text-lg">🍪</span>
-                  <p className="text-[11px] text-gray-500">Ищи печеньку в меню каждый день</p>
-                </div>
-                <div className="flex items-center gap-2.5 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-[#f0e8e0]">
-                  <span className="text-lg">❤️</span>
-                  <p className="text-[11px] text-gray-500">Тапай баристов — им приятно</p>
-                </div>
-                <div className="flex items-center gap-2.5 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-[#f0e8e0]">
-                  <span className="text-lg">🎮</span>
-                  <p className="text-[11px] text-gray-500">Играй в Match-3 пока ждёшь заказ</p>
-                </div>
-              </motion.div>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="text-[11px] text-gray-400 mt-6"
-              >
-                ул. Назарбаева 226 · холл БанкЦентрКредит
-              </motion.p>
+              <h2 className="font-display text-[24px] font-extrabold text-[#d42b4f]">
+                {user?.displayName ? `Готово, ${user.displayName.split(" ")[0]}!` : "Готово!"}
+              </h2>
+              <p className="text-sm text-[#5a5048] mt-2 max-w-[280px]">
+                Включить уведомления — узнаешь когда кофе готов?
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* ── Bottom CTA ── */}
-      <div className="px-5 pb-8 pt-3 shrink-0">
-        {step === "done" ? (
+      {/* Bottom CTA */}
+      <div className="px-5 pb-8 pt-3 shrink-0 space-y-2">
+        {step === "welcome" && (
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={handleDone}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            onClick={goFromWelcome}
             className="w-full py-4 rounded-2xl font-bold text-base text-white"
             style={{
               background: "linear-gradient(135deg, #d42b4f, #e85d7a)",
               boxShadow: "0 6px 24px rgba(212,43,79,0.28)",
             }}
           >
-            Перейти к меню ☕
-          </motion.button>
-        ) : step === "permissions" ? (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={next}
-            className="w-full py-4 rounded-2xl font-bold text-base text-white"
-            style={{
-              background: "linear-gradient(135deg, #d42b4f, #e85d7a)",
-              boxShadow: "0 6px 24px rgba(212,43,79,0.28)",
-            }}
-          >
-            {geoAsked || pushAsked ? "Готово ✨" : "Пропустить"}
-          </motion.button>
-        ) : (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={next}
-            className="w-full py-4 rounded-2xl font-bold text-base text-white flex items-center justify-center gap-2"
-            style={{
-              background: "linear-gradient(135deg, #d42b4f, #e85d7a)",
-              boxShadow: "0 6px 24px rgba(212,43,79,0.28)",
-            }}
-          >
-            {step === "welcome" && "Познакомимся ❤️"}
-            {step === "team" && "Что внутри ✨"}
-            {step === "features" && "Почти готово 🔔"}
+            Поехали ☕
           </motion.button>
         )}
 
-        {step === "welcome" && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="text-center text-[10px] text-gray-400 mt-3"
-          >
-            ← свайп или тап →
-          </motion.p>
+        {step === "install" && (
+          <>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={goFromInstall}
+              className="w-full py-4 rounded-2xl font-bold text-base text-white"
+              style={{
+                background: "linear-gradient(135deg, #d42b4f, #e85d7a)",
+                boxShadow: "0 6px 24px rgba(212,43,79,0.28)",
+              }}
+            >
+              Готово — продолжить
+            </motion.button>
+            <button
+              onClick={goFromInstall}
+              className="w-full py-2 text-xs text-gray-400 font-semibold"
+            >
+              Не сейчас — открыть в браузере
+            </button>
+          </>
+        )}
+
+        {step === "done" && (
+          <>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => finish(true)}
+              disabled={busy}
+              className="w-full py-4 rounded-2xl font-bold text-base text-white disabled:opacity-60"
+              style={{
+                background: "linear-gradient(135deg, #d42b4f, #e85d7a)",
+                boxShadow: "0 6px 24px rgba(212,43,79,0.28)",
+              }}
+            >
+              {busy ? "Открываем…" : "Включить и в меню"}
+            </motion.button>
+            <button
+              onClick={() => finish(false)}
+              disabled={busy}
+              className="w-full py-2 text-xs text-gray-400 font-semibold"
+            >
+              Без уведомлений
+            </button>
+          </>
         )}
       </div>
     </main>
+  );
+}
+
+/* ═══════════════════════════════════════
+   PLATFORM INSTRUCTIONS
+   ═══════════════════════════════════════ */
+
+function StepRow({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 bg-white rounded-2xl p-3.5 border border-[#f0e8e0] shadow-sm">
+      <div className="w-7 h-7 rounded-full bg-[#d42b4f] text-white text-sm font-bold flex items-center justify-center shrink-0">
+        {n}
+      </div>
+      <div className="text-sm text-[#0f3a20] leading-snug pt-0.5">{children}</div>
+    </div>
+  );
+}
+
+function IOSInstructions() {
+  return (
+    <div className="space-y-2.5">
+      <StepRow n={1}>
+        Нажми кнопку <span className="font-bold">«Поделиться»</span>{" "}
+        <span className="px-1.5 py-0.5 bg-[#f0e8e0] rounded text-[12px]">⎙</span> внизу
+        браузера
+      </StepRow>
+      <StepRow n={2}>
+        Выбери <span className="font-bold">«На экран „Домой“»</span>
+      </StepRow>
+      <StepRow n={3}>
+        Нажми <span className="font-bold">«Добавить»</span> справа сверху — на рабочем
+        столе появится иконка
+      </StepRow>
+      <p className="text-[11px] text-gray-500 text-center pt-2">
+        Открывай Love is Coffee всегда с этой иконки — push заработает
+      </p>
+    </div>
+  );
+}
+
+function AndroidInstructions({
+  canAutoInstall,
+  onAutoInstall,
+  busy,
+}: {
+  canAutoInstall: boolean;
+  onAutoInstall: () => void;
+  busy: boolean;
+}) {
+  if (canAutoInstall) {
+    return (
+      <div className="space-y-3">
+        <div className="bg-gradient-to-br from-[#1a7a44] to-[#2d9e5a] rounded-2xl p-5 text-center text-white">
+          <span className="text-4xl block mb-2">⚡</span>
+          <p className="font-extrabold text-lg">Одна кнопка</p>
+          <p className="text-sm text-white/85 mt-1">Chrome сам всё установит</p>
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={onAutoInstall}
+          disabled={busy}
+          className="w-full py-4 rounded-2xl bg-[#1a7a44] text-white font-extrabold text-base disabled:opacity-60"
+        >
+          {busy ? "Устанавливаем…" : "Установить как приложение"}
+        </motion.button>
+        <p className="text-[11px] text-gray-500 text-center">
+          Или вручную: меню <span className="font-bold">⋮</span> → «Добавить на главный экран»
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2.5">
+      <StepRow n={1}>
+        Открой меню <span className="font-bold">⋮</span> справа сверху в Chrome
+      </StepRow>
+      <StepRow n={2}>
+        Выбери <span className="font-bold">«Установить приложение»</span> или
+        <span className="font-bold"> «На главный экран»</span>
+      </StepRow>
+      <StepRow n={3}>Открой иконку с рабочего стола</StepRow>
+    </div>
+  );
+}
+
+function DesktopInstructions() {
+  return (
+    <div className="space-y-2.5">
+      <StepRow n={1}>
+        В Chrome / Edge нажми значок <span className="font-bold">⊕</span> справа в адресной
+        строке
+      </StepRow>
+      <StepRow n={2}>
+        Выбери <span className="font-bold">«Установить»</span> — Love is Coffee откроется в
+        отдельном окне
+      </StepRow>
+      <p className="text-[11px] text-gray-500 text-center pt-2">
+        На телефоне будет красивее — можешь продолжить в браузере
+      </p>
+    </div>
   );
 }
