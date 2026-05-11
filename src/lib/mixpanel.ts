@@ -14,7 +14,7 @@ function getInstance(): Promise<OverridedMixpanel | null> {
   if (initPromise) return initPromise;
   if (typeof window === "undefined") return Promise.resolve(null);
   const token = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
-  if (!token) return Promise.resolve(null);
+  if (!token || token === "undefined") return Promise.resolve(null);
 
   initPromise = import("mixpanel-browser")
     .then((m) => {
@@ -29,7 +29,10 @@ function getInstance(): Promise<OverridedMixpanel | null> {
       return lib;
     })
     .catch((err) => {
-      console.warn("[Mixpanel] init failed:", err);
+      console.warn("[Mixpanel] init failed, will retry on next call:", err);
+      // Сбрасываем promise, чтобы следующий вызов попробовал заново.
+      // Иначе сетевой сбой блокировал бы tracking до конца сессии.
+      initPromise = null;
       return null;
     });
   return initPromise;
