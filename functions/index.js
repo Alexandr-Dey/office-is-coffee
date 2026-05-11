@@ -231,7 +231,9 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
   if (after.status === "accepted") {
     if (userId && userId !== "anonymous") {
       const mins = after.estimatedMinutes ? ` (~${after.estimatedMinutes} мин)` : "";
-      await sendPush(userId, "Ваш кофе готовится! ☕", `Бариста принял заказ${mins}`);
+      await sendPush(userId, "Ваш кофе готовится! ☕", `Бариста принял заказ${mins}`, {
+        type: "order_ready", orderId,
+      });
     }
   }
 
@@ -277,7 +279,9 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
     }
 
     if (userId && userId !== "anonymous") {
-      await sendPush(userId, "Твой кофе готов! 🎉", "Забирай у стойки");
+      await sendPush(userId, "Твой кофе готов! 🎉", "Забирай у стойки", {
+        type: "order_ready", orderId,
+      });
     }
 
     // Push baristas that order is ready for pickup
@@ -318,7 +322,9 @@ exports.onOrderReady = onDocumentUpdated("orders/{orderId}", async (event) => {
       const refundNote = after.depositDeductedAt && after.total > 0
         ? ` Депозит возвращён: +${after.total}₸`
         : "";
-      await sendPush(userId, "Заказ отменён 😔", `${reason}${refundNote}`);
+      await sendPush(userId, "Заказ отменён 😔", `${reason}${refundNote}`, {
+        type: "order_cancelled", orderId,
+      });
     }
   }
 
@@ -367,7 +373,7 @@ exports.onDepositTopup = onCall(async (request) => {
   });
 
   // Push to client
-  await sendPush(targetUid, "Депозит пополнен!", `+${amount}₸ 🎉`);
+  await sendPush(targetUid, "Депозит пополнен!", `+${amount}₸ 🎉`, { type: "deposit" });
 
   return { success: true };
 });
@@ -416,7 +422,9 @@ exports.onCafeOpen = onDocumentUpdated("cafe_status/aksay_main", async (event) =
     if (tokenSnap.exists && tokenSnap.data().token) tokens.push(tokenSnap.data().token);
   }
 
-  await sendPushMulti(tokens, "Кофейня открыта! ☕", "Love is Coffee ждёт тебя. Заходи за кофе!");
+  await sendPushMulti(tokens, "Кофейня открыта! ☕", "Love is Coffee ждёт тебя. Заходи за кофе!", {
+    type: "cafe_open",
+  });
 });
 
 /* ═══ 6. MANUAL PUSH — CEO only, with monitoring ═══ */
