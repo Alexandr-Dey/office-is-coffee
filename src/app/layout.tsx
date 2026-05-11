@@ -7,6 +7,7 @@ import { ToastProvider } from "@/components/Toast";
 import BottomNav from "@/components/BottomNav";
 import PushTracker from "@/components/PushTracker";
 import NearbyNotifier from "@/components/NearbyNotifier";
+import IOSPushPromptBanner from "@/components/IOSPushPromptBanner";
 
 export const metadata: Metadata = {
   title: "Love is Coffee — Кофейня для команд",
@@ -49,6 +50,7 @@ export default function RootLayout({
                 <ToastProvider>
                   <PushTracker />
                   <NearbyNotifier />
+                  <IOSPushPromptBanner />
                   {children}
                   <BottomNav />
                 </ToastProvider>
