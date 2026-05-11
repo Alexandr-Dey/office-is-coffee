@@ -59,10 +59,11 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
-    // cafe_status — public read, auth write (barista toggles)
+    // cafe_status — public read, write только barista/ceo (открывает/закрывает,
+    // редактирует стоп-лист). Защита от троллинга через DevTools.
     match /cafe_status/{cafeId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isBaristaOrCeo();
     }
 
     // push_tokens — own token only for write, auth read for CEO push
@@ -71,10 +72,10 @@ service cloud.firestore {
       allow write: if isOwner(uid);
     }
 
-    // menu_items — public read, auth write (barista/CEO edit)
+    // menu_items — public read, write только barista/ceo
     match /menu_items/{itemId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isBaristaOrCeo();
     }
 
     // menu_overrides — публичное чтение (клиенты видят актуальные цены);
