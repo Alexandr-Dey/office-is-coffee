@@ -44,9 +44,33 @@ const MenuOverridesContext = createContext<MenuOverridesContextValue>({
   loading: true,
 });
 
+const CACHE_KEY = "oic_menu_overrides_v1";
+
+// Кэш цен в sessionStorage устраняет мерцание при повторных открытиях:
+// на первый рендер сразу подкладываем последние известные override'ы,
+// потом тихо обновляем из Firestore. Timestamps в кэше не нужны —
+// getEffectivePrices читает только prices (чистые числа).
+function readCache(): Record<string, PriceOverride> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const s = sessionStorage.getItem(CACHE_KEY);
+    return s ? (JSON.parse(s) as Record<string, PriceOverride>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data: Record<string, PriceOverride>) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch { /* quota / private mode — игнорируем */ }
+}
+
 export function MenuOverridesProvider({ children }: { children: ReactNode }) {
-  const [overrides, setOverrides] = useState<Record<string, PriceOverride>>({});
-  const [loading, setLoading] = useState(true);
+  const cached = useMemo(() => readCache(), []);
+  const [overrides, setOverrides] = useState<Record<string, PriceOverride>>(cached ?? {});
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -58,6 +82,7 @@ export function MenuOverridesProvider({ children }: { children: ReactNode }) {
         });
         setOverrides(map);
         setLoading(false);
+        writeCache(map);
       },
       () => setLoading(false),
     );
