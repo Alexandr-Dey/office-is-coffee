@@ -90,8 +90,7 @@ office-is-coffee/
 │   │   ├── profile/page.tsx          (200)  Депозит, QR, гео
 │   │   ├── onboarding/page.tsx       (198)  6 шагов
 │   │   ├── admin/page.tsx            (542)  Админка баристы (5 вкладок)
-│   │   ├── ceo/page.tsx              (119)  CEO дашборд (выплаты)
-│   │   └── avatar/page.tsx           (883)  Bitmoji (не в основном flow, НЕ ТРОГАТЬ)
+│   │   └── ceo/page.tsx              (119)  CEO дашборд (выплаты)
 │   ├── components/
 │   │   ├── CoffeeScene.tsx           (666)  SVG pixel-art сцена — КЛЮЧЕВОЙ
 │   │   ├── BottomNav.tsx             (50)   4 таба
@@ -311,7 +310,7 @@ office-is-coffee/
 5. Никогда не подключать новые библиотеки без явного указания в задаче.
 6. Никогда не писать inline стили (кроме SVG в CoffeeScene).
 7. Никогда не использовать polling — только `onSnapshot`.
-8. **Никогда не трогать** `src/app/avatar/page.tsx`. Он не в основном flow.
+8. Avatar page удалена (`src/app/avatar/` больше нет) — была мёртвой 883-строчной Bitmoji-вёрсткой не в основном flow.
 
 ### Обязанности
 1. Читать CLAUDE.md, DESIGN-SYSTEM.md, SCENE-SPEC.md перед работой.
@@ -376,7 +375,7 @@ await runTransaction(db, async (tx) => {
 
 **Защита роутов**: `useRequireBarista()`, `useRequireCEO()` в `src/lib/auth.tsx`.
 
-**BottomNav** (4 таба) скрыт на: `/`, `/admin`, `/ceo`, `/avatar`, `/onboarding`.
+**BottomNav** (4 таба) скрыт на: `/`, `/admin`, `/ceo`, `/onboarding`.
 
 ---
 

@@ -30,7 +30,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const hideOn = ["/", "/avatar", "/onboarding"];
+  const hideOn = ["/", "/onboarding"];
   if (hideOn.includes(pathname)) return null;
 
   const role = user?.role ?? "client";

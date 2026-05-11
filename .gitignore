@@ -45,5 +45,8 @@ service-account.json
 functions/node_modules/
 .claude/worktrees/
 
+# local test scripts с захардкоженными секретами
+test-alice.mjs
+
 # Windows accidental redirect artefact (от `> nul` вместо `> /dev/null`)
 nul
