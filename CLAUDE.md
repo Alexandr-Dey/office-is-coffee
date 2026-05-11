@@ -30,7 +30,7 @@
 
 **Frontend**: Next.js 14.2.18 App Router, TypeScript strict, Tailwind CSS 3.4, Framer Motion 11.11, canvas-confetti, qrcode.react
 
-**Backend**: Firebase (Firestore, Auth, Cloud Functions v2 Node 18, FCM), Vercel hosting
+**Backend**: Firebase (Firestore, Auth, Cloud Functions v2 Node 20, FCM), Vercel hosting
 
 **Observability**: Mixpanel (не используется), Sentry (настроен частично)
 
@@ -67,9 +67,9 @@ Firestore коллекция `menu_items` — всё ещё пустая. Пол
 
 `public/icon-192.png` и `public/icon-512.png` не существуют. Manifest на них ссылается.
 
-### VAPID key — НЕТ
+### VAPID key — настроен в Vercel prod
 
-`NEXT_PUBLIC_FIREBASE_VAPID_KEY` не задан. FCM push не работает даже после деплоя функций.
+`NEXT_PUBLIC_FIREBASE_VAPID_KEY` лежит в Vercel envs (Development, Preview, Production). FCM push работает.
 
 ---
 
@@ -158,7 +158,9 @@ office-is-coffee/
 ```ts
 {
   userId: string                   // ВНИМАНИЕ: userId, не uid (исторически)
-  status: 'new' | 'pending' | 'accepted' | 'ready' | 'paid'
+  status: 'new' | 'pending' | 'accepted' | 'ready' | 'paid' | 'cancelled'
+  cancelReason: string | null      // заполняется при status === 'cancelled'
+  bonusAwardedAt: string | null    // ISO date — защита от двойного начисления бонуса при ready→pending→ready
   paymentMethod: 'deposit' | 'cash'
   items: Array<{
     id: string
@@ -217,7 +219,7 @@ office-is-coffee/
 ```ts
 {
   isOpen: boolean
-  stopList: string[]
+  stopList: { items: string[]; modifiers: string[] }   // мигрировано с string[] через migrateStopList
   openedAt: timestamp
   closedAt: timestamp
 }
@@ -423,7 +425,7 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 NEXT_PUBLIC_FIREBASE_DATABASE_URL=
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
-NEXT_PUBLIC_FIREBASE_VAPID_KEY=       # ОТСУТСТВУЕТ, сгенерировать в Firebase Console
+NEXT_PUBLIC_FIREBASE_VAPID_KEY=       # настроен в Vercel envs (Dev/Preview/Prod)
 NEXT_PUBLIC_SENTRY_DSN=
 NEXT_PUBLIC_MIXPANEL_TOKEN=
 ```
@@ -452,7 +454,7 @@ NEXT_PUBLIC_MIXPANEL_TOKEN=
 
 ## 13. Долги (приоритизированы)
 
-**Критичные**: Custom Claims нет (rules без role-check), VAPID key нет, PWA иконки нет
+**Критичные**: PWA иконки нет (плейсхолдеры). Custom Claims — скрипт `scripts/set-roles.ts` назначает роли через `setCustomUserClaims` (запуск: `npx tsx scripts/set-roles.ts`, требует `service-account.json` в корне, в `.gitignore`). После запуска `firestore.rules` усилены role-check'ом для `deposits`/`barista_bonuses`/`menu_overrides`/`promo_codes`.
 **Средние**: Меню структура хардкод (цены в Firestore через `menu_overrides`), Mixpanel не используется, Node 20 deprecated → переход на 22 до 2026-10-30, firebase-functions v5 → v6 upgrade
 **Низкие**: Avatar page (не трогать), Sentry DSN, Playwright тесты, legacy-коды категорий (см. `docs/TODO.md`)
 
