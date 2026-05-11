@@ -124,6 +124,7 @@ export const MODIFIERS: Modifier[] = [
   { id: 'syrup_tiramisu',        name: 'Тирамису',         price: 250, group: 'syrup' },
   { id: 'syrup_white_chocolate', name: 'Белый шоколад',    price: 250, group: 'syrup' },
   { id: 'syrup_passion_fruit',   name: 'Маракуйя',         price: 250, group: 'syrup' },
+  { id: 'syrup_macadamia',       name: 'Макадамия',        price: 250, group: 'syrup' },
 
   // Мёд (+250₸)
   { id: 'honey', name: 'Мёд', price: 250, group: 'honey' },
