@@ -21,6 +21,18 @@ import { trackEvent } from "@/lib/mixpanel";
 const STEPS = ["welcome", "team", "features", "permissions", "done"] as const;
 type Step = (typeof STEPS)[number];
 
+/* ── iOS detection: push не работает в Safari вне PWA ── */
+type StandaloneNavigator = Navigator & { standalone?: boolean };
+function detectIOSNeedsInstall(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua)
+    || (ua.includes("Mac") && "ontouchend" in document); // iPadOS маскируется под Mac
+  const standalone = (window.navigator as StandaloneNavigator).standalone === true
+    || window.matchMedia?.("(display-mode: standalone)").matches;
+  return isIOS && !standalone;
+}
+
 /* ── Framer variants ── */
 const slideVariants = {
   enter: (dir: number) => ({
@@ -150,6 +162,11 @@ export default function OnboardingPage() {
   const [dir, setDir] = useState(1);
   const [geoAsked, setGeoAsked] = useState(false);
   const [pushAsked, setPushAsked] = useState(false);
+  const [iosNeedsInstall, setIosNeedsInstall] = useState(false);
+
+  useEffect(() => {
+    setIosNeedsInstall(detectIOSNeedsInstall());
+  }, []);
 
   useEffect(() => {
     if (user && (user.role === "barista" || user.role === "ceo")) {
@@ -565,7 +582,7 @@ export default function OnboardingPage() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className={`rounded-2xl p-5 border-2 ${pushAsked ? "bg-green-50 border-green-200" : "bg-gradient-to-br from-[#d42b4f] to-[#e85d7a] border-transparent"}`}
+                  className={`rounded-2xl p-5 border-2 ${pushAsked ? "bg-green-50 border-green-200" : iosNeedsInstall ? "bg-gradient-to-br from-[#2980b9] to-[#3498db] border-transparent" : "bg-gradient-to-br from-[#d42b4f] to-[#e85d7a] border-transparent"}`}
                   style={!pushAsked ? { boxShadow: "0 8px 24px rgba(212,43,79,0.25)" } : {}}
                 >
                   {pushAsked ? (
@@ -576,6 +593,27 @@ export default function OnboardingPage() {
                         <p className="text-xs text-green-600">Мы сообщим когда кофе будет готов</p>
                       </div>
                     </div>
+                  ) : iosNeedsInstall ? (
+                    <>
+                      <div className="text-center mb-4">
+                        <span className="text-5xl block mb-2">📲</span>
+                        <p className="font-extrabold text-xl text-white">Добавь на главный экран</p>
+                        <p className="text-sm text-white/85 mt-1 leading-relaxed">
+                          На iPhone уведомления работают только из PWA. Открой ⎙ в Safari → «На экран „Домой“».
+                        </p>
+                      </div>
+                      <div className="bg-white/15 rounded-xl p-3 text-sm text-white space-y-1.5">
+                        <div className="flex items-center gap-2"><span>1.</span> Нажми <span className="px-2 py-0.5 bg-white/20 rounded">⎙</span> внизу Safari</div>
+                        <div className="flex items-center gap-2"><span>2.</span> «На экран „Домой“»</div>
+                        <div className="flex items-center gap-2"><span>3.</span> Открой иконку с рабочего стола</div>
+                      </div>
+                      <button
+                        onClick={() => setPushAsked(true)}
+                        className="w-full mt-4 py-3 rounded-2xl bg-white/15 text-white text-sm font-semibold"
+                      >
+                        Я добавлю позже
+                      </button>
+                    </>
                   ) : (
                     <>
                       <div className="text-center mb-4">
