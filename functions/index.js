@@ -9,9 +9,49 @@ initializeApp();
 const db = getFirestore();
 
 /* ═══ HELPERS ═══ */
+const CAFE_TIMEZONE = "Asia/Almaty";
+const CAFE_OPEN_HOUR = 7;
+const CAFE_OPEN_MIN = 30;
+const CAFE_CLOSE_HOUR = 22;
+const CAFE_CLOSE_MIN = 0;
+
 function getAlmatyDate(date) {
   const d = date || new Date();
-  return d.toLocaleString("sv", { timeZone: "Asia/Almaty" }).split(" ")[0];
+  return d.toLocaleString("sv", { timeZone: CAFE_TIMEZONE }).split(" ")[0];
+}
+
+function getAlmatyTime() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CAFE_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  return {
+    hour: Number(parts.find((p) => p.type === "hour")?.value),
+    min: Number(parts.find((p) => p.type === "minute")?.value),
+  };
+}
+
+function isOpenBySchedule() {
+  const { hour, min } = getAlmatyTime();
+  const nowMins = hour * 60 + min;
+  const openMins = CAFE_OPEN_HOUR * 60 + CAFE_OPEN_MIN;
+  const closeMins = CAFE_CLOSE_HOUR * 60 + CAFE_CLOSE_MIN;
+  return nowMins >= openMins && nowMins < closeMins;
+}
+
+// Зеркало resolveIsOpen из src/lib/constants.ts: ручной override действует
+// только пока не истёк manualUntil; иначе — расписание.
+function resolveIsOpen(cafeData) {
+  const scheduled = isOpenBySchedule();
+  if (cafeData && cafeData.manualOverride && cafeData.manualUntil) {
+    const until = new Date(cafeData.manualUntil).getTime();
+    if (Date.now() < until) {
+      return cafeData.isOpen === undefined ? scheduled : cafeData.isOpen;
+    }
+  }
+  return scheduled;
 }
 
 async function sendPush(uid, title, body, data) {
@@ -92,11 +132,11 @@ exports.onOrderCreate = onDocumentCreated("orders/{orderId}", async (event) => {
     return;
   }
 
-  // Cafe-closed guard: фронт уже проверяет, но между render и create могла
-  // случиться смена состояния (auto-close по расписанию / ручное закрытие).
-  // Защищаем сервер.
+  // Cafe-closed guard: учитываем расписание + manualOverride, как фронт.
+  // Голый isOpen === false ловил stale-состояние после истёкшего override
+  // и отменял заказы внутри рабочих часов.
   const cafeSnap = await db.collection("cafe_status").doc("aksay_main").get();
-  if (cafeSnap.exists && cafeSnap.data().isOpen === false) {
+  if (cafeSnap.exists && resolveIsOpen(cafeSnap.data()) === false) {
     await orderRef.update({ status: "cancelled", cancelReason: "Кофейня закрыта" });
     return;
   }

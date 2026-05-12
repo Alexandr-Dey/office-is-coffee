@@ -16,9 +16,18 @@ export const CAFE_CLOSE_MIN = 0;
 
 /** Текущий час и минута в Алматы */
 export function getAlmatyTime(): { hour: number; min: number } {
-  const now = new Date();
-  const almaty = new Date(now.toLocaleString("en-US", { timeZone: CAFE_TIMEZONE }));
-  return { hour: almaty.getHours(), min: almaty.getMinutes() };
+  // Intl.DateTimeFormat надёжнее, чем new Date(toLocaleString(...)) —
+  // в ICU после Chrome 110 / Node 20 в en-US появился U+202F перед AM/PM,
+  // из-за чего Date.parse возвращал Invalid Date и весь магазин показывался закрытым.
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CAFE_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((p) => p.type === "hour")?.value);
+  const min = Number(parts.find((p) => p.type === "minute")?.value);
+  return { hour, min };
 }
 
 /** Должна ли кофейня быть открыта по расписанию */
